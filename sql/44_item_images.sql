@@ -61,5 +61,34 @@ INSERT INTO item_images (item_id, image_url) VALUES
 ('core_formation_pill', '/assets/images/items/core_formation_pill.png'),
 ('spirit_concentration_pill', '/assets/images/items/spirit_concentration_pill.png'),
 ('body_strengthening_pill', '/assets/images/items/body_strengthening_pill.png'),
-('meridian_clearing_pill', '/assets/images/items/meridian_clearing_pill.png')
+('meridian_clearing_pill', '/assets/images/items/meridian_clearing_pill.png'),
+('pvp_reward_7', '/assets/images/items/pvp_reward_7.png'),
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Аксессуары
+INSERT INTO item_images (item_id, image_url) VALUES
+('spirit_storage_bracelet', '/assets/images/items/spirit_storage_bracelet.png'),
+('azure_dragon_scale_pendant', '/assets/images/items/azure_dragon_scale_pendant.png'),
+('nine_dragon_crown', '/assets/images/items/nine_dragon_crown.png'),
+('celestial_perception_ring', '/assets/images/items/celestial_perception_ring.png'),
+('spirit_enhancement_ring', '/assets/images/items/spirit_enhancement_ring.png'),
+('five_element_amulet', '/assets/images/items/five_element_amulet.png'),
+('pvp_reward_8', '/assets/images/items/pvp_reward_8.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+SQL-код для добавления записей о талисманах (на основе последнего предоставленного списка):
+
+-- Талисманы
+INSERT INTO item_images (item_id, image_url) VALUES
+('protection_talisman', '/assets/images/items/protection_talisman.png'),
+('five_elements_talisman', '/assets/images/items/five_elements_talisman.png'),
+('fire_talisman', '/assets/images/items/fire_talisman.png'),
+('water_talisman', '/assets/images/items/water_talisman.png'),
+('spirit_sight_talisman', '/assets/images/items/spirit_sight_talisman.png'),
+('reflection_talisman', '/assets/images/items/reflection_talisman.png'),
+('fire_bird_talisman', '/assets/images/items/fire_bird_talisman.png'),
+('stone_skin_talisman', '/assets/images/items/stone_skin_talisman.png'),
+('wind_summoning_talisman', '/assets/images/items/wind_summoning_talisman.png'),
+('thunder_strike_talisman', '/assets/images/items/thunder_strike_talisman.png'),
+('spirit_shield_talisman', '/assets/images/items/spirit_shield_talisman.png')
 ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;

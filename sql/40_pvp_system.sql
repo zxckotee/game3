@@ -146,8 +146,8 @@ INSERT INTO item_catalog (item_id, name, type, rarity, description, price, sourc
 ('pvp_reward_4', 'Медаль Платиновой Лиги', 'artifact', 'legendary', 'Награда за достижение платиновой лиги в PvP', 0, 'pvp_rewards'),
 ('pvp_reward_5', 'Меч Победителя', 'weapon', 'epic', 'Оружие, дарованное лучшим бойцам арены', 0, 'equipment_items'),
 ('pvp_reward_6', 'Доспех Чемпиона', 'armor', 'epic', 'Броня, дарованная лучшим бойцам арены', 0, 'equipment_items'),
-('pvp_reward_7', 'Эликсир Воина', 'elixir', 'rare', 'Эликсир, усиливающий боевые способности', 0, 'alchemy_items'),
-('pvp_reward_8', 'Амулет Берсерка', 'artifact', 'epic', 'Увеличивает атаку в обмен на защиту', 0, 'equipment_items');
+('pvp_reward_7', 'Эликсир Воина', 'consumable', 'rare', 'Эликсир, усиливающий боевые способности', 0, 'alchemy_items'),
+('pvp_reward_8', 'Амулет Берсерка', 'accessory', 'epic', 'Увеличивает атаку в обмен на защиту', 0, 'equipment_items');
 
 -- Вставка PvP наград
 INSERT INTO pvp_rewards (name, description, item_id, min_rating, season, is_unique, rarity) VALUES
