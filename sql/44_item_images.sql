@@ -53,3 +53,13 @@ INSERT INTO item_images (item_id, image_url) VALUES
 ('advanced_techniques_book', '/assets/images/items/advanced_techniques_book.png'),
 ('basic_cultivation_manual', '/assets/images/items/basic_cultivation_manual.png')
 ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Расходуемые предметы (пилюли/зелья)
+INSERT INTO item_images (item_id, image_url) VALUES
+('soul_enlightenment_pill', '/assets/images/items/soul_enlightenment_pill.png'),
+('qi_gathering_pill', '/assets/images/items/qi_gathering_pill.png'),
+('core_formation_pill', '/assets/images/items/core_formation_pill.png'),
+('spirit_concentration_pill', '/assets/images/items/spirit_concentration_pill.png'),
+('body_strengthening_pill', '/assets/images/items/body_strengthening_pill.png'),
+('meridian_clearing_pill', '/assets/images/items/meridian_clearing_pill.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
