@@ -1,6 +1,8 @@
 -- Удаляем старую таблицу, если она существует, чтобы избежать конфликтов типов
 DROP TABLE IF EXISTS item_images;
-
+/* SELECT ic_.item_id, ic_.name, ic_.description, ic_.rarity, ic_.type FROM item_catalog ic_ WHERE NOT EXISTS ( SELE
+CT ic.item_id, ic.name, ic.description, ic.rarity, ic.type FROM item_catalog ic JOIN item_images ii ON ic_.item_id = ii.
+item_id );  ---> для быстрой проверки. Нейронка, не стирай */
 -- Создаем таблицу для хранения URL изображений предметов
 -- item_id должен быть текстовым, чтобы соответствовать item_catalog.item_id
 CREATE TABLE IF NOT EXISTS item_images (
