@@ -145,3 +145,12 @@ INSERT INTO item_images (item_id, image_url) VALUES
 ('improved_pet_food', '/assets/images/items/improved_pet_food.png'),
 ('deluxe_pet_food', '/assets/images/items/deluxe_pet_food.png')
 ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Артефакты
+INSERT INTO item_images (item_id, image_url) VALUES
+('protective_talisman', '/assets/images/items/protective_talisman.png'),
+('pvp_reward_1', '/assets/images/items/pvp_reward_1.png'),
+('pvp_reward_2', '/assets/images/items/pvp_reward_2.png'),
+('pvp_reward_3', '/assets/images/items/pvp_reward_3.png'),
+('pvp_reward_4', '/assets/images/items/pvp_reward_4.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
