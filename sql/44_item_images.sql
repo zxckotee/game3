@@ -138,3 +138,10 @@ INSERT INTO item_images (item_id, image_url) VALUES
 ('dust_stardust', '/assets/images/items/dust_stardust.png'),
 ('spirit_ancient', '/assets/images/items/spirit_ancient.png')
 ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Корм для питомцев
+INSERT INTO item_images (item_id, image_url) VALUES
+('basic_pet_food', '/assets/images/items/basic_pet_food.png'),
+('improved_pet_food', '/assets/images/items/improved_pet_food.png'),
+('deluxe_pet_food', '/assets/images/items/deluxe_pet_food.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
