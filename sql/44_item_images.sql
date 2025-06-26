@@ -62,7 +62,7 @@ INSERT INTO item_images (item_id, image_url) VALUES
 ('spirit_concentration_pill', '/assets/images/items/spirit_concentration_pill.png'),
 ('body_strengthening_pill', '/assets/images/items/body_strengthening_pill.png'),
 ('meridian_clearing_pill', '/assets/images/items/meridian_clearing_pill.png'),
-('pvp_reward_7', '/assets/images/items/pvp_reward_7.png'),
+('pvp_reward_7', '/assets/images/items/pvp_reward_7.png')
 ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
 
 -- Аксессуары
@@ -76,7 +76,6 @@ INSERT INTO item_images (item_id, image_url) VALUES
 ('pvp_reward_8', '/assets/images/items/pvp_reward_8.png')
 ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
 
-SQL-код для добавления записей о талисманах (на основе последнего предоставленного списка):
 
 -- Талисманы
 INSERT INTO item_images (item_id, image_url) VALUES
@@ -91,4 +90,49 @@ INSERT INTO item_images (item_id, image_url) VALUES
 ('wind_summoning_talisman', '/assets/images/items/wind_summoning_talisman.png'),
 ('thunder_strike_talisman', '/assets/images/items/thunder_strike_talisman.png'),
 ('spirit_shield_talisman', '/assets/images/items/spirit_shield_talisman.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Ресурсы: Травы
+INSERT INTO item_images (item_id, image_url) VALUES
+('herb_qigathering', '/assets/images/items/herb_qigathering.png'),
+('herb_ironroot', '/assets/images/items/herb_ironroot.png'),
+('herb_clearflow', '/assets/images/items/herb_clearflow.png'),
+('herb_spiritbloom', '/assets/images/items/herb_spiritbloom.png'),
+('herb_goldensage', '/assets/images/items/herb_goldensage.png'),
+('herb_soulwhisper', '/assets/images/items/herb_soulwhisper.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Ресурсы: Вода и Эссенции
+INSERT INTO item_images (item_id, image_url) VALUES
+('water_spirit', '/assets/images/items/water_spirit.png'),
+('water_pure', '/assets/images/items/water_pure.png'),
+('essence_concentration', '/assets/images/items/essence_concentration.png'),
+('essence_purity', '/assets/images/items/essence_purity.png'),
+('essence_enlightenment', '/assets/images/items/essence_enlightenment.png'),
+('essence_reflection', '/assets/images/items/essence_reflection.png'),
+('essence_heaven', '/assets/images/items/essence_heaven.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Ресурсы: Минералы и Кристаллы
+INSERT INTO item_images (item_id, image_url) VALUES
+('mineral_dust', '/assets/images/items/mineral_dust.png'),
+('mineral_iron', '/assets/images/items/mineral_iron.png'),
+('crystal_clear', '/assets/images/items/crystal_clear.png'),
+('crystal_mind', '/assets/images/items/crystal_mind.png'),
+('crystal_formation', '/assets/images/items/crystal_formation.png'),
+('crystal_soul', '/assets/images/items/crystal_soul.png'),
+('crystal_star', '/assets/images/items/crystal_star.png')
+ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
+
+-- Ресурсы: Металлы и Особые Материалы
+INSERT INTO item_images (item_id, image_url) VALUES
+('metal_celestial', '/assets/images/items/metal_celestial.png'),
+('metal_heavenly', '/assets/images/items/metal_heavenly.png'),
+('paper_talisman', '/assets/images/items/paper_talisman.png'),
+('ink_basic', '/assets/images/items/ink_basic.png'),
+('ink_fire', '/assets/images/items/ink_fire.png'),
+('feather_phoenix', '/assets/images/items/feather_phoenix.png'),
+('beast_bone', '/assets/images/items/beast_bone.png'),
+('dust_stardust', '/assets/images/items/dust_stardust.png'),
+('spirit_ancient', '/assets/images/items/spirit_ancient.png')
 ON CONFLICT (item_id) DO UPDATE SET image_url = EXCLUDED.image_url;
