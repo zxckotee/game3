@@ -1,0 +1,50 @@
+.groupList {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.title {
+  color: #c8a664;
+  font-size: 1.3rem;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(200, 166, 100, 0.2);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.emptyMessage {
+  background-color: rgba(40, 40, 50, 0.5);
+  border: 1px dashed rgba(200, 166, 100, 0.3);
+  border-radius: 6px;
+  padding: 16px;
+  color: #c8a664;
+  font-size: 14px;
+  text-align: center;
+  margin: 16px 0;
+  line-height: 1.5;
+}
+
+.footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(200, 166, 100, 0.2);
+}
+
+.helpText {
+  color: rgba(200, 166, 100, 0.7);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+  text-align: center;
+}

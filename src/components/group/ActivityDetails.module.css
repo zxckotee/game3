@@ -1,0 +1,303 @@
+.activityDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: rgba(40, 40, 50, 0.5);
+  border-radius: 6px;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.title {
+  color: #c8a664;
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+}
+
+.type {
+  color: #9a9a9a;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.description {
+  color: #d8d8d8;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: rgba(30, 30, 40, 0.5);
+  border-radius: 6px;
+  border-left: 3px solid rgba(200, 166, 100, 0.3);
+}
+
+.section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: rgba(30, 30, 40, 0.5);
+  border-radius: 6px;
+}
+
+.sectionTitle {
+  color: #c8a664;
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(200, 166, 100, 0.2);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  color: #a8a8a8;
+  font-size: 12px;
+}
+
+.value {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.warning {
+  color: #ff9999;
+  font-size: 12px;
+  margin-top: 6px;
+  display: block;
+}
+
+.difficultySelector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.diffButton {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: rgba(50, 50, 60, 0.5);
+  color: #d8d8d8;
+}
+
+.diffButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.diffButton.selected {
+  box-shadow: 0 0 0 1px rgba(200, 166, 100, 0.5);
+}
+
+.diffButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.difficultyEasy {
+  background-color: #2d6a4f;
+  color: #b7e4c7;
+}
+
+.difficultyMedium {
+  background-color: #7d5700;
+  color: #ffd166;
+}
+
+.difficultyHard {
+  background-color: #9d0208;
+  color: #ffccd5;
+}
+
+.difficultyExtreme {
+  background-color: #7209b7;
+  color: #e0aaff;
+}
+
+.difficultyLegendary {
+  background-color: #d00000;
+  color: #ffc2c2;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.legendaryWarning {
+  color: #ff9999;
+  font-size: 12px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  padding: 8px;
+  background-color: rgba(157, 2, 8, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(208, 0, 0, 0.3);
+}
+
+.optionGroup {
+  margin-bottom: 16px;
+}
+
+.checkboxLabel, .radioLabel {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.checkboxText, .radioText {
+  margin-left: 8px;
+  color: #d8d8d8;
+  font-size: 14px;
+}
+
+.rewards {
+  margin-top: 20px;
+}
+
+.rewardsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rewardItem {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: rgba(40, 40, 50, 0.5);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.rewardIcon {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+.rewardName {
+  color: #d8d8d8;
+  flex: 1;
+}
+
+.rewardBonus {
+  color: #c8a664;
+  font-weight: 500;
+  font-size: 12px;
+  padding: 2px 6px;
+  background-color: rgba(130, 100, 50, 0.2);
+  border-radius: 3px;
+}
+
+.actions {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.createButton, .startButton {
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.createButton {
+  background-color: #7e6839;
+  color: #ffffff;
+}
+
+.createButton:hover:not(:disabled) {
+  background-color: #9a844f;
+  transform: translateY(-2px);
+}
+
+.startButton {
+  background-color: #40916c;
+  color: #ffffff;
+}
+
+.startButton:hover:not(:disabled) {
+  background-color: #52b788;
+  transform: translateY(-2px);
+}
+
+.createButton:disabled, .startButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.permissionMessage {
+  color: #ff9999;
+  font-size: 12px;
+  text-align: center;
+}
+
+.createdActivity {
+  background-color: rgba(40, 40, 50, 0.5);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.createdInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(200, 166, 100, 0.1);
+}
+
+.createdInfo:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.createdLabel {
+  color: #a8a8a8;
+  font-size: 12px;
+}
+
+.createdValue {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+}

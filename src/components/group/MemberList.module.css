@@ -1,0 +1,154 @@
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.memberItem {
+  background-color: rgba(45, 45, 55, 0.7);
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.memberItem:hover {
+  background-color: rgba(55, 55, 70, 0.8);
+}
+
+.selected {
+  background-color: rgba(60, 60, 75, 0.9);
+  border: 1px solid rgba(200, 166, 100, 0.4);
+  box-shadow: 0 0 8px rgba(200, 166, 100, 0.2);
+}
+
+.memberInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nameWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role {
+  font-size: 16px;
+}
+
+.username {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.currentUser {
+  color: #c8a664;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.level {
+  color: #c8a664;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.specialization {
+  color: #a0a0a0;
+  font-size: 12px;
+}
+
+.memberActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(200, 166, 100, 0.2);
+}
+
+.leaderNote {
+  color: #c8a664;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.promoteButton, .demoteButton, .transferButton, .kickButton {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.promoteButton {
+  background-color: rgba(100, 130, 80, 0.4);
+  color: #a0e0a0;
+}
+
+.promoteButton:hover {
+  background-color: rgba(100, 130, 80, 0.6);
+}
+
+.demoteButton {
+  background-color: rgba(130, 100, 50, 0.4);
+  color: #e0d0a0;
+}
+
+.demoteButton:hover {
+  background-color: rgba(130, 100, 50, 0.6);
+}
+
+.transferButton {
+  background-color: rgba(100, 100, 150, 0.4);
+  color: #b0b0e0;
+}
+
+.transferButton:hover {
+  background-color: rgba(100, 100, 150, 0.6);
+}
+
+.kickButton {
+  background-color: rgba(130, 50, 50, 0.4);
+  color: #e0a0a0;
+}
+
+.kickButton:hover {
+  background-color: rgba(130, 50, 50, 0.6);
+}
+
+.promoteButton:disabled, .demoteButton:disabled, .transferButton:disabled, .kickButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .memberInfo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .stats {
+    align-items: flex-start;
+  }
+  
+  .memberActions {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,1096 @@
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import { useGame } from '../../context/GameContext';
+import { debugEquipment } from '../../utils/equipmentDebug';
+import { ensureItemHasCalculatedBonuses } from '../../utils/equipmentBonusHelper';
+import { calculateEquipmentBonusesFromInventory } from '../../utils/equipmentBonusCalculator';
+import { 
+  updatePlayerEquipmentBonuses,
+  handleEquipItem,
+  handleUnequipItem,
+  initializeEquipmentBonuses
+} from '../../utils/equipmentStateUpdater';
+
+const Container = styled.div`
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 20px;
+`;
+
+const EquipmentDisplay = styled.div`
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #d4af37;
+  border-radius: 8px;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-auto-rows: minmax(100px, auto);
+  grid-gap: 20px;
+  max-width: 100%;
+`;
+
+const EquipmentSlot = styled.div`
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #666;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 10px;
+  cursor: pointer;
+  height: 100px;
+  
+  &.head {
+    grid-column: 1 / span 3;
+    height: 80px;
+  }
+  
+  &.body {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  
+  &.left {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  &.right {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  
+  &.hands {
+    grid-column: 1 / span 3;
+    grid-row: 3;
+    height: 80px;
+  }
+  
+  &.legs {
+    grid-column: 1 / span 3;
+    grid-row: 4;
+    height: 80px;
+  }
+  
+  &.acc1 {
+    grid-column: 1;
+    grid-row: 5;
+  }
+  
+  &.acc2 {
+    grid-column: 3;
+    grid-row: 5;
+  }
+  
+  &.art1 {
+    grid-column: 1;
+    grid-row: 6;
+  }
+  
+  &.art2 {
+    grid-column: 3;
+    grid-row: 6;
+  }
+  
+  &.equipped {
+    border-color: ${props => props.rarity === 'common' ? '#666' :
+      props.rarity === 'uncommon' ? '#2196f3' :
+      props.rarity === 'rare' ? '#9c27b0' :
+      props.rarity === 'epic' ? '#ff9800' : '#d4af37'};
+    box-shadow: 0 0 5px ${props => props.rarity === 'common' ? '#666' :
+      props.rarity === 'uncommon' ? '#2196f3' :
+      props.rarity === 'rare' ? '#9c27b0' :
+      props.rarity === 'epic' ? '#ff9800' : '#d4af37'};
+  }
+`;
+
+const SlotName = styled.div`
+  color: #aaa;
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+`;
+
+const ItemIcon = styled.div`
+  width: 40px;
+  height: 40px;
+  background: ${props => props.type === 'weapon' ? '#f44336' :
+    props.type === 'armor' ? '#2196f3' :
+    props.type === 'accessory' ? '#9c27b0' :
+    props.type === 'artifact' ? '#ff9800' :
+    props.type === 'material' ? '#4caf50' :
+    props.type === 'book' ? '#795548' : '#666'};
+  border-radius: 4px;
+`;
+
+const ItemName = styled.div`
+  color: ${props => props.rarity === 'common' ? '#fff' :
+    props.rarity === 'uncommon' ? '#2196f3' :
+    props.rarity === 'rare' ? '#9c27b0' :
+    props.rarity === 'epic' ? '#ff9800' : '#d4af37'};
+  font-size: 0.9rem;
+  margin-top: 5px;
+  text-align: center;
+`;
+
+const StatsPanel = styled.div`
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #d4af37;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+`;
+
+const UnequipButton = styled.button`
+  padding: 10px 15px;
+  background: rgba(180, 30, 30, 0.3);
+  border: 1px solid #d4af37;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: rgba(180, 30, 30, 0.5);
+  }
+  
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+`;
+
+const DropButton = styled.button`
+  padding: 10px 15px;
+  background: rgba(180, 30, 30, 0.3);
+  border: 1px solid #d4af37;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  width: 100%;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: rgba(180, 30, 30, 0.5);
+  }
+  
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+`;
+
+const SectionTitle = styled.h3`
+  color: #d4af37;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 5px;
+`;
+
+const StatGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  
+  span:first-child {
+    color: #aaa;
+  }
+  
+  span:last-child {
+    color: ${props => props.value > 0 ? '#4caf50' : props.value < 0 ? '#f44336' : '#aaa'};
+  }
+`;
+
+const FilterButtons = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+`;
+
+const FilterButton = styled.button`
+  padding: 8px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #666;
+  border-radius: 4px;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  
+  &.active {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #d4af37;
+    color: #d4af37;
+  }
+`;
+
+const InventoryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #666;
+  border-radius: 8px;
+`;
+
+const ItemSlot = styled.div`
+  width: 100%;
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid ${props => props.rarity === 'common' ? '#666' :
+    props.rarity === 'uncommon' ? '#2196f3' :
+    props.rarity === 'rare' ? '#9c27b0' :
+    props.rarity === 'epic' ? '#ff9800' : '#d4af37'};
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px ${props => props.rarity === 'common' ? '#666' :
+      props.rarity === 'uncommon' ? '#2196f3' :
+      props.rarity === 'rare' ? '#9c27b0' :
+      props.rarity === 'epic' ? '#ff9800' : '#d4af37'};
+  }
+  
+  &.equipped {
+    border-width: 2px;
+    box-shadow: 0 0 5px ${props => props.rarity === 'common' ? '#666' :
+      props.rarity === 'uncommon' ? '#2196f3' :
+      props.rarity === 'rare' ? '#9c27b0' :
+      props.rarity === 'epic' ? '#ff9800' : '#d4af37'};
+  }
+`;
+
+// Вспомогательная функция для определения типа брони на основе armorType и названия
+const determineArmorType = (item) => {
+  if (!item) return null;
+  
+  // Сначала проверяем явно указанный тип
+  const armorType = item.properties?.armorType || item.armorType;
+  if (armorType) return armorType;
+  
+  // Если тип не указан, определяем по названию
+  const itemName = item.name.toLowerCase();
+  
+  if (itemName.includes('шлем') || itemName.includes('шапка') || itemName.includes('капюшон')) {
+    return 'head';
+  }
+  
+  if (itemName.includes('сапог') || itemName.includes('ботин') || itemName.includes('обувь')) {
+    return 'legs';
+  }
+  
+  if (itemName.includes('перчат') || itemName.includes('рукав')) {
+    return 'hands';
+  }
+  
+  // По умолчанию считаем броней для тела
+  return 'body';
+};
+
+function EquipmentTab() {
+  const { state, actions } = useGame();
+  const [equipped, setEquipped] = useState({
+    weapon: null,
+    headArmor: null,
+    bodyArmor: null,
+    legArmor: null,
+    handArmor: null,
+    accessory1: null,
+    accessory2: null,
+    artifact1: null,
+    artifact2: null
+  });
+  const [filter, setFilter] = useState('all');
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedEquippedItem, setSelectedEquippedItem] = useState(null);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
+  
+  // Загружаем экипированные предметы один раз при монтировании компонента
+  const isMounted = React.useRef(false);
+  
+  useEffect(() => {
+    // Загружаем экипировку только при первом монтировании компонента
+    if (isMounted.current) {
+      return;
+    }
+    
+    console.log('Инициализация экипировки');
+    isMounted.current = true;
+    
+    // Обновляем отображение экипированных предметов
+    updateEquippedItems();
+    
+    // НОВОЕ: Инициализируем бонусы экипировки, используя новую систему
+    initializeEquipmentBonuses(state, actions.dispatch);
+    
+    // Используем нашу отладочную утилиту для вывода информации
+    setTimeout(() => {
+      debugEquipment(state);
+    }, 500); // Небольшая задержка, чтобы убедиться, что все бонусы успели применяться
+  }, []); // Пустой массив зависимостей - запускается только при монтировании
+  
+  // Обновляем отображение экипированных предметов при изменении инвентаря
+  useEffect(() => {
+    if (!isMounted.current) {
+      return; // Пропускаем первую загрузку, она обрабатывается выше
+    }
+    
+    // Обновляем отображение
+    updateEquippedItems();
+    
+    // НОВОЕ: Обновляем бонусы экипировки при изменении инвентаря
+    updatePlayerEquipmentBonuses(state, actions.dispatch);
+  }, [state.player.inventory?.items]);
+  
+  // Функция для обновления отображения экипированных предметов
+  const updateEquippedItems = () => {
+    if (!state.player?.inventory?.items) {
+      console.warn('Инвентарь недоступен');
+      return {};
+    }
+    
+    const equippedItems = {
+      weapon: null,
+      headArmor: null,
+      bodyArmor: null,
+      legArmor: null,
+      handArmor: null,
+      accessory1: null,
+      accessory2: null,
+      artifact1: null,
+      artifact2: null
+    };
+    
+    // Получаем список экипированных предметов
+    const equippedItemsList = state.player.inventory.items.filter(item => item.equipped);
+    
+    console.log('==== ОБНОВЛЕНИЕ ЭКИПИРОВАННЫХ ПРЕДМЕТОВ ====');
+    console.log(`Найдено ${equippedItemsList.length} экипированных предметов`);
+    
+    // Находим экипированные предметы из инвентаря
+    state.player.inventory.items.forEach(item => {
+      if (item.equipped) {
+        switch(item.type) {
+          case 'weapon':
+            equippedItems.weapon = item;
+            console.log(`⚔️ Экипировано оружие: ${item.name}`);
+            break;
+          case 'armor':
+            // Определяем тип брони
+            const armorType = determineArmorType(item);
+            
+            if (armorType === 'head') {
+              equippedItems.headArmor = item;
+              console.log(`🧢 Экипирована броня для головы: ${item.name}`);
+            }
+            else if (armorType === 'legs') {
+              equippedItems.legArmor = item;
+              console.log(`👢 Экипирована броня для ног: ${item.name}`);
+            }
+            else if (armorType === 'hands') {
+              equippedItems.handArmor = item;
+              console.log(`🧤 Экипирована броня для рук: ${item.name}`);
+            }
+            else {
+              equippedItems.bodyArmor = item;
+              console.log(`👕 Экипирована броня для тела: ${item.name}`);
+            }
+            break;
+          case 'accessory':
+            if (!equippedItems.accessory1) {
+              equippedItems.accessory1 = item;
+              console.log(`💍 Экипирован аксессуар 1: ${item.name}`);
+            } else if (!equippedItems.accessory2) {
+              equippedItems.accessory2 = item;
+              console.log(`💍 Экипирован аксессуар 2: ${item.name}`);
+            }
+            break;
+          case 'artifact':
+            if (!equippedItems.artifact1) {
+              equippedItems.artifact1 = item;
+              console.log(`🏺 Экипирован артефакт 1: ${item.name}`);
+            } else if (!equippedItems.artifact2) {
+              equippedItems.artifact2 = item;
+              console.log(`🏺 Экипирован артефакт 2: ${item.name}`);
+            }
+            break;
+        }
+      }
+    });
+    
+    // Обновляем состояние компонента
+    setEquipped(equippedItems);
+    
+    return equippedItems;
+  };
+  
+  // Обработчик нажатия на пустой слот экипировки
+  const handleSlotClick = (slotType) => {
+    setSelectedSlot(slotType);
+    setSelectedEquippedItem(null);
+    
+    // Фильтруем подходящие предметы для выбранного слота
+    switch(slotType) {
+      case 'weapon':
+        setFilter('weapon');
+        break;
+      case 'headArmor':
+      case 'bodyArmor':
+      case 'legArmor':
+      case 'handArmor':
+        setFilter('armor');
+        break;
+      case 'accessory1':
+      case 'accessory2':
+        setFilter('accessory');
+        break;
+      case 'artifact1':
+      case 'artifact2':
+        setFilter('artifact');
+        break;
+    }
+  };
+  
+  // Обработчик нажатия на экипированный предмет
+  const handleEquippedItemClick = (item, slot) => {
+    setSelectedSlot(slot);
+    setSelectedEquippedItem(item);
+    setSelectedInventoryItem(null);
+  };
+  
+  // Обработчик нажатия на предмет в инвентаре
+  const handleInventoryItemClick = (item) => {
+    setSelectedInventoryItem(item);
+    setSelectedEquippedItem(null);
+  };
+  
+  // НОВОЕ: Обработчик экипировки предмета
+  const handleEquipItemClick = (itemId) => {
+    // Используем новую функцию для экипировки предмета
+    handleEquipItem(state, actions.dispatch, itemId);
+    
+    // Сбрасываем выбранный предмет
+    setSelectedInventoryItem(null);
+    setSelectedSlot(null);
+    
+    // Для немедленного обновления UI
+    setTimeout(() => {
+      updateEquippedItems();
+    }, 100);
+  };
+  
+  // НОВОЕ: Обработчик снятия предмета
+  const handleUnequipItemClick = (itemId) => {
+    // Используем новую функцию для снятия предмета
+    handleUnequipItem(state, actions.dispatch, itemId);
+    
+    // Сбрасываем выбранный предмет
+    setSelectedEquippedItem(null);
+    
+    // Для немедленного обновления UI
+    setTimeout(() => {
+      updateEquippedItems();
+    }, 100);
+  };
+  
+  // Компонент для отображения слота экипировки
+  const renderEquipmentSlot = (slotType, name, className) => {
+    const item = equipped[slotType];
+    
+    return (
+      <EquipmentSlot 
+        className={`${className} ${selectedSlot === slotType ? 'selected' : ''} ${item ? 'equipped' : ''}`}
+        onClick={() => item ? handleEquippedItemClick(item, slotType) : handleSlotClick(slotType)}
+        rarity={item?.rarity}
+      >
+        <SlotName>{name}</SlotName>
+        {item ? (
+          <>
+            <ItemIcon type={item.type} />
+            <ItemName rarity={item.rarity}>{item.name}</ItemName>
+          </>
+        ) : (
+          <div>Не экипировано</div>
+        )}
+      </EquipmentSlot>
+    );
+  };
+  
+  // Фильтрация предметов инвентаря
+  const filteredItems = React.useMemo(() => {
+    if (!state.player?.inventory?.items) return [];
+    
+    let filteredList = state.player.inventory.items;
+    
+    // Фильтруем по типу, если выбран фильтр
+    if (filter !== 'all') {
+      filteredList = filteredList.filter(item => item.type === filter);
+    }
+    
+    // Если выбран слот, фильтруем по подтипу для брони
+    if (selectedSlot) {
+      if (selectedSlot === 'headArmor') {
+        filteredList = filteredList.filter(item => 
+          item.type === 'armor' && (
+            (item.properties?.armorType === 'head') || 
+            (!item.properties?.armorType && determineArmorType(item) === 'head')
+          )
+        );
+      } else if (selectedSlot === 'bodyArmor') {
+        filteredList = filteredList.filter(item => 
+          item.type === 'armor' && (
+            (item.properties?.armorType === 'body') || 
+            (!item.properties?.armorType && determineArmorType(item) === 'body')
+          )
+        );
+      } else if (selectedSlot === 'legArmor') {
+        filteredList = filteredList.filter(item => 
+          item.type === 'armor' && (
+            (item.properties?.armorType === 'legs') || 
+            (!item.properties?.armorType && determineArmorType(item) === 'legs')
+          )
+        );
+      } else if (selectedSlot === 'handArmor') {
+        filteredList = filteredList.filter(item => 
+          item.type === 'armor' && (
+            (item.properties?.armorType === 'hands') || 
+            (!item.properties?.armorType && determineArmorType(item) === 'hands')
+          )
+        );
+      }
+    }
+    
+    return filteredList;
+  }, [state.player?.inventory?.items, filter, selectedSlot]);
+  
+  // Отображение детальной информации о выбранном предмете экипировки
+  const renderEquippedItemDetails = () => {
+    if (!selectedEquippedItem) return null;
+    
+    // НОВОЕ: Рассчитываем бонусы предмета из эффектов
+    const itemBonuses = calculateEquipmentBonusesFromInventory([selectedEquippedItem]);
+    
+    return (
+      <StatsPanel>
+        <SectionTitle>Выбранный предмет: {selectedEquippedItem.name}</SectionTitle>
+        
+        {/* Базовые характеристики */}
+        <SectionTitle>Базовые характеристики</SectionTitle>
+        <StatGrid>
+          {Object.entries(itemBonuses.stats).map(([stat, value]) => {
+            if (value === 0) return null;
+            
+            const statNames = {
+              'strength': 'Сила',
+              'dexterity': 'Ловкость',
+              'vitality': 'Выносливость',
+              'intelligence': 'Интеллект',
+              'perception': 'Восприятие',
+              'luck': 'Удача'
+            };
+            
+            return (
+              <StatItem key={stat} value={value}>
+                <span>{statNames[stat] || stat}</span>
+                <span>{value > 0 ? `+${value}` : value}</span>
+              </StatItem>
+            );
+          })}
+        </StatGrid>
+        
+        {/* Боевые характеристики */}
+        <SectionTitle>Боевые характеристики</SectionTitle>
+        <StatGrid>
+          {Object.entries(itemBonuses.combat).map(([stat, value]) => {
+            if (value === 0) return null;
+            
+            const statNames = {
+              'physicalDamage': 'Физический урон',
+              'magicDamage': 'Магический урон',
+              'physicalDefense': 'Физическая защита',
+              'magicDefense': 'Магическая защита',
+              'critChance': 'Шанс крит. удара',
+              'critDamage': 'Урон от крит. удара',
+              'dodgeChance': 'Шанс уклонения'
+            };
+            
+            const suffix = ['critChance', 'critDamage', 'dodgeChance'].includes(stat) ? '%' : '';
+            
+            return (
+              <StatItem key={stat} value={value}>
+                <span>{statNames[stat] || stat}</span>
+                <span>{value > 0 ? `+${value}${suffix}` : `${value}${suffix}`}</span>
+              </StatItem>
+            );
+          })}
+        </StatGrid>
+        
+        {/* Характеристики культивации */}
+        {Object.values(itemBonuses.cultivation).some(v => v !== 0) && (
+          <>
+            <SectionTitle>Культивация</SectionTitle>
+            <StatGrid>
+              {Object.entries(itemBonuses.cultivation).map(([stat, value]) => {
+                if (value === 0) return null;
+                
+                const statNames = {
+                  'energyMax': 'Макс. энергия',
+                  'energyRegen': 'Восст. энергии',
+                  'comprehensionRate': 'Скорость понимания',
+                  'breakthroughChance': 'Шанс прорыва'
+                };
+                
+                const suffix = stat === 'energyRegen' ? '/час' : 
+                  ['comprehensionRate', 'breakthroughChance'].includes(stat) ? '%' : '';
+                
+                return (
+                  <StatItem key={stat} value={value}>
+                    <span>{statNames[stat] || stat}</span>
+                    <span>{value > 0 ? `+${value}${suffix}` : `${value}${suffix}`}</span>
+                  </StatItem>
+                );
+              })}
+            </StatGrid>
+          </>
+        )}
+        
+        {/* Стихийные бонусы */}
+        {Object.values(itemBonuses.elemental).some(v => v !== 0) && (
+          <>
+            <SectionTitle>Стихийные бонусы</SectionTitle>
+            <StatGrid>
+              {Object.entries(itemBonuses.elemental).map(([element, value]) => {
+                if (value === 0) return null;
+                
+                const elementNames = {
+                  'fire': 'Огонь',
+                  'water': 'Вода',
+                  'earth': 'Земля',
+                  'air': 'Воздух',
+                  'light': 'Свет',
+                  'dark': 'Тьма'
+                };
+                
+                return (
+                  <StatItem key={element} value={value}>
+                    <span>{elementNames[element] || element}</span>
+                    <span>{value > 0 ? `+${value}` : value}</span>
+                  </StatItem>
+                );
+              })}
+            </StatGrid>
+          </>
+        )}
+        
+        {/* Особые эффекты */}
+        {itemBonuses.special.length > 0 && (
+          <>
+            <SectionTitle>Особые эффекты</SectionTitle>
+            {itemBonuses.special.map((effect, index) => (
+              <div key={effect.id || index} style={{ marginBottom: '10px' }}>
+                <div style={{ color: '#d4af37', fontWeight: 'bold' }}>{effect.name}</div>
+                <div>{effect.description}</div>
+              </div>
+            ))}
+          </>
+        )}
+        
+        {/* Кнопка для снятия предмета */}
+        <UnequipButton onClick={() => handleUnequipItemClick(selectedEquippedItem.id)}>
+          Снять
+        </UnequipButton>
+      </StatsPanel>
+    );
+  };
+  
+  // Отображение детальной информации о выбранном предмете инвентаря
+  const renderInventoryItemDetails = () => {
+    if (!selectedInventoryItem) return null;
+    
+    // НОВОЕ: Рассчитываем бонусы предмета из эффектов
+    const itemBonuses = calculateEquipmentBonusesFromInventory([selectedInventoryItem]);
+    
+    return (
+      <StatsPanel>
+        <SectionTitle>Выбранный предмет: {selectedInventoryItem.name}</SectionTitle>
+        
+        {/* Базовые характеристики */}
+        <SectionTitle>Базовые характеристики</SectionTitle>
+        <StatGrid>
+          {Object.entries(itemBonuses.stats).map(([stat, value]) => {
+            if (value === 0) return null;
+            
+            const statNames = {
+              'strength': 'Сила',
+              'dexterity': 'Ловкость',
+              'vitality': 'Выносливость',
+              'intelligence': 'Интеллект',
+              'perception': 'Восприятие',
+              'luck': 'Удача'
+            };
+            
+            return (
+              <StatItem key={stat} value={value}>
+                <span>{statNames[stat] || stat}</span>
+                <span>{value > 0 ? `+${value}` : value}</span>
+              </StatItem>
+            );
+          })}
+        </StatGrid>
+        
+        {/* Боевые характеристики */}
+        <SectionTitle>Боевые характеристики</SectionTitle>
+        <StatGrid>
+          {Object.entries(itemBonuses.combat).map(([stat, value]) => {
+            if (value === 0) return null;
+            
+            const statNames = {
+              'physicalDamage': 'Физический урон',
+              'magicDamage': 'Магический урон',
+              'physicalDefense': 'Физическая защита',
+              'magicDefense': 'Магическая защита',
+              'critChance': 'Шанс крит. удара',
+              'critDamage': 'Урон от крит. удара',
+              'dodgeChance': 'Шанс уклонения'
+            };
+            
+            const suffix = ['critChance', 'critDamage', 'dodgeChance'].includes(stat) ? '%' : '';
+            
+            return (
+              <StatItem key={stat} value={value}>
+                <span>{statNames[stat] || stat}</span>
+                <span>{value > 0 ? `+${value}${suffix}` : `${value}${suffix}`}</span>
+              </StatItem>
+            );
+          })}
+        </StatGrid>
+        
+        {/* Характеристики культивации */}
+        {Object.values(itemBonuses.cultivation).some(v => v !== 0) && (
+          <>
+            <SectionTitle>Культивация</SectionTitle>
+            <StatGrid>
+              {Object.entries(itemBonuses.cultivation).map(([stat, value]) => {
+                if (value === 0) return null;
+                
+                const statNames = {
+                  'energyMax': 'Макс. энергия',
+                  'energyRegen': 'Восст. энергии',
+                  'comprehensionRate': 'Скорость понимания',
+                  'breakthroughChance': 'Шанс прорыва'
+                };
+                
+                const suffix = stat === 'energyRegen' ? '/час' : 
+                  ['comprehensionRate', 'breakthroughChance'].includes(stat) ? '%' : '';
+                
+                return (
+                  <StatItem key={stat} value={value}>
+                    <span>{statNames[stat] || stat}</span>
+                    <span>{value > 0 ? `+${value}${suffix}` : `${value}${suffix}`}</span>
+                  </StatItem>
+                );
+              })}
+            </StatGrid>
+          </>
+        )}
+        
+        {/* Стихийные бонусы */}
+        {Object.values(itemBonuses.elemental).some(v => v !== 0) && (
+          <>
+            <SectionTitle>Стихийные бонусы</SectionTitle>
+            <StatGrid>
+              {Object.entries(itemBonuses.elemental).map(([element, value]) => {
+                if (value === 0) return null;
+                
+                const elementNames = {
+                  'fire': 'Огонь',
+                  'water': 'Вода',
+                  'earth': 'Земля',
+                  'air': 'Воздух',
+                  'light': 'Свет',
+                  'dark': 'Тьма'
+                };
+                
+                return (
+                  <StatItem key={element} value={value}>
+                    <span>{elementNames[element] || element}</span>
+                    <span>{value > 0 ? `+${value}` : value}</span>
+                  </StatItem>
+                );
+              })}
+            </StatGrid>
+          </>
+        )}
+        
+        {/* Особые эффекты */}
+        {itemBonuses.special.length > 0 && (
+          <>
+            <SectionTitle>Особые эффекты</SectionTitle>
+            {itemBonuses.special.map((effect, index) => (
+              <div key={effect.id || index} style={{ marginBottom: '10px' }}>
+                <div style={{ color: '#d4af37', fontWeight: 'bold' }}>{effect.name}</div>
+                <div>{effect.description}</div>
+              </div>
+            ))}
+          </>
+        )}
+        
+        {/* Кнопка для экипировки предмета */}
+        <UnequipButton 
+          onClick={() => handleEquipItemClick(selectedInventoryItem.id)}
+          disabled={selectedInventoryItem.equipped}
+        >
+          {selectedInventoryItem.equipped ? 'Уже экипировано' : 'Экипировать'}
+        </UnequipButton>
+      </StatsPanel>
+    );
+  };
+  
+  // НОВОЕ: Отображение текущих бонусов экипировки
+  const renderEquipmentBonuses = () => {
+    const { equipmentBonuses } = state.player || {};
+    
+    if (!equipmentBonuses) {
+      return (
+        <StatsPanel>
+          <SectionTitle>Бонусы экипировки</SectionTitle>
+          <div>Нет активных бонусов экипировки</div>
+        </StatsPanel>
+      );
+    }
+    
+    return (
+      <StatsPanel>
+        <SectionTitle>Бонусы экипировки</SectionTitle>
+        
+        {/* Базовые характеристики */}
+        <SectionTitle>Базовые характеристики</SectionTitle>
+        <StatGrid>
+          {Object.entries(equipmentBonuses.stats).map(([stat, value]) => {
+            const statNames = {
+              'strength': 'Сила',
+              'dexterity': 'Ловкость',
+              'vitality': 'Выносливость',
+              'intelligence': 'Интеллект',
+              'perception': 'Восприятие',
+              'luck': 'Удача'
+            };
+            
+            return (
+              <StatItem key={stat} value={value}>
+                <span>{statNames[stat] || stat}</span>
+                <span>{value > 0 ? `+${value}` : value}</span>
+              </StatItem>
+            );
+          })}
+        </StatGrid>
+        
+        {/* Боевые характеристики */}
+        <SectionTitle>Боевые характеристики</SectionTitle>
+        <StatGrid>
+          {Object.entries(equipmentBonuses.combat).map(([stat, value]) => {
+            const statNames = {
+              'physicalDamage': 'Физический урон',
+              'magicDamage': 'Магический урон',
+              'physicalDefense': 'Физическая защита',
+              'magicDefense': 'Магическая защита',
+              'critChance': 'Шанс крит. удара',
+              'critDamage': 'Урон от крит. удара',
+              'dodgeChance': 'Шанс уклонения'
+            };
+            
+            const suffix = ['critChance', 'critDamage', 'dodgeChance'].includes(stat) ? '%' : '';
+            
+            return (
+              <StatItem key={stat} value={value}>
+                <span>{statNames[stat] || stat}</span>
+                <span>{value > 0 ? `+${value}${suffix}` : `${value}${suffix}`}</span>
+              </StatItem>
+            );
+          })}
+        </StatGrid>
+        
+        {/* Культивация */}
+        {Object.values(equipmentBonuses.cultivation).some(v => v !== 0) && (
+          <>
+            <SectionTitle>Культивация</SectionTitle>
+            <StatGrid>
+              {Object.entries(equipmentBonuses.cultivation).map(([stat, value]) => {
+                if (value === 0) return null;
+                
+                const statNames = {
+                  'energyMax': 'Макс. энергия',
+                  'energyRegen': 'Восст. энергии',
+                  'comprehensionRate': 'Скорость понимания',
+                  'breakthroughChance': 'Шанс прорыва'
+                };
+                
+                const suffix = stat === 'energyRegen' ? '/час' : 
+                  ['comprehensionRate', 'breakthroughChance'].includes(stat) ? '%' : '';
+                
+                return (
+                  <StatItem key={stat} value={value}>
+                    <span>{statNames[stat] || stat}</span>
+                    <span>{value > 0 ? `+${value}${suffix}` : `${value}${suffix}`}</span>
+                  </StatItem>
+                );
+              })}
+            </StatGrid>
+          </>
+        )}
+        
+        {/* Стихийные бонусы */}
+        {Object.values(equipmentBonuses.elemental).some(v => v !== 0) && (
+          <>
+            <SectionTitle>Стихийные бонусы</SectionTitle>
+            <StatGrid>
+              {Object.entries(equipmentBonuses.elemental).map(([element, value]) => {
+                if (value === 0) return null;
+                
+                const elementNames = {
+                  'fire': 'Огонь',
+                  'water': 'Вода',
+                  'earth': 'Земля',
+                  'air': 'Воздух',
+                  'light': 'Свет',
+                  'dark': 'Тьма'
+                };
+                
+                return (
+                  <StatItem key={element} value={value}>
+                    <span>{elementNames[element] || element}</span>
+                    <span>{value > 0 ? `+${value}` : value}</span>
+                  </StatItem>
+                );
+              })}
+            </StatGrid>
+          </>
+        )}
+        
+        {/* Особые эффекты */}
+        {equipmentBonuses.special.length > 0 && (
+          <>
+            <SectionTitle>Особые эффекты</SectionTitle>
+            {equipmentBonuses.special.map((effect, index) => (
+              <div key={effect.id || index} style={{ marginBottom: '10px' }}>
+                <div style={{ color: '#d4af37', fontWeight: 'bold' }}>{effect.name}</div>
+                <div>{effect.description}</div>
+              </div>
+            ))}
+          </>
+        )}
+        
+        {/* Кнопка обновления бонусов (для отладки) */}
+        <UnequipButton 
+          onClick={() => updatePlayerEquipmentBonuses(state, actions.dispatch)}
+          style={{ background: 'rgba(0, 100, 0, 0.3)' }}
+        >
+          Обновить бонусы
+        </UnequipButton>
+      </StatsPanel>
+    );
+  };
+  
+  return (
+    <Container>
+      <div>
+        <SectionTitle>Экипировка</SectionTitle>
+        <EquipmentDisplay>
+          {renderEquipmentSlot('headArmor', 'Голова', 'head')}
+          {renderEquipmentSlot('weapon', 'Оружие', 'left')}
+          {renderEquipmentSlot('bodyArmor', 'Тело', 'body')}
+          {renderEquipmentSlot('accessory1', 'Аксессуар 1', 'right')}
+          {renderEquipmentSlot('handArmor', 'Руки', 'hands')}
+          {renderEquipmentSlot('legArmor', 'Ноги', 'legs')}
+          {renderEquipmentSlot('artifact1', 'Артефакт 1', 'art1')}
+          {renderEquipmentSlot('accessory2', 'Аксессуар 2', 'acc1')}
+          {renderEquipmentSlot('artifact2', 'Артефакт 2', 'art2')}
+        </EquipmentDisplay>
+        
+        {(selectedSlot || selectedInventoryItem) && (
+          <>
+            <SectionTitle style={{ marginTop: '20px' }}>Доступные предметы</SectionTitle>
+            <FilterButtons>
+              <FilterButton 
+                className={filter === 'all' ? 'active' : ''}
+                onClick={() => setFilter('all')}
+              >
+                Все
+              </FilterButton>
+              <FilterButton 
+                className={filter === 'weapon' ? 'active' : ''}
+                onClick={() => setFilter('weapon')}
+              >
+                Оружие
+              </FilterButton>
+              <FilterButton 
+                className={filter === 'armor' ? 'active' : ''}
+                onClick={() => setFilter('armor')}
+              >
+                Броня
+              </FilterButton>
+              <FilterButton 
+                className={filter === 'accessory' ? 'active' : ''}
+                onClick={() => setFilter('accessory')}
+              >
+                Аксессуары
+              </FilterButton>
+              <FilterButton 
+                className={filter === 'artifact' ? 'active' : ''}
+                onClick={() => setFilter('artifact')}
+              >
+                Артефакты
+              </FilterButton>
+            </FilterButtons>
+            
+            <InventoryGrid>
+              {filteredItems.map(item => (
+                <ItemSlot 
+                  key={item.id} 
+                  rarity={item.rarity}
+                  onClick={() => handleInventoryItemClick(item)}
+                  className={`${item.equipped ? 'equipped' : ''} ${selectedInventoryItem?.id === item.id ? 'selected' : ''}`}
+                >
+                  <ItemIcon type={item.type} />
+                  <ItemName rarity={item.rarity}>{item.name}</ItemName>
+                </ItemSlot>
+              ))}
+            </InventoryGrid>
+          </>
+        )}
+      </div>
+      
+      <div>
+        {selectedEquippedItem ? renderEquippedItemDetails() : 
+         selectedInventoryItem ? renderInventoryItemDetails() : 
+         renderEquipmentBonuses()}
+      </div>
+    </Container>
+  );
+}
+
+export default EquipmentTab;

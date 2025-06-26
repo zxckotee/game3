@@ -1,0 +1,189 @@
+import { 
+  UPDATE_ITEM_DETAILS, 
+  ENRICH_ITEM_REQUEST, 
+  ENRICH_ITEM_SUCCESS, 
+  ENRICH_ITEM_FAILURE,
+  EQUIP_ITEM,
+  UNEQUIP_ITEM,
+  UPDATE_EQUIPMENT_BONUSES
+} from '../actions/inventory-actions';
+
+// Начальное состояние инвентаря
+const initialState = {
+  items: [],
+  loading: false,
+  error: null,
+  enrichedItems: {},  // Хранилище для обогащенных данных предметов
+  equipmentBonuses: {  // НОВОЕ: Объект для хранения бонусов экипировки
+    stats: { strength: 0, dexterity: 0, vitality: 0, intelligence: 0, perception: 0, luck: 0 },
+    combat: { physicalDamage: 0, magicDamage: 0, physicalDefense: 0, magicDefense: 0, critChance: 0, critDamage: 0, dodgeChance: 0 },
+    cultivation: { energyMax: 0, energyRegen: 0, comprehensionRate: 0, breakthroughChance: 0 },
+    elemental: { fire: 0, water: 0, earth: 0, air: 0, light: 0, dark: 0 },
+    special: []
+  }
+};
+
+/**
+ * Редьюсер для инвентаря
+ * @param {Object} state - Текущее состояние инвентаря
+ * @param {Object} action - Действие
+ * @returns {Object} - Новое состояние
+ */
+const inventoryReducer = (state = initialState, action) => {
+  switch (action.type) {
+    case UPDATE_ITEM_DETAILS:
+      return {
+        ...state,
+        items: state.items.map(item => 
+          item.itemId === action.payload.itemId 
+            ? { ...item, ...action.payload.itemDetails }
+            : item
+        )
+      };
+      
+    case ENRICH_ITEM_REQUEST:
+      return {
+        ...state,
+        loading: true,
+        error: null
+      };
+      
+    case ENRICH_ITEM_SUCCESS:
+      // Обновляем предмет в массиве items и сохраняем обогащенные данные
+      return {
+        ...state,
+        loading: false,
+        items: state.items.map(item => 
+          item.itemId === action.payload.itemId
+            ? {
+                ...item,
+                // Добавляем базовые поля из API
+                name: action.payload.itemDetails.name || item.name,
+                description: action.payload.itemDetails.description || item.description,
+                type: action.payload.itemDetails.type || item.type,
+                rarity: action.payload.itemDetails.rarity || item.rarity,
+                // Помечаем, что предмет был обогащен
+                enriched: true,
+                // НОВОЕ: Добавляем эффекты, если они есть
+                effects: action.payload.itemDetails.effects || item.effects
+              }
+            : item
+        ),
+        // Сохраняем полные данные в отдельном объекте для быстрого доступа
+        enrichedItems: {
+          ...state.enrichedItems,
+          [action.payload.itemId]: action.payload.itemDetails
+        }
+      };
+      
+    case ENRICH_ITEM_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload.error
+      };
+
+    // НОВОЕ: Обработка экипировки предмета
+    case EQUIP_ITEM:
+      console.log(`[inventory-reducer] Экипировка предмета ID: ${action.payload.itemId}`);
+      return {
+        ...state,
+        items: state.items.map(item => {
+          // Если это тот предмет, который экипируем
+          if (item.id === action.payload.itemId || item.itemId === action.payload.itemId) {
+            console.log(`[inventory-reducer] Найден предмет для экипировки: ${item.name}`);
+            return { ...item, equipped: true };
+          }
+          
+          // Для совместимости с разными форматами ID
+          const itemIdToMatch = item.id || item.itemId;
+          const targetIdToMatch = action.payload.itemId;
+          
+          // Если уже есть экипированный предмет того же типа, снимаем его
+          // (кроме аксессуаров и артефактов, которых может быть 2)
+          if (item.equipped && item.type === action.payload.itemType) {
+            // Для аксессуаров и артефактов позволяем экипировать по два
+            if (
+              (item.type === 'accessory' || item.type === 'artifact') && 
+              action.payload.allowMultiple
+            ) {
+              return item; // Оставляем как есть
+            }
+            
+            // Для брони проверяем подтип
+            if (item.type === 'armor' && action.payload.armorType) {
+              // Снимаем только броню того же подтипа
+              const itemArmorType = item.properties?.armorType || 
+                                    item.armorType ||
+                                    determineArmorType(item);
+              
+              if (itemArmorType !== action.payload.armorType) {
+                return item; // Оставляем как есть, если подтипы разные
+              }
+            }
+            
+            console.log(`[inventory-reducer] Снимаем уже экипированный предмет: ${item.name}`);
+            return { ...item, equipped: false };
+          }
+          
+          return item;
+        })
+      };
+      
+    // НОВОЕ: Обработка снятия предмета
+    case UNEQUIP_ITEM:
+      console.log(`[inventory-reducer] Снятие предмета ID: ${action.payload.itemId}`);
+      return {
+        ...state,
+        items: state.items.map(item => 
+          (item.id === action.payload.itemId || item.itemId === action.payload.itemId)
+            ? { ...item, equipped: false }
+            : item
+        )
+      };
+      
+    // НОВОЕ: Обновление бонусов экипировки
+    case UPDATE_EQUIPMENT_BONUSES:
+      console.log('[inventory-reducer] Обновление бонусов экипировки');
+      return {
+        ...state,
+        equipmentBonuses: action.payload
+      };
+      
+    default:
+      return state;
+  }
+};
+
+/**
+ * Вспомогательная функция для определения типа брони
+ * @param {Object} item - Предмет экипировки
+ * @returns {string|null} - Тип брони
+ */
+function determineArmorType(item) {
+  if (!item) return null;
+  
+  // Сначала проверяем явно указанный тип
+  const armorType = item.properties?.armorType || item.armorType;
+  if (armorType) return armorType;
+  
+  // Если тип не указан, определяем по названию
+  const itemName = (item.name || '').toLowerCase();
+  
+  if (itemName.includes('шлем') || itemName.includes('шапка') || itemName.includes('капюшон')) {
+    return 'head';
+  }
+  
+  if (itemName.includes('сапог') || itemName.includes('ботин') || itemName.includes('обувь')) {
+    return 'legs';
+  }
+  
+  if (itemName.includes('перчат') || itemName.includes('рукав')) {
+    return 'hands';
+  }
+  
+  // По умолчанию считаем броней для тела
+  return 'body';
+}
+
+export default inventoryReducer;

@@ -1,0 +1,100 @@
+const fs = require('fs');
+const path = require('path');
+const { getSequelizeInstance } = require('../services/database');
+const Sequelize = require('sequelize');
+
+const basename = path.basename(__filename);
+const db = {
+  Sequelize: Sequelize,
+  sequelize: null,
+};
+
+async function initializeModels() {
+  try {
+    const sequelize = await getSequelizeInstance();
+    if (!sequelize) {
+      throw new Error("Не удалось получить экземпляр Sequelize");
+    }
+    db.sequelize = sequelize;
+
+    const modelFiles = fs
+      .readdirSync(__dirname)
+      .filter(file => {
+        return (
+          file.indexOf('.') !== 0 &&
+          file !== basename &&
+          file !== 'fix-models.js' &&
+          file.slice(-3) === '.js' &&
+          file.indexOf('.test.js') === -1
+        );
+      });
+
+    // 1. Загружаем и инициализируем модели
+    for (const file of modelFiles) {
+      try {
+        const modelDefinition = require(path.join(__dirname, file));
+        // Проверяем, экспортирует ли файл класс модели Sequelize
+        if (modelDefinition && typeof modelDefinition === 'function' && modelDefinition.prototype instanceof Sequelize.Model) {
+          const modelName = modelDefinition.modelName || modelDefinition.name;
+          if (modelName) {
+            // Инициализируем модель, если у нее есть наш асинхронный init
+            if (typeof modelDefinition.init === 'function' && modelDefinition.init.constructor.name === 'AsyncFunction') {
+               console.log(`Асинхронная инициализация модели ${modelName}...`);
+               await modelDefinition.init(); // Дожидаемся завершения
+               // После init модель должна быть в sequelize.models
+               if (sequelize.models[modelName]) {
+                  db[modelName] = sequelize.models[modelName];
+                  console.log(`Модель ${modelName} инициализирована.`);
+               } else {
+                  console.error(`Модель ${modelName} не найдена в sequelize.models после асинхронного init.`);
+                  db[modelName] = modelDefinition; // Сохраняем класс как fallback
+               }
+            } else if (typeof modelDefinition.init === 'function') {
+               // Для моделей со старым статическим init (если такие остались)
+               console.warn(`Модель ${modelName} использует статический init. Инициализация...`);
+               modelDefinition.init(sequelize); // Передаем sequelize
+               db[modelName] = modelDefinition;
+               console.log(`Модель ${modelName} инициализирована (статически).`);
+            } else {
+               console.warn(`Модель ${modelName} не имеет метода init.`);
+               db[modelName] = modelDefinition; // Сохраняем класс как есть
+            }
+          } else {
+            console.warn(`Модель в ${file} не имеет modelName или name.`);
+          }
+        } else {
+          console.warn(`Файл ${file} не экспортирует класс модели Sequelize.`);
+        }
+      } catch (error) {
+        console.error(`Ошибка при загрузке/инициализации модели из ${file}:`, error);
+      }
+    }
+    console.log("Все модели загружены и инициализированы.");
+
+    // 2. Настраиваем ассоциации
+    Object.keys(db).forEach(modelName => {
+      // Пропускаем Sequelize и sequelize
+      if (modelName === 'Sequelize' || modelName === 'sequelize' || modelName === 'initializePromise') return;
+
+      if (db[modelName] && db[modelName].associate) {
+        console.log(`Настройка ассоциаций для модели ${modelName}...`);
+        try {
+          db[modelName].associate(db); // Передаем объект db с инициализированными моделями
+        } catch (assocError) {
+          console.error(`Ошибка ассоциации для ${modelName}:`, assocError);
+        }
+      }
+    });
+
+    console.log("Инициализация и ассоциация моделей завершены.");
+
+  } catch (error) {
+    console.error("Критическая ошибка при инициализации моделей:", error);
+    db.sequelize = null;
+  }
+}
+
+// Запускаем асинхронную инициализацию
+db.initializePromise = initializeModels();
+
+module.exports = db;

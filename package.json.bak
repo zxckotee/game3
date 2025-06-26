@@ -1,0 +1,57 @@
+{
+  "name": "immortal-path",
+  "version": "1.0.0",
+  "dependencies": {
+    "@craco/craco": "^7.0.0",
+    "assert": "^2.0.0",
+    "bcryptjs": "^3.0.2",
+    "buffer": "^6.0.3",
+    "cors": "^2.8.5",
+    "crypto-browserify": "^3.12.0",
+    "express": "^4.21.2",
+    "path-browserify": "^1.0.1",
+    "pg": "^8.15.6",
+    "pg-hstore": "^2.3.4",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.10.0",
+    "react-scripts": "^5.0.1",
+    "sequelize": "^6.12.0",
+    "sqlite3": "^5.1.7",
+    "stream-browserify": "^3.0.0",
+    "styled-components": "^5.3.9",
+    "url": "^0.11.0",
+    "util": "^0.12.5",
+    "vm-browserify": "^1.1.2"
+  },
+  "scripts": {
+    "start": "craco start",
+    "build": "craco build",
+    "migrate": "sequelize-cli db:migrate",
+    "seed": "node src/services/database-initializer.js",
+    "server": "node src/server.js",
+    "dev": "concurrently \"npm run start\" \"npm run server\"",
+    "build:monolith": "npm run build && node scripts/prepare-monolith.js",
+    "start:monolith": "cd monolith && npm start",
+    "check:imports": "node scripts/check-imports.js",
+    "prepare:client-server": "node scripts/prepare-client-server.js"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "fs-extra": "^11.2.0",
+    "sequelize-cli": "^6.3.0"
+  }
+}

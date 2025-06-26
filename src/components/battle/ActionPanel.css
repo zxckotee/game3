@@ -1,0 +1,370 @@
+/* Стили для компонента ActionPanel */
+
+/* Стили для всплывающих подсказок */
+.tooltip {
+  visibility: hidden;
+  background-color: rgba(26, 26, 46, 0.95);
+  color: #f0f0f0;
+  text-align: center;
+  border-radius: 8px;
+  padding: 10px 15px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  border: 1px solid #3a506b;
+  opacity: 0;
+  transition: opacity 0.3s, visibility 0.3s;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -8px;
+  border-width: 8px;
+  border-style: solid;
+  border-color: #3a506b transparent transparent transparent;
+}
+
+.action-button:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Разные стили для разных типов действий */
+.action-button.attack .tooltip {
+  border-color: #bc4749;
+}
+
+.action-button.attack .tooltip::after {
+  border-color: #bc4749 transparent transparent transparent;
+}
+
+.action-button.defense .tooltip {
+  border-color: #3a7ca5;
+}
+
+.action-button.defense .tooltip::after {
+  border-color: #3a7ca5 transparent transparent transparent;
+}
+
+.action-button.technique .tooltip {
+  border-color: #e09f3e;
+}
+
+.action-button.technique .tooltip::after {
+  border-color: #e09f3e transparent transparent transparent;
+}
+
+.action-panel-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 15px;
+  justify-content: center;
+}
+
+/* Стили для индикатора таймаута между ходами */
+.action-cooldown-container {
+  width: 100%;
+  background-color: rgba(26, 26, 46, 0.8);
+  border-radius: 8px;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid #3a506b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Стили для индикатора активных эффектов */
+.active-effects-container {
+  width: 100%;
+  background-color: rgba(26, 26, 46, 0.8);
+  border-radius: 8px;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid #3a506b;
+  display: flex;
+  flex-direction: column;
+}
+
+.effects-summary {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.effects-title {
+  font-weight: bold;
+  color: #f0f0f0;
+  margin-bottom: 5px;
+  text-align: center;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.effects-modifiers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.effect-modifier {
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.effect-modifier.positive {
+  color: #66bb6a;
+  border-left: 3px solid #66bb6a;
+}
+
+.effect-modifier.negative {
+  color: #ff5252;
+  border-left: 3px solid #ff5252;
+}
+
+/* Стили для индикатора оглушения */
+.stun-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 5px 10px;
+  background-color: rgba(255, 165, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid #ffa500;
+  animation: pulse-stun 1s infinite;
+}
+
+.stun-icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.stun-text {
+  color: #ffd700;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-shadow: 0 0 5px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes pulse-stun {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+.cooldown-text {
+  color: #ff9900;
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  text-shadow: 0 0 8px #ff6600;
+  animation: pulse-cooldown 1s infinite;
+}
+
+.cooldown-progress-bar {
+  width: 100%;
+  height: 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.cooldown-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff9900, #ffcc00);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 153, 0, 0.5);
+}
+
+.action-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.action-button:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.action-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.action-button.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  filter: grayscale(50%);
+}
+
+.action-button.attack {
+  background: linear-gradient(135deg, #a83232, #701010);
+  border: 2px solid #b04040;
+}
+
+.action-button.attack:hover:not(.disabled) {
+  background: linear-gradient(135deg, #c04040, #801818);
+  box-shadow: 0 0 20px rgba(168, 50, 50, 0.5);
+}
+
+.action-button.defense {
+  background: linear-gradient(135deg, #3264a8, #102070);
+  border: 2px solid #4070b0;
+}
+
+.action-button.defense:hover:not(.disabled) {
+  background: linear-gradient(135deg, #4070b0, #203080);
+  box-shadow: 0 0 20px rgba(50, 100, 168, 0.5);
+}
+
+.action-button.technique {
+  background: linear-gradient(135deg, #a87832, #704010);
+  border: 2px solid #b08040;
+}
+
+.action-button.technique:hover:not(.disabled) {
+  background: linear-gradient(135deg, #c08040, #805020);
+  box-shadow: 0 0 20px rgba(168, 120, 50, 0.5);
+}
+
+.action-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.action-name {
+  font-size: 15px;
+  text-align: center;
+  font-weight: bold;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  margin-bottom: 5px;
+}
+
+.action-description {
+  font-size: 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 4px;
+  max-height: 36px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.cooldown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  color: #ff9900;
+  text-shadow: 0 0 8px #ff6600;
+  animation: pulse-cooldown 1s infinite;
+}
+
+@keyframes pulse-cooldown {
+  0% { text-shadow: 0 0 5px #ff6600; }
+  50% { text-shadow: 0 0 15px #ff6600; }
+  100% { text-shadow: 0 0 5px #ff6600; }
+}
+
+.energy-cost {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #3a9cff;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  box-shadow: 0 0 5px rgba(58, 156, 255, 0.5);
+  border: 1px solid rgba(58, 156, 255, 0.3);
+}
+
+.cooldown-badge {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #ff9900;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  box-shadow: 0 0 5px rgba(255, 153, 0, 0.5);
+  border: 1px solid rgba(255, 153, 0, 0.3);
+}
+
+/* Эффект нажатия */
+.action-button:active:not(.disabled) {
+  transform: scale(0.95);
+}
+
+/* Эффект выбора */
+.action-button.selected {
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+}
+
+/* Эффект доступности */
+.action-button:not(.disabled)::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+  opacity: 0;
+}
+
+.action-button:hover:not(.disabled)::before {
+  opacity: 1;
+}

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тестирование адаптеров в браузере</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        .card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        pre {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .info {
+            color: #3498db;
+        }
+        .warning {
+            color: #f39c12;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #console {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 20px;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-success {
+            background-color: rgba(46, 204, 113, 0.2);
+            border-left: 5px solid #2ecc71;
+        }
+        .test-failure {
+            background-color: rgba(231, 76, 60, 0.2);
+            border-left: 5px solid #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тестирование адаптеров в браузере</h1>
+    
+    <div class="card">
+        <h2>Информация о среде</h2>
+        <div id="environment-info"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Запуск тестов</h2>
+        <button id="run-all-tests">Запустить все тесты</button>
+        <button id="test-character-profile">Тест CharacterProfileService</button>
+        <button id="test-database">Тест DatabaseConnection</button>
+        <button id="clear-console">Очистить консоль</button>
+    </div>
+    
+    <div class="card">
+        <h2>Результаты тестов</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <h2>Консоль</h2>
+    <div id="console"></div>
+
+    <script type="module">
+        // Перехватываем вывод в консоль
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+        
+        const consoleElem = document.getElementById('console');
+        
+        function appendToConsole(message, type = 'log') {
+            const line = document.createElement('div');
+            
+            // Преобразуем объекты в строку для отображения
+            let displayMessage = message;
+            if (typeof message === 'object') {
+                try {
+                    displayMessage = JSON.stringify(message, null, 2);
+                } catch (error) {
+                    displayMessage = String(message);
+                }
+            }
+            
+            // Устанавливаем класс в зависимости от типа сообщения
+            line.className = type;
+            line.textContent = displayMessage;
+            consoleElem.appendChild(line);
+            
+            // Прокручиваем консоль вниз
+            consoleElem.scrollTop = consoleElem.scrollHeight;
+            
+            // Также выводим в браузерную консоль
+            originalConsole[type](message);
+        }
+        
+        // Переопределяем функции консоли
+        console.log = (...args) => args.forEach(arg => appendToConsole(arg, 'log'));
+        console.error = (...args) => args.forEach(arg => appendToConsole(arg, 'error'));
+        console.warn = (...args) => args.forEach(arg => appendToConsole(arg, 'warning'));
+        console.info = (...args) => args.forEach(arg => appendToConsole(arg, 'info'));
+        
+        // Поиск элементов DOM
+        const runAllTestsBtn = document.getElementById('run-all-tests');
+        const testCharacterProfileBtn = document.getElementById('test-character-profile');
+        const testDatabaseBtn = document.getElementById('test-database');
+        const clearConsoleBtn = document.getElementById('clear-console');
+        const testResultsElem = document.getElementById('test-results');
+        const environmentInfoElem = document.getElementById('environment-info');
+        
+        // Отображаем информацию о среде выполнения
+        function showEnvironmentInfo() {
+            const info = `
+                <p><strong>Браузер:</strong> ${navigator.userAgent}</p>
+                <p><strong>Дата и время:</strong> ${new Date().toLocaleString()}</p>
+            `;
+            environmentInfoElem.innerHTML = info;
+        }
+        
+        // Очищаем консоль
+        function clearConsole() {
+            consoleElem.innerHTML = '';
+        }
+        
+        function showTestResult(name, success, details = '') {
+            const resultElem = document.createElement('div');
+            resultElem.className = `test-result ${success ? 'test-success' : 'test-failure'}`;
+            
+            resultElem.innerHTML = `
+                <strong>${name}:</strong> ${success ? '✅ УСПЕШНО' : '❌ ОШИБКА'}
+                ${details ? `<p>${details}</p>` : ''}
+            `;
+            
+            testResultsElem.appendChild(resultElem);
+        }
+        
+        // Загружаем скрипт тестирования
+        try {
+            // Динамически импортируем модуль тестирования
+            const testModule = './test-adapters.js';
+            
+            // Настройка обработчиков кнопок
+            runAllTestsBtn.addEventListener('click', async () => {
+                clearConsole();
+                testResultsElem.innerHTML = '';
+                console.log('====== ЗАПУСК ВСЕХ ТЕСТОВ ======');
+                
+                try {
+                    // Динамический импорт модуля (ES модули)
+                    const module = await import(testModule);
+                    const results = await window.testAdapters.runAllTests();
+                    
+                    showTestResult('CharacterProfileService', results.characterProfile);
+                    showTestResult('DatabaseConnectionManager', results.database);
+                    
+                    const allSuccess = results.characterProfile && results.database;
+                    console.log('====== ИТОГОВЫЕ РЕЗУЛЬТАТЫ ======');
+                    console.log(allSuccess ? '✅ ВСЕ ТЕСТЫ ПРОЙДЕНЫ' : '❌ ЕСТЬ ОШИБКИ В ТЕСТАХ');
+                } catch (error) {
+                    console.error('❌ ОШИБКА ПРИ ЗАПУСКЕ ТЕСТОВ:', error);
+                    showTestResult('Запуск тестов', false, error.message);
+                }
+            });
+            
+            testCharacterProfileBtn.addEventListener('click', async () => {
+                clearConsole();
+                console.log('====== ТЕСТИРОВАНИЕ CharacterProfileService ======');
+                
+                try {
+                    const result = await window.testAdapters.testCharacterProfileAdapter();
+                    showTestResult('CharacterProfileService', result);
+                } catch (error) {
+                    console.error('❌ ОШИБКА:', error);
+                    showTestResult('CharacterProfileService', false, error.message);
+                }
+            });
+            
+            testDatabaseBtn.addEventListener('click', async () => {
+                clearConsole();
+                console.log('====== ТЕСТИРОВАНИЕ DatabaseConnectionManager ======');
+                
+                try {
+                    const result = await window.testAdapters.testDatabaseConnectionAdapter();
+                    showTestResult('DatabaseConnectionManager', result);
+                } catch (error) {
+                    console.error('❌ ОШИБКА:', error);
+                    showTestResult('DatabaseConnectionManager', false, error.message);
+                }
+            });
+            
+            clearConsoleBtn.addEventListener('click', clearConsole);
+            
+            // Инициализация
+            showEnvironmentInfo();
+            console.log('Тестирование адаптеров в браузере готово к запуску');
+            console.log('Используйте кнопки выше для запуска тестов');
+        } catch (error) {
+            console.error('❌ ОШИБКА ЗАГРУЗКИ МОДУЛЯ ТЕСТИРОВАНИЯ:', error);
+        }
+    </script>
+</body>
+</html>

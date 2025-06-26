@@ -1,0 +1,249 @@
+/* Стили для компонента BattleEffects */
+
+.battle-effects-container {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+  min-height: 30px; /* Фиксированная минимальная высота */
+  will-change: transform; /* Предотвращение мерцания */
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.effects-container {
+  margin-top: 12px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.effects-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #f0f0f0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 5px;
+}
+
+.effects-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.effects-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.effects-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.effects-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.effects-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.effect-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.effect-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(3px);
+}
+
+.effect-item.buff {
+  background-color: rgba(0, 128, 0, 0.2);
+  border-left: 3px solid rgba(0, 128, 0, 0.7);
+  box-shadow: 0 0 8px rgba(0, 128, 0, 0.2);
+}
+
+.effect-item.buff:hover {
+  background-color: rgba(0, 128, 0, 0.3);
+  box-shadow: 0 0 12px rgba(0, 128, 0, 0.3);
+}
+
+.effect-item.debuff {
+  background-color: rgba(128, 0, 0, 0.2);
+  border-left: 3px solid rgba(128, 0, 0, 0.7);
+  box-shadow: 0 0 8px rgba(128, 0, 0, 0.2);
+}
+
+.effect-item.debuff:hover {
+  background-color: rgba(128, 0, 0, 0.3);
+  box-shadow: 0 0 12px rgba(128, 0, 0, 0.3);
+}
+
+.effect-item.neutral {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid rgba(128, 128, 128, 0.7);
+}
+
+.effect-item.neutral:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.effect-icon {
+  width: 26px;
+  height: 26px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+  position: relative; /* Для размещения счетчика */
+  will-change: transform; /* Предотвращение мерцания */
+  transform: translateZ(0);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.effect-icon:hover {
+  transform: scale(1.1) translateZ(0);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Стиль для счетчика стаков эффектов */
+.effect-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #000;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.effect-icon.buff {
+  background: linear-gradient(135deg, #00a000, #008000);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.effect-icon.debuff {
+  background: linear-gradient(135deg, #a00000, #800000);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.effect-icon.neutral {
+  background: linear-gradient(135deg, #606060, #404040);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.effect-name {
+  flex-grow: 1;
+  font-size: 14px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.effect-duration {
+  font-size: 12px;
+  color: #d0d0d0;
+  background-color: rgba(0, 0, 0, 0.4);
+  padding: 2px 8px;
+  border-radius: 10px;
+  min-width: 30px;
+  text-align: center;
+  margin-left: 8px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.no-effects {
+  color: #a0a0a0;
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  margin-top: 5px;
+}
+
+/* Анимация для новых эффектов */
+@keyframes new-effect {
+  0% { transform: translateX(-10px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.effect-item.new {
+  animation: new-effect 0.5s ease forwards;
+}
+
+/* Анимация для истекающих эффектов */
+.effect-item.expiring .effect-duration {
+  animation: pulse-expiring 1s infinite;
+  background-color: rgba(255, 0, 0, 0.3);
+  color: #ffcccc;
+}
+
+@keyframes pulse-expiring {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+/* Стили для эффектов с разными типами */
+.effect-item.damage {
+  border-color: #ff5252;
+}
+
+.effect-item.healing {
+  border-color: #66bb6a;
+}
+
+.effect-item.shield {
+  border-color: #42a5f5;
+}
+
+.effect-item.stun {
+  border-color: #ffca28;
+}
+
+.effect-item.poison {
+  border-color: #ab47bc;
+}

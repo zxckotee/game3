@@ -1,0 +1,561 @@
+/**
+ * Сервис для работы с техниками
+ * Обрабатывает запросы от API и взаимодействует с базой данных через ORM
+ */
+
+// Заменяем импорт unifiedDatabase на connectionProvider
+const connectionProvider = require('../utils/connection-provider');
+
+// Константы типов техник
+const techniqueTypes = {
+  ATTACK: 'attack',
+  DEFENSE: 'defense',
+  SUPPORT: 'support',
+  CULTIVATION: 'cultivation'
+};
+
+// Константы типов элементов
+const elementTypes = {
+  FIRE: 'fire',
+  WATER: 'water',
+  EARTH: 'earth',
+  WIND: 'wind',
+  LIGHTNING: 'lightning',
+  DARKNESS: 'darkness',
+  LIGHT: 'light',
+  VOID: 'void'
+};
+
+// Цвета элементов
+const elementColors = {
+  [elementTypes.FIRE]: '#ff4d4d',
+  [elementTypes.WATER]: '#4d94ff',
+  [elementTypes.EARTH]: '#a67c00',
+  [elementTypes.WIND]: '#80ff80',
+  [elementTypes.LIGHTNING]: '#ffff4d',
+  [elementTypes.DARKNESS]: '#660066',
+  [elementTypes.LIGHT]: '#ffff99',
+  [elementTypes.VOID]: '#1a1a1a'
+};
+
+// Кэш для хранения техник (для оптимизации и обратной совместимости)
+let techniquesCache = [];
+let techniquesByLevelCache = {};
+
+/**
+ * Вычисляет стоимость улучшения техники
+ * @param {number} currentLevel - Текущий уровень техники
+ * @param {number} targetLevel - Целевой уровень техники
+ * @returns {number} Стоимость улучшения
+ */
+function calculateUpgradeCost(currentLevel, targetLevel) {
+  if (targetLevel <= currentLevel) {
+    return 0;
+  }
+  
+  let totalCost = 0;
+  for (let level = currentLevel; level < targetLevel; level++) {
+    totalCost += Math.pow(level + 1, 2) * 100;
+  }
+  
+  return Math.round(totalCost);
+}
+
+/**
+ * Получает все техники из базы данных
+ * @returns {Promise<Array>} Массив техник
+ */
+exports.getAllTechniques = async function() {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const TechniqueEffect = db.model('TechniqueEffect');
+    
+    // Загружаем все техники с их эффектами
+    const techniques = await Technique.findAll({
+      include: [
+        { model: TechniqueEffect, as: 'effects' }
+      ]
+    });
+    
+    // Преобразуем в нужный формат для клиента
+    const formattedTechniques = techniques.map(technique => ({
+      id: technique.id,
+      name: technique.name,
+      description: technique.description,
+      icon: technique.icon,
+      level: technique.level,
+      damage: technique.damage,
+      damageType: technique.damageType,
+      energyCost: technique.energyCost,
+      cooldown: technique.cooldown,
+      maxLevel: technique.maxLevel,
+      type: technique.type,
+      requiredLevel: technique.requiredLevel,
+      healing: technique.healing,
+      effects: technique.effects.map(effect => ({
+        id: effect.id,
+        type: effect.type,
+        name: effect.name,
+        duration: effect.duration,
+        damage: effect.damage || 0,
+        damageType: effect.damageType,
+        healing: effect.healing || 0
+      })),
+      // Функция для расчета стоимости улучшения
+      upgradeCost: (targetLevel) => calculateUpgradeCost(technique.level, targetLevel)
+    }));
+    
+    // Группируем техники по уровню
+    const byLevel = formattedTechniques.reduce((acc, technique) => {
+      if (!acc[technique.level]) {
+        acc[technique.level] = [];
+      }
+      acc[technique.level].push(technique);
+      return acc;
+    }, {});
+    
+    // Обновляем кэш для обратной совместимости
+    techniquesCache = formattedTechniques;
+    techniquesByLevelCache = byLevel;
+    
+    return formattedTechniques;
+  } catch (error) {
+    console.error('Ошибка при получении техник:', error);
+    // Возвращаем кэшированные данные или пустой массив
+    return techniquesCache.length > 0 ? techniquesCache : [];
+  }
+};
+
+/**
+ * Получает технику по ID
+ * @param {string} id - ID техники
+ * @returns {Promise<Object|null>} Техника или null, если не найдена
+ */
+exports.getTechniqueById = async function(id) {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const TechniqueEffect = db.model('TechniqueEffect');
+    
+    // Загружаем технику с её эффектами
+    const technique = await Technique.findByPk(id, {
+      include: [
+        { model: TechniqueEffect, as: 'effects' }
+      ]
+    });
+    
+    if (!technique) {
+      return null;
+    }
+    
+    // Преобразуем в нужный формат для клиента
+    return {
+      id: technique.id,
+      name: technique.name,
+      description: technique.description,
+      icon: technique.icon,
+      level: technique.level,
+      damage: technique.damage,
+      damageType: technique.damageType,
+      energyCost: technique.energyCost,
+      cooldown: technique.cooldown,
+      maxLevel: technique.maxLevel,
+      type: technique.type,
+      requiredLevel: technique.requiredLevel,
+      healing: technique.healing,
+      effects: technique.effects.map(effect => ({
+        id: effect.id,
+        type: effect.type,
+        name: effect.name,
+        duration: effect.duration,
+        damage: effect.damage || 0,
+        damageType: effect.damageType,
+        healing: effect.healing || 0
+      })),
+      // Функция для расчета стоимости улучшения
+      upgradeCost: (targetLevel) => calculateUpgradeCost(technique.level, targetLevel)
+    };
+  } catch (error) {
+    console.error(`Ошибка при получении техники с ID ${id}:`, error);
+    // Ищем в кэше при ошибке
+    return techniquesCache.find(t => t.id === id) || null;
+  }
+};
+
+/**
+ * Получает технику по названию
+ * @param {string} name - Название техники
+ * @returns {Promise<Object|null>} Техника или null, если не найдена
+ */
+exports.getTechniqueByName = async function(name) {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const TechniqueEffect = db.model('TechniqueEffect');
+    
+    // Загружаем технику с её эффектами
+    const technique = await Technique.findOne({
+      where: { name },
+      include: [
+        { model: TechniqueEffect, as: 'effects' }
+      ]
+    });
+    
+    if (!technique) {
+      return null;
+    }
+    
+    // Преобразуем в нужный формат для клиента
+    return {
+      id: technique.id,
+      name: technique.name,
+      description: technique.description,
+      icon: technique.icon,
+      level: technique.level,
+      damage: technique.damage,
+      damageType: technique.damageType,
+      energyCost: technique.energyCost,
+      cooldown: technique.cooldown,
+      maxLevel: technique.maxLevel,
+      type: technique.type,
+      requiredLevel: technique.requiredLevel,
+      healing: technique.healing,
+      effects: technique.effects.map(effect => ({
+        id: effect.id,
+        type: effect.type,
+        name: effect.name,
+        duration: effect.duration,
+        damage: effect.damage || 0,
+        damageType: effect.damageType,
+        healing: effect.healing || 0
+      })),
+      // Функция для расчета стоимости улучшения
+      upgradeCost: (targetLevel) => calculateUpgradeCost(technique.level, targetLevel)
+    };
+  } catch (error) {
+    console.error(`Ошибка при получении техники с названием ${name}:`, error);
+    // Ищем в кэше при ошибке
+    return techniquesCache.find(t => t.name === name) || null;
+  }
+};
+
+/**
+ * Получает техники по типу
+ * @param {string} type - Тип техники
+ * @returns {Promise<Array>} Массив техник указанного типа
+ */
+exports.getTechniquesByType = async function(type) {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const TechniqueEffect = db.model('TechniqueEffect');
+    
+    // Загружаем техники с их эффектами
+    const techniques = await Technique.findAll({
+      where: { type },
+      include: [
+        { model: TechniqueEffect, as: 'effects' }
+      ]
+    });
+    
+    // Преобразуем в нужный формат для клиента
+    return techniques.map(technique => ({
+      id: technique.id,
+      name: technique.name,
+      description: technique.description,
+      icon: technique.icon,
+      level: technique.level,
+      damage: technique.damage,
+      damageType: technique.damageType,
+      energyCost: technique.energyCost,
+      cooldown: technique.cooldown,
+      maxLevel: technique.maxLevel,
+      type: technique.type,
+      requiredLevel: technique.requiredLevel,
+      healing: technique.healing,
+      effects: technique.effects.map(effect => ({
+        id: effect.id,
+        type: effect.type,
+        name: effect.name,
+        duration: effect.duration,
+        damage: effect.damage || 0,
+        damageType: effect.damageType,
+        healing: effect.healing || 0
+      })),
+      // Функция для расчета стоимости улучшения
+      upgradeCost: (targetLevel) => calculateUpgradeCost(technique.level, targetLevel)
+    }));
+  } catch (error) {
+    console.error(`Ошибка при получении техник типа ${type}:`, error);
+    // Фильтруем кэш при ошибке
+    return techniquesCache.filter(t => t.type === type);
+  }
+};
+
+/**
+ * Получает изученные техники пользователя
+ * @param {string} userId - ID пользователя
+ * @returns {Promise<Array>} Массив изученных техник
+ */
+exports.getLearnedTechniques = async function(userId) {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const TechniqueEffect = db.model('TechniqueEffect');
+    const LearnedTechnique = db.model('LearnedTechnique');
+    
+    // Загружаем изученные техники пользователя
+    const learnedTechniques = await LearnedTechnique.findAll({
+      where: { userId },
+      include: [
+        {
+          model: Technique,
+          as: 'technique',
+          include: [
+            { model: TechniqueEffect, as: 'effects' }
+          ]
+        }
+      ]
+    });
+    
+    // Преобразуем в нужный формат для клиента
+    return learnedTechniques.map(learned => {
+      const technique = learned.technique;
+      return {
+        id: technique.id,
+        name: technique.name,
+        description: technique.description,
+        icon: technique.icon,
+        level: technique.level,
+        damage: technique.damage,
+        damageType: technique.damageType,
+        energyCost: technique.energyCost,
+        cooldown: technique.cooldown,
+        maxLevel: technique.maxLevel,
+        type: technique.type,
+        requiredLevel: technique.requiredLevel,
+        healing: technique.healing,
+        effects: technique.effects.map(effect => ({
+          id: effect.id,
+          type: effect.type,
+          name: effect.name,
+          duration: effect.duration,
+          damage: effect.damage || 0,
+          damageType: effect.damageType,
+          healing: effect.healing || 0
+        })),
+        learnedAt: learned.createdAt,
+        level: learned.level, // Уровень, до которого пользователь улучшил технику
+        // Функция для расчета стоимости улучшения
+        upgradeCost: (targetLevel) => calculateUpgradeCost(learned.level, targetLevel)
+      };
+    });
+  } catch (error) {
+    console.error(`Ошибка при получении изученных техник пользователя ${userId}:`, error);
+    return [];
+  }
+};
+
+/**
+ * Изучение новой техники
+ * @param {string} userId - ID пользователя
+ * @param {string} techniqueId - ID техники
+ * @returns {Promise<Object|null>} Изученная техника или null, если техника не найдена
+ */
+exports.learnTechnique = async function(userId, techniqueId) {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const LearnedTechnique = db.model('LearnedTechnique');
+    
+    // Проверяем существование техники
+    const technique = await Technique.findByPk(techniqueId);
+    if (!technique) {
+      return null;
+    }
+    
+    // Создаем или обновляем запись об изученной технике
+    const [learnedTechnique, created] = await LearnedTechnique.findOrCreate({
+      where: { userId, techniqueId },
+      defaults: { level: 1 }
+    });
+    
+    // Если запись уже существовала, возвращаем её
+    if (!created) {
+      return {
+        techniqueId,
+        userId,
+        level: learnedTechnique.level,
+        createdAt: learnedTechnique.createdAt
+      };
+    }
+    
+    return {
+      techniqueId,
+      userId,
+      level: 1,
+      createdAt: learnedTechnique.createdAt
+    };
+  } catch (error) {
+    console.error(`Ошибка при изучении техники ${techniqueId} пользователем ${userId}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Улучшение техники
+ * @param {string} userId - ID пользователя
+ * @param {string} techniqueId - ID техники
+ * @param {number} targetLevel - Целевой уровень
+ * @returns {Promise<Object|null>} Обновленная техника или null при ошибке
+ */
+exports.upgradeTechnique = async function(userId, techniqueId, targetLevel) {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const LearnedTechnique = db.model('LearnedTechnique');
+    
+    // Проверяем существование техники
+    const technique = await Technique.findByPk(techniqueId);
+    if (!technique) {
+      return null;
+    }
+    
+    // Проверяем, что техника изучена
+    const learnedTechnique = await LearnedTechnique.findOne({
+      where: { userId, techniqueId }
+    });
+    
+    if (!learnedTechnique) {
+      return null;
+    }
+    
+    // Проверяем, что целевой уровень не превышает максимальный
+    if (targetLevel > technique.maxLevel) {
+      return {
+        error: true,
+        message: `Уровень не может превышать максимальный (${technique.maxLevel})`
+      };
+    }
+    
+    // Проверяем, что целевой уровень выше текущего
+    if (targetLevel <= learnedTechnique.level) {
+      return {
+        error: true,
+        message: 'Целевой уровень должен быть выше текущего'
+      };
+    }
+    
+    // Обновляем уровень техники
+    await learnedTechnique.update({ level: targetLevel });
+    
+    return {
+      techniqueId,
+      userId,
+      level: targetLevel,
+      createdAt: learnedTechnique.createdAt,
+      updatedAt: learnedTechnique.updatedAt
+    };
+  } catch (error) {
+    console.error(`Ошибка при улучшении техники ${techniqueId} пользователем ${userId}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Получает доступные для изучения техники
+ * @param {string} userId - ID пользователя
+ * @param {number} userLevel - Уровень пользователя
+ * @returns {Promise<Array>} Массив доступных техник
+ */
+exports.getAvailableTechniques = async function(userId, userLevel) {
+  try {
+    // Получаем экземпляр Sequelize через connectionProvider
+    const { db } = await connectionProvider.getSequelizeInstance();
+    
+    // Получаем модели напрямую через Sequelize
+    const Technique = db.model('Technique');
+    const TechniqueEffect = db.model('TechniqueEffect');
+    const LearnedTechnique = db.model('LearnedTechnique');
+    
+    // Получаем список уже изученных техник
+    const learnedTechniques = await LearnedTechnique.findAll({
+      where: { userId },
+      attributes: ['techniqueId']
+    });
+    
+    const learnedTechniqueIds = learnedTechniques.map(lt => lt.techniqueId);
+    
+    // Загружаем техники, соответствующие уровню пользователя и не изученные им
+    const availableTechniques = await Technique.findAll({
+      where: {
+        requiredLevel: { [Technique.sequelize.Op.lte]: userLevel },
+        id: { [Technique.sequelize.Op.notIn]: learnedTechniqueIds }
+      },
+      include: [
+        { model: TechniqueEffect, as: 'effects' }
+      ]
+    });
+    
+    // Преобразуем в нужный формат для клиента
+    return availableTechniques.map(technique => ({
+      id: technique.id,
+      name: technique.name,
+      description: technique.description,
+      icon: technique.icon,
+      level: technique.level,
+      damage: technique.damage,
+      damageType: technique.damageType,
+      energyCost: technique.energyCost,
+      cooldown: technique.cooldown,
+      maxLevel: technique.maxLevel,
+      type: technique.type,
+      requiredLevel: technique.requiredLevel,
+      healing: technique.healing,
+      effects: technique.effects.map(effect => ({
+        id: effect.id,
+        type: effect.type,
+        name: effect.name,
+        duration: effect.duration,
+        damage: effect.damage || 0,
+        damageType: effect.damageType,
+        healing: effect.healing || 0
+      })),
+      // Функция для расчета стоимости улучшения
+      upgradeCost: (targetLevel) => calculateUpgradeCost(technique.level, targetLevel)
+    }));
+  } catch (error) {
+    console.error(`Ошибка при получении доступных техник для пользователя ${userId} уровня ${userLevel}:`, error);
+    return [];
+  }
+};
+
+// Экспортируем константы
+exports.techniqueTypes = techniqueTypes;
+exports.elementTypes = elementTypes;
+exports.elementColors = elementColors;
+
+// Экспортируем функцию расчета стоимости улучшения
+exports.calculateUpgradeCost = calculateUpgradeCost;

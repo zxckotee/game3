@@ -1,0 +1,423 @@
+.activityInstance {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 20px;
+  background-color: rgba(40, 40, 50, 0.8);
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(200, 166, 100, 0.2);
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(200, 166, 100, 0.2);
+}
+
+.titleContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.typeIcon {
+  font-size: 24px;
+}
+
+.title {
+  color: #c8a664;
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.status {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.statusPreparing {
+  background-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.statusInProgress {
+  background-color: #3b82f6;
+  color: #e0f2fe;
+}
+
+.statusCompleted {
+  background-color: #10b981;
+  color: #d1fae5;
+}
+
+.statusFailed {
+  background-color: #ef4444;
+  color: #fee2e2;
+}
+
+.statusAbandoned {
+  background-color: #a8a8a8;
+  color: #f5f5f5;
+}
+
+.infoSection {
+  background-color: rgba(30, 30, 40, 0.5);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  color: #a8a8a8;
+  font-size: 12px;
+}
+
+.value {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.difficultyEasy {
+  color: #b7e4c7;
+}
+
+.difficultyMedium {
+  color: #ffd166;
+}
+
+.difficultyHard {
+  color: #ffccd5;
+}
+
+.difficultyExtreme {
+  color: #e0aaff;
+}
+
+.difficultyLegendary {
+  color: #ffc2c2;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.progressContainer {
+  margin-top: 12px;
+}
+
+.progressBar {
+  width: 100%;
+  height: 12px;
+  background-color: rgba(30, 30, 40, 0.7);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progressBarFill {
+  height: 100%;
+  background-color: #7e6839;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 12px;
+  color: #c0c0c0;
+  text-align: right;
+}
+
+.error {
+  background-color: rgba(200, 50, 50, 0.2);
+  border: 1px solid rgba(200, 50, 50, 0.4);
+  color: #ff9999;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.preparingMessage {
+  color: #a8a8a8;
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
+  padding: 16px;
+  border: 1px dashed rgba(200, 166, 100, 0.3);
+  border-radius: 6px;
+  background-color: rgba(30, 30, 40, 0.5);
+}
+
+.eventSection {
+  padding: 16px;
+  background-color: rgba(30, 30, 40, 0.5);
+  border-radius: 6px;
+}
+
+.eventTitle {
+  color: #c8a664;
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.eventDescription {
+  color: #d8d8d8;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.eventOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.optionButton {
+  padding: 10px 14px;
+  background-color: #545a70;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.optionButton:hover:not(:disabled) {
+  background-color: #646c87;
+  transform: translateX(5px);
+}
+
+.optionButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.eventResult {
+  padding: 16px;
+  background-color: rgba(40, 40, 50, 0.5);
+  border-radius: 6px;
+}
+
+.resultTitle {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.success {
+  color: #10b981;
+}
+
+.failure {
+  color: #ef4444;
+}
+
+.resultDescription {
+  color: #d8d8d8;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.resultRewards, .resultPenalties {
+  margin-bottom: 16px;
+}
+
+.rewardsTitle, .penaltiesTitle {
+  color: #c8a664;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+}
+
+.rewardsList, .penaltiesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rewardItem, .penaltyItem {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: rgba(40, 40, 50, 0.5);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.rewardIcon, .penaltyIcon {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+.rewardName, .penaltyName {
+  color: #d8d8d8;
+  flex: 1;
+  font-size: 14px;
+}
+
+.rewardValue {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.penaltyValue {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.nextButton {
+  padding: 10px 16px;
+  background-color: #7e6839;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.nextButton:hover:not(:disabled) {
+  background-color: #9a844f;
+  transform: translateY(-2px);
+}
+
+.nextButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionsSection {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.startButton, .failButton, .abandonButton, .closeButton {
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.startButton {
+  background-color: #40916c;
+  color: #ffffff;
+}
+
+.startButton:hover:not(:disabled) {
+  background-color: #52b788;
+}
+
+.failButton {
+  background-color: #9d0208;
+  color: #ffccd5;
+}
+
+.failButton:hover:not(:disabled) {
+  background-color: #c71f37;
+}
+
+.abandonButton {
+  background-color: #6f6f6f;
+  color: #e0e0e0;
+}
+
+.abandonButton:hover:not(:disabled) {
+  background-color: #8a8a8a;
+}
+
+.closeButton {
+  background-color: #7e6839;
+  color: #ffffff;
+}
+
+.closeButton:hover {
+  background-color: #9a844f;
+}
+
+.startButton:disabled, .failButton:disabled, .abandonButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.resultSection {
+  padding: 16px;
+  background-color: rgba(30, 30, 40, 0.5);
+  border-radius: 6px;
+}
+
+.resultTitle {
+  color: #c8a664;
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.noRewards {
+  color: #a8a8a8;
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
+  padding: 16px;
+}
+
+.failReason {
+  color: #d8d8d8;
+  font-size: 14px;
+  padding: 10px;
+  background-color: rgba(40, 40, 50, 0.5);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.loading {
+  color: #c8a664;
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .actionsSection {
+    flex-direction: column;
+  }
+}

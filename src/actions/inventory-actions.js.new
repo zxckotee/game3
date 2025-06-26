@@ -1,0 +1,152 @@
+// Действия для работы с инвентарем
+import apiService from '../services/api';
+
+// Типы действий
+export const UPDATE_ITEM_DETAILS = 'UPDATE_ITEM_DETAILS';
+export const ENRICH_ITEM_REQUEST = 'ENRICH_ITEM_REQUEST';
+export const ENRICH_ITEM_SUCCESS = 'ENRICH_ITEM_SUCCESS';
+export const ENRICH_ITEM_FAILURE = 'ENRICH_ITEM_FAILURE';
+
+// НОВЫЕ типы действий для экипировки
+export const EQUIP_ITEM = 'EQUIP_ITEM';
+export const UNEQUIP_ITEM = 'UNEQUIP_ITEM';
+export const UPDATE_EQUIPMENT_BONUSES = 'UPDATE_EQUIPMENT_BONUSES';
+
+// Действие для обновления деталей предмета
+export const updateItemDetails = (itemId, itemDetails) => ({
+  type: UPDATE_ITEM_DETAILS,
+  payload: {
+    itemId,
+    itemDetails
+  }
+});
+
+// Запрос на обогащение предмета
+export const enrichItemRequest = (itemId) => ({
+  type: ENRICH_ITEM_REQUEST,
+  payload: {
+    itemId
+  }
+});
+
+// Успешное обогащение предмета
+export const enrichItemSuccess = (itemId, itemDetails) => ({
+  type: ENRICH_ITEM_SUCCESS,
+  payload: {
+    itemId,
+    itemDetails
+  }
+});
+
+// Ошибка при обогащении предмета
+export const enrichItemFailure = (itemId, error) => ({
+  type: ENRICH_ITEM_FAILURE,
+  payload: {
+    itemId,
+    error
+  }
+});
+
+// НОВОЕ: Действие для экипировки предмета
+export const equipItem = (itemId, itemType = null, armorType = null, allowMultiple = false) => ({
+  type: EQUIP_ITEM,
+  payload: {
+    itemId,
+    itemType,
+    armorType,
+    allowMultiple
+  }
+});
+
+// НОВОЕ: Действие для снятия предмета
+export const unequipItem = (itemId) => ({
+  type: UNEQUIP_ITEM,
+  payload: {
+    itemId
+  }
+});
+
+// НОВОЕ: Действие для обновления бонусов экипировки
+export const updateEquipmentBonuses = (bonuses) => ({
+  type: UPDATE_EQUIPMENT_BONUSES,
+  payload: bonuses
+});
+
+// Функция для обогащения предмета данными из БД
+export const enrichItemFromDb = (itemId) => async (dispatch) => {
+  if (!itemId) return;
+  
+  dispatch(enrichItemRequest(itemId));
+  
+  try {
+    const response = await fetch(`/api/items/${itemId}`);
+    
+    if (!response.ok) {
+      console.warn(`Не удалось получить информацию о предмете ${itemId}: ${response.status}`);
+      return dispatch(enrichItemFailure(itemId, `Ошибка запроса: ${response.status}`));
+    }
+    
+    const data = await response.json();
+    
+    if (data.success && data.item) {
+      return dispatch(enrichItemSuccess(itemId, data.item));
+    } else {
+      return dispatch(enrichItemFailure(itemId, data.message || 'Неизвестная ошибка'));
+    }
+  } catch (error) {
+    console.warn(`Ошибка при обогащении предмета ${itemId}:`, error);
+    return dispatch(enrichItemFailure(itemId, error.message));
+  }
+};
+
+// НОВОЕ: Функция для экипировки предмета с определением типа предмета
+export const equipItemWithType = (item) => (dispatch, getState) => {
+  if (!item || !item.id) {
+    console.warn('Невозможно экипировать предмет: неверный формат предмета');
+    return;
+  }
+  
+  const { type } = item;
+  let armorType = null;
+  let allowMultiple = false;
+  
+  // Для брони определяем подтип
+  if (type === 'armor') {
+    armorType = item.properties?.armorType || item.armorType;
+    
+    // Если подтип не указан явно, пытаемся определить по названию
+    if (!armorType) {
+      const itemName = (item.name || '').toLowerCase();
+      
+      if (itemName.includes('шлем') || itemName.includes('шапка') || itemName.includes('капюшон')) {
+        armorType = 'head';
+      } else if (itemName.includes('сапог') || itemName.includes('ботин') || itemName.includes('обувь')) {
+        armorType = 'legs';
+      } else if (itemName.includes('перчат') || itemName.includes('рукав')) {
+        armorType = 'hands';
+      } else {
+        armorType = 'body';
+      }
+    }
+  }
+  
+  // Для аксессуаров и артефактов разрешаем экипировать по два
+  if (type === 'accessory' || type === 'artifact') {
+    allowMultiple = true;
+  }
+  
+  // Экипируем предмет с определенным типом
+  dispatch(equipItem(item.id, type, armorType, allowMultiple));
+};
+
+export default {
+  updateItemDetails,
+  enrichItemRequest,
+  enrichItemSuccess,
+  enrichItemFailure,
+  enrichItemFromDb,
+  equipItem,
+  unequipItem,
+  updateEquipmentBonuses,
+  equipItemWithType
+};

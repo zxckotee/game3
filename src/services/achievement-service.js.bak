@@ -1,0 +1,556 @@
+/**
+ * Сервис для работы с достижениями
+ * Обрабатывает запросы от API и взаимодействует с базой данных через ORM
+ */
+
+const { unifiedDatabase } = require('./database-connection-manager-adapter');
+
+// Кэш для хранения достижений (для оптимизации)
+let achievementsCache = [];
+
+/**
+ * Получает все достижения из базы данных
+ * @returns {Promise<Array>} Массив достижений
+ */
+exports.getAllAchievements = async function() {
+  try {
+    // Получаем модель Achievement через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    
+    // Загружаем все достижения
+    const achievements = await Achievement.findAll({
+      order: [['display_order', 'ASC'], ['id', 'ASC']]
+    });
+    
+    // Преобразуем в нужный формат для клиента
+    const formattedAchievements = achievements.map(achievement => ({
+      id: achievement.id,
+      title: achievement.title,
+      description: achievement.description,
+      icon: achievement.icon,
+      category: achievement.category,
+      rewards: achievement.rewards,
+      requiredValue: achievement.required_value,
+      isHidden: achievement.is_hidden,
+      displayOrder: achievement.display_order
+    }));
+    
+    // Обновляем кэш
+    achievementsCache = formattedAchievements;
+    
+    return formattedAchievements;
+  } catch (error) {
+    console.error('Ошибка при получении достижений:', error);
+    // В случае ошибки возвращаем кэшированные данные
+    return achievementsCache;
+  }
+};
+
+/**
+ * Получает достижение по ID
+ * @param {string} id - ID достижения
+ * @returns {Promise<Object|null>} Достижение или null, если не найдено
+ */
+exports.getAchievementById = async function(id) {
+  try {
+    // Проверяем кэш
+    const cachedAchievement = achievementsCache.find(a => a.id === id);
+    if (cachedAchievement) {
+      return cachedAchievement;
+    }
+    
+    // Получаем модель Achievement через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    
+    // Загружаем достижение
+    const achievement = await Achievement.findByPk(id);
+    
+    if (!achievement) {
+      return null;
+    }
+    
+    // Преобразуем в нужный формат для клиента
+    return {
+      id: achievement.id,
+      title: achievement.title,
+      description: achievement.description,
+      icon: achievement.icon,
+      category: achievement.category,
+      rewards: achievement.rewards,
+      requiredValue: achievement.required_value,
+      isHidden: achievement.is_hidden,
+      displayOrder: achievement.display_order
+    };
+  } catch (error) {
+    console.error(`Ошибка при получении достижения с ID ${id}:`, error);
+    // В случае ошибки проверяем кэш
+    return achievementsCache.find(a => a.id === id) || null;
+  }
+};
+
+/**
+ * Получает достижения по категории
+ * @param {string} category - Категория достижений
+ * @returns {Promise<Array>} Массив достижений указанной категории
+ */
+exports.getAchievementsByCategory = async function(category) {
+  try {
+    // Проверяем кэш
+    const cachedAchievements = achievementsCache.filter(a => a.category === category);
+    if (cachedAchievements.length > 0) {
+      return cachedAchievements;
+    }
+    
+    // Получаем модель Achievement через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    
+    // Загружаем достижения
+    const achievements = await Achievement.findAll({
+      where: { category },
+      order: [['display_order', 'ASC'], ['id', 'ASC']]
+    });
+    
+    // Преобразуем в нужный формат для клиента
+    return achievements.map(achievement => ({
+      id: achievement.id,
+      title: achievement.title,
+      description: achievement.description,
+      icon: achievement.icon,
+      category: achievement.category,
+      rewards: achievement.rewards,
+      requiredValue: achievement.required_value,
+      isHidden: achievement.is_hidden,
+      displayOrder: achievement.display_order
+    }));
+  } catch (error) {
+    console.error(`Ошибка при получении достижений категории ${category}:`, error);
+    // В случае ошибки фильтруем кэш
+    return achievementsCache.filter(a => a.category === category);
+  }
+};
+
+/**
+ * Получает прогресс достижений для пользователя
+ * @param {string} userId - ID пользователя
+ * @returns {Promise<Array>} Массив прогресса достижений
+ */
+exports.getUserAchievements = async function(userId) {
+  try {
+    // Получаем модели через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    const AchievementProgress = await unifiedDatabase.getCollection('AchievementProgress');
+    
+    // Загружаем все достижения
+    const allAchievements = await Achievement.findAll({
+      order: [['display_order', 'ASC'], ['id', 'ASC']]
+    });
+    
+    // Загружаем прогресс пользователя
+    const userProgress = await AchievementProgress.findAll({
+      where: { user_id: userId }
+    });
+    
+    // Создаем словарь для быстрого доступа к прогрессу
+    const progressMap = {};
+    userProgress.forEach(progress => {
+      progressMap[progress.achievement_id] = progress;
+    });
+    
+    // Объединяем данные
+    return allAchievements.map(achievement => {
+      const progress = progressMap[achievement.id];
+      const isCompleted = progress ? progress.is_completed : false;
+      
+      // Не показываем скрытые невыполненные достижения
+      if (achievement.is_hidden && !isCompleted) {
+        return {
+          id: achievement.id,
+          title: '???',
+          description: 'Скрытое достижение',
+          icon: '🔒',
+          category: achievement.category,
+          isHidden: true,
+          isCompleted: false,
+          currentValue: 0,
+          requiredValue: achievement.required_value,
+          progress: 0,
+          isRewarded: false
+        };
+      }
+      
+      return {
+        id: achievement.id,
+        title: achievement.title,
+        description: achievement.description,
+        icon: achievement.icon,
+        category: achievement.category,
+        rewards: achievement.rewards,
+        isHidden: achievement.is_hidden,
+        isCompleted: progress ? progress.is_completed : false,
+        currentValue: progress ? progress.current_value : 0,
+        requiredValue: achievement.required_value,
+        progress: progress ? Math.min(100, Math.floor((progress.current_value / achievement.required_value) * 100)) : 0,
+        isRewarded: progress ? progress.is_rewarded : false,
+        completionDate: progress ? progress.completion_date : null
+      };
+    });
+  } catch (error) {
+    console.error(`Ошибка при получении прогресса достижений пользователя ${userId}:`, error);
+    return [];
+  }
+};
+
+/**
+ * Обновляет прогресс достижения для пользователя
+ * @param {string} userId - ID пользователя
+ * @param {string} achievementId - ID достижения
+ * @param {number} value - Новое значение прогресса
+ * @returns {Promise<Object>} Обновленный прогресс достижения
+ */
+exports.updateAchievementProgress = async function(userId, achievementId, value) {
+  try {
+    // Получаем модели через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    const AchievementProgress = await unifiedDatabase.getCollection('AchievementProgress');
+    
+    // Начинаем транзакцию
+    const sequelize = await unifiedDatabase.getSequelizeInstance();
+    const transaction = await sequelize.transaction();
+    
+    try {
+      // Получаем достижение
+      const achievement = await Achievement.findByPk(achievementId, { transaction });
+      if (!achievement) {
+        await transaction.rollback();
+        throw new Error(`Достижение с ID ${achievementId} не найдено`);
+      }
+      
+      // Находим или создаем запись прогресса
+      let [progress, created] = await AchievementProgress.findOrCreate({
+        where: { user_id: userId, achievement_id: achievementId },
+        defaults: {
+          current_value: value,
+          is_completed: value >= achievement.required_value,
+          is_rewarded: false,
+          completion_date: value >= achievement.required_value ? new Date() : null
+        },
+        transaction
+      });
+      
+      // Если запись существует, обновляем ее
+      if (!created) {
+        const wasCompleted = progress.is_completed;
+        const isNowCompleted = value >= achievement.required_value;
+        
+        await progress.update({
+          current_value: value,
+          is_completed: isNowCompleted,
+          completion_date: !wasCompleted && isNowCompleted ? new Date() : progress.completion_date
+        }, { transaction });
+      }
+      
+      // Фиксируем транзакцию
+      await transaction.commit();
+      
+      // Возвращаем обновленный прогресс
+      return {
+        id: progress.id,
+        userId: progress.user_id,
+        achievementId: progress.achievement_id,
+        currentValue: progress.current_value,
+        requiredValue: achievement.required_value,
+        isCompleted: progress.is_completed,
+        isRewarded: progress.is_rewarded,
+        completionDate: progress.completion_date,
+        progress: Math.min(100, Math.floor((progress.current_value / achievement.required_value) * 100))
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  } catch (error) {
+    console.error(`Ошибка при обновлении прогресса достижения ${achievementId} для пользователя ${userId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Выдает награду за достижение
+ * @param {string} userId - ID пользователя
+ * @param {string} achievementId - ID достижения
+ * @returns {Promise<Object>} Информация о выданной награде
+ */
+exports.claimAchievementReward = async function(userId, achievementId) {
+  try {
+    // Получаем модели через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    const AchievementProgress = await unifiedDatabase.getCollection('AchievementProgress');
+    
+    // Начинаем транзакцию
+    const sequelize = await unifiedDatabase.getSequelizeInstance();
+    const transaction = await sequelize.transaction();
+    
+    try {
+      // Получаем достижение
+      const achievement = await Achievement.findByPk(achievementId, { transaction });
+      if (!achievement) {
+        await transaction.rollback();
+        throw new Error(`Достижение с ID ${achievementId} не найдено`);
+      }
+      
+      // Получаем прогресс пользователя
+      const progress = await AchievementProgress.findOne({
+        where: { user_id: userId, achievement_id: achievementId },
+        transaction
+      });
+      
+      // Проверяем, выполнено ли достижение и не выдана ли уже награда
+      if (!progress || !progress.is_completed) {
+        await transaction.rollback();
+        throw new Error('Достижение не выполнено');
+      }
+      
+      if (progress.is_rewarded) {
+        await transaction.rollback();
+        throw new Error('Награда уже получена');
+      }
+      
+      // Отмечаем, что награда выдана
+      await progress.update({ is_rewarded: true }, { transaction });
+      
+      // Фиксируем транзакцию
+      await transaction.commit();
+      
+      // Возвращаем информацию о награде
+      return {
+        userId,
+        achievementId,
+        rewards: achievement.rewards,
+        isRewarded: true
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  } catch (error) {
+    console.error(`Ошибка при выдаче награды за достижение ${achievementId} для пользователя ${userId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Проверяет выполнение достижений для пользователя на основе текущего состояния
+ * @param {string} userId - ID пользователя
+ * @param {Object} state - Состояние игры
+ * @returns {Promise<Array>} Массив новых выполненных достижений
+ */
+exports.checkAchievements = async function(userId, state) {
+  try {
+    // Получаем все достижения
+    const achievements = await exports.getAllAchievements();
+    
+    // Получаем текущий прогресс пользователя
+    const userAchievements = await exports.getUserAchievements(userId);
+    
+    // Создаем карту незавершенных достижений
+    const pendingAchievements = {};
+    userAchievements.forEach(ua => {
+      if (!ua.isCompleted) {
+        pendingAchievements[ua.id] = ua;
+      }
+    });
+    
+    // Массив для новых достижений
+    const newlyCompleted = [];
+    
+    // Проверяем каждое достижение
+    for (const achievement of achievements) {
+      if (pendingAchievements[achievement.id]) {
+        // Определяем, как проверять достижение на основе его ID или категории
+        let progress = 0;
+        
+        switch (achievement.id) {
+          case 'ach1': // Первые шаги
+            if (state && state.player && state.player.cultivation) {
+              progress = state.player.cultivation.level || 0;
+            }
+            break;
+            
+          case 'ach2': // Коллекционер техник
+            if (state && state.player && state.player.techniques) {
+              progress = Array.isArray(state.player.techniques) ? state.player.techniques.length : 0;
+            }
+            break;
+            
+          case 'ach3': // Исследователь
+            if (state && state.player && state.player.progress && state.player.progress.discoveries) {
+              const discoveries = state.player.progress.discoveries;
+              if (typeof discoveries === 'object' && discoveries !== null) {
+                progress = Object.keys(discoveries).filter(key => discoveries[key]).length;
+              }
+            }
+            break;
+            
+          // Добавьте другие достижения по мере необходимости
+          
+          default:
+            // Общий случай - если не знаем, как проверить, пропускаем
+            continue;
+        }
+        
+        // Если есть прогресс, обновляем его
+        if (progress > 0) {
+          try {
+            const result = await exports.updateAchievementProgress(userId, achievement.id, progress);
+            
+            // Если достижение было выполнено, добавляем его в список
+            if (result.isCompleted && !pendingAchievements[achievement.id].isCompleted) {
+              newlyCompleted.push({
+                id: achievement.id,
+                title: achievement.title,
+                description: achievement.description,
+                icon: achievement.icon,
+                rewards: achievement.rewards
+              });
+            }
+          } catch (error) {
+            console.error(`Ошибка при обновлении прогресса достижения ${achievement.id}:`, error);
+          }
+        }
+      }
+    }
+    
+    return newlyCompleted;
+  } catch (error) {
+    console.error(`Ошибка при проверке достижений для пользователя ${userId}:`, error);
+    return [];
+  }
+};
+
+/**
+ * Создает новое достижение (только для администраторов)
+ * @param {Object} achievementData - Данные о достижении
+ * @returns {Promise<Object>} Созданное достижение
+ */
+exports.createAchievement = async function(achievementData) {
+  try {
+    // Получаем модель Achievement через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    
+    // Создаем достижение
+    const achievement = await Achievement.create({
+      id: achievementData.id,
+      title: achievementData.title,
+      description: achievementData.description,
+      icon: achievementData.icon,
+      category: achievementData.category,
+      rewards: achievementData.rewards,
+      required_value: achievementData.requiredValue || 1,
+      is_hidden: achievementData.isHidden || false,
+      display_order: achievementData.displayOrder || 0
+    });
+    
+    // Обновляем кэш
+    achievementsCache = [];
+    
+    // Возвращаем созданное достижение
+    return {
+      id: achievement.id,
+      title: achievement.title,
+      description: achievement.description,
+      icon: achievement.icon,
+      category: achievement.category,
+      rewards: achievement.rewards,
+      requiredValue: achievement.required_value,
+      isHidden: achievement.is_hidden,
+      displayOrder: achievement.display_order
+    };
+  } catch (error) {
+    console.error('Ошибка при создании достижения:', error);
+    throw error;
+  }
+};
+
+/**
+ * Обновляет достижение (только для администраторов)
+ * @param {string} id - ID достижения
+ * @param {Object} updates - Обновления для достижения
+ * @returns {Promise<Object|null>} Обновленное достижение или null, если не найдено
+ */
+exports.updateAchievement = async function(id, updates) {
+  try {
+    // Получаем модель Achievement через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    
+    // Проверяем существование достижения
+    const achievement = await Achievement.findByPk(id);
+    if (!achievement) {
+      return null;
+    }
+    
+    // Обновляем достижение
+    await achievement.update({
+      title: updates.title !== undefined ? updates.title : achievement.title,
+      description: updates.description !== undefined ? updates.description : achievement.description,
+      icon: updates.icon !== undefined ? updates.icon : achievement.icon,
+      category: updates.category !== undefined ? updates.category : achievement.category,
+      rewards: updates.rewards !== undefined ? updates.rewards : achievement.rewards,
+      required_value: updates.requiredValue !== undefined ? updates.requiredValue : achievement.required_value,
+      is_hidden: updates.isHidden !== undefined ? updates.isHidden : achievement.is_hidden,
+      display_order: updates.displayOrder !== undefined ? updates.displayOrder : achievement.display_order
+    });
+    
+    // Обновляем кэш
+    achievementsCache = [];
+    
+    // Возвращаем обновленное достижение
+    return {
+      id: achievement.id,
+      title: achievement.title,
+      description: achievement.description,
+      icon: achievement.icon,
+      category: achievement.category,
+      rewards: achievement.rewards,
+      requiredValue: achievement.required_value,
+      isHidden: achievement.is_hidden,
+      displayOrder: achievement.display_order
+    };
+  } catch (error) {
+    console.error(`Ошибка при обновлении достижения с ID ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Удаляет достижение (только для администраторов)
+ * @param {string} id - ID достижения
+ * @returns {Promise<boolean>} Результат операции
+ */
+exports.deleteAchievement = async function(id) {
+  try {
+    // Получаем модель Achievement через адаптер
+    const Achievement = await unifiedDatabase.getCollection('Achievement');
+    
+    // Проверяем существование достижения
+    const achievement = await Achievement.findByPk(id);
+    if (!achievement) {
+      return false;
+    }
+    
+    // Удаляем достижение
+    await achievement.destroy();
+    
+    // Обновляем кэш
+    achievementsCache = achievementsCache.filter(a => a.id !== id);
+    
+    return true;
+  } catch (error) {
+    console.error(`Ошибка при удалении достижения с ID ${id}:`, error);
+    return false;
+  }
+};
+
+// Инициализируем кэш при загрузке модуля
+exports.getAllAchievements().catch(error => {
+  console.error('Ошибка при инициализации кэша достижений:', error);
+});
