@@ -849,28 +849,7 @@ const MarketTab = () => {
                     <DetailValue>{selectedMarketItem.quantity}</DetailValue>
                   </DetailRow>
 
-                  {selectedMarketItem.effects && selectedMarketItem.effects.length > 0 && (
-                    <div style={{ marginTop: '15px' }}>
-                      <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Эффекты:</h4>
-                      {selectedMarketItem.effects.map((effect, index) => (
-                        <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
-                          - {effect.description || `${effect.target || 'Неизвестная характеристика'} ${effect.modifier === 'add' ? '+' : '*'}${formatEffectValue(effect.value)}`}
-                          {effect.duration && ` (длительность: ${effect.duration} ходов)`}
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
-                  {selectedMarketItem.requirements && Object.keys(selectedMarketItem.requirements).length > 0 && (
-                    <div style={{ marginTop: '15px' }}>
-                      <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Требования:</h4>
-                      {Object.entries(selectedMarketItem.requirements).map(([key, value]) => (
-                        <div key={key} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
-                          - {key.charAt(0).toUpperCase() + key.slice(1)}: {formatEffectValue(value)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   
                   <QuantityControl>
                     <QuantityButton 
@@ -921,7 +900,13 @@ const MarketTab = () => {
                       selected={selectedSellItem && selectedSellItem.id === item.id}
                       onClick={() => handleSelectItem(item)}
                     >
-                      <ItemIcon>{getItemEmoji(item)}</ItemIcon>
+                      <ItemIcon>
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} />
+                        ) : (
+                          getItemEmoji(item)
+                        )}
+                      </ItemIcon>
                       <ItemInfo>
                         <ItemName rarity={item.rarity}>{item.name}</ItemName>
                         <div>x{item.quantity || 1}</div>
