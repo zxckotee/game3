@@ -410,6 +410,45 @@ class CharacterProfileService {
       throw error;
     }
   }
+
+  /**
+   * Создание начального профиля персонажа при регистрации
+   * @param {number} userId - ID пользователя
+   * @param {string} username - Имя пользователя, используется как имя персонажа по умолчанию
+   * @param {Object} transaction - Объект транзакции Sequelize
+   * @returns {Promise<Object>} - Созданный профиль персонажа
+   */
+  static async createInitialProfile(userId, username, transaction) {
+    try {
+      if (isBrowser) {
+        // Этот метод не должен вызываться на клиенте
+        throw new Error('createInitialProfile can only be called on the server.');
+      }
+
+      const profile = await CharacterProfile.create({
+        userId: userId,
+        name: username, // Используем username как имя персонажа по умолчанию
+        gender: 'male',
+        region: 'central',
+        background: 'commoner',
+        description: '',
+        avatar: '',
+        level: 1,
+        experience: 0,
+        gold: 0,
+        silver: 0,
+        copper: 0,
+        spirit_stones: 0,
+        reputation: {},
+        relationships: {}
+      }, { transaction });
+
+      return profile;
+    } catch (error) {
+      console.error('Ошибка при создании начального профиля персонажа:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = CharacterProfileService;
@@ -421,3 +460,4 @@ module.exports.updateCharacterProfile = CharacterProfileService.updateCharacterP
 module.exports.isCharacterCreated = CharacterProfileService.isCharacterCreated;
 module.exports.updateCurrency = CharacterProfileService.updateCurrency;
 module.exports.updateRelationships = CharacterProfileService.updateRelationships;
+module.exports.createInitialProfile = CharacterProfileService.createInitialProfile;

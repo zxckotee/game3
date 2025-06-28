@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
 const { unifiedDatabase, initializeDatabaseConnection } = require('../../services/database-connection-manager');
+const CharacterProfileService = require('../../services/character-profile-service');
 let sequelize; const { Sequelize } = require('sequelize');
 
 
@@ -24,6 +25,9 @@ async function getSequelizeInstance() {
  * @access Public
  */
 router.post('/register', async (req, res) => {
+  const sequelizeDb = await getSequelizeInstance();
+  const transaction = await sequelizeDb.transaction();
+
   try {
     const { username, email, password } = req.body;
     
@@ -31,24 +35,24 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Необходимо указать имя пользователя, email и пароль' });
     }
     
-    // Получаем экземпляр sequelize
-    const sequelizeDb = await getSequelizeInstance();
-    
     // Проверка, существует ли пользователь
     const existingUsers = await sequelizeDb.query(
       'SELECT * FROM users WHERE username = :username OR email = :email',
       {
         replacements: { username, email },
-        type: Sequelize.QueryTypes.SELECT
+        type: Sequelize.QueryTypes.SELECT,
+        transaction
       }
     );
     
     if (existingUsers.length > 0) {
       const existingUser = existingUsers[0];
       if (existingUser.username === username) {
+        await transaction.rollback();
         return res.status(400).json({ error: 'Пользователь с таким именем уже существует' });
       }
       if (existingUser.email === email) {
+        await transaction.rollback();
         return res.status(400).json({ error: 'Пользователь с таким email уже существует' });
       }
     }
@@ -70,18 +74,25 @@ router.post('/register', async (req, res) => {
        VALUES (:username, :email, :passwordHash, :authToken, :tokenExpiresAt, 1, 0, 'user', NOW(), NOW())
        RETURNING id, username, email, auth_token, cultivation_level, experience, role`,
       {
-        replacements: { 
-          username, 
-          email, 
-          passwordHash, 
-          authToken, 
-          tokenExpiresAt 
+        replacements: {
+          username,
+          email,
+          passwordHash,
+          authToken,
+          tokenExpiresAt
         },
-        type: Sequelize.QueryTypes.INSERT
+        type: Sequelize.QueryTypes.INSERT,
+        transaction
       }
     );
     
     const user = result[0][0];
+
+    // Создание начального профиля персонажа
+    await CharacterProfileService.createInitialProfile(user.id, user.username, transaction);
+    
+    // Подтверждаем транзакцию
+    await transaction.commit();
     
     // Возвращаем данные пользователя с токеном
     res.status(201).json({
@@ -91,6 +102,7 @@ router.post('/register', async (req, res) => {
       auth_token: undefined
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Ошибка при регистрации пользователя:', error);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
