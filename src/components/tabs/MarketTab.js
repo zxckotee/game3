@@ -573,7 +573,7 @@ const MarketTab = () => {
   // Функция для проверки, достаточно ли у игрока валюты
   const hasSufficientCurrency = (price, rarity) => {
     const currencyType = getCurrencyTypeByRarity(rarity);
-    const currency = player.currency || {};
+    const currency = player.inventory.currency || {};
     
     switch(currencyType) {
       case 'spiritStones': return (currency.spiritStones || 0) >= price;
@@ -603,7 +603,7 @@ const MarketTab = () => {
     try {
       const userId = getUserId();
       
-      const result = await buyItemFromMerchant(userId, selectedItem.sellerId, selectedItem.itemId, quantity);
+      const result = await buyItemFromMerchant(selectedItem.sellerId, selectedItem.itemId, userId, quantity);
       
       if (result.success) {
         actions.addNotification({ message: `Вы купили ${selectedItem.name} x${quantity}`, type: 'success' });
@@ -732,19 +732,19 @@ const MarketTab = () => {
         <CurrencyDisplay>
           <CurrencyItem>
             <CurrencyIcon type="gold" />
-            <CurrencyValue>{player.currency?.gold || 0}</CurrencyValue>
+            <CurrencyValue>{player.inventory.currency?.gold || 0}</CurrencyValue>
           </CurrencyItem>
           <CurrencyItem>
             <CurrencyIcon type="silver" />
-            <CurrencyValue>{player.currency?.silver || 0}</CurrencyValue>
+            <CurrencyValue>{player.inventory.currency?.silver || 0}</CurrencyValue>
           </CurrencyItem>
           <CurrencyItem>
             <CurrencyIcon type="copper" />
-            <CurrencyValue>{player.currency?.copper || 0}</CurrencyValue>
+            <CurrencyValue>{player.inventory.currency?.copper || 0}</CurrencyValue>
           </CurrencyItem>
           <CurrencyItem>
             <CurrencyIcon type="spiritStone" />
-            <CurrencyValue>{player.currency?.spiritStones || 0}</CurrencyValue>
+            <CurrencyValue>{player.inventory.currency?.spiritStones || 0}</CurrencyValue>
           </CurrencyItem>
         </CurrencyDisplay>
       </TabHeader>
