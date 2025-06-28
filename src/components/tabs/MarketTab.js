@@ -13,6 +13,7 @@ import {
   buyItemFromMerchant,
   sellItemToMerchant
 } from '../../services/merchant-api';
+import InventoryServiceAPI from '../../services/inventory-api.js';
 
 // Стилизованные компоненты
 const TabContainer = styled.div`
@@ -288,38 +289,6 @@ const NoItemsMessage = styled.div`
   font-style: italic;
 `;
 
-const CurrencyDisplay = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-left: auto;
-`;
-
-const CurrencyItem = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const CurrencyIcon = styled.div`
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  margin-right: 5px;
-  background: ${props => {
-    switch(props.type) {
-      case 'copper': return '#b87333';
-      case 'silver': return '#c0c0c0';
-      case 'gold': return '#ffd700';
-      case 'spiritStone': return '#7cb9e8';
-      default: return '#ccc';
-    }
-  }};
-`;
-
-const CurrencyValue = styled.span`
-  color: #fff;
-`;
-
 /**
  * Компонент вкладки "Рынок"
  */
@@ -463,7 +432,7 @@ const MarketTab = () => {
         
         if (merchant.items && merchant.items.length > 0) {
           merchant.items.forEach(item => {
-            if (item.itemType === 'currency') {
+            if (item.itemType === 'currency' || item.quantity === 0) {
               return;
             }
             
@@ -503,6 +472,21 @@ const MarketTab = () => {
           lastUpdated: Date.now()
         }
       });
+
+      // Загружаем и обновляем валюту
+      if (CharacterProfileService && actions.dispatch) {
+        try {
+          const profile = await CharacterProfileService.getCharacterProfile(userId);
+          if (profile && profile.currency) {
+            actions.dispatch({
+              type: ACTION_TYPES.UPDATE_CURRENCY,
+              payload: profile.currency
+            });
+          }
+        } catch (profileError) {
+          console.error('[MarketTab] Ошибка при получении профиля для обновления валюты:', profileError);
+        }
+      }
       
     } catch (error) {
       console.error('Ошибка при обновлении данных о торговцах:', error);
@@ -515,6 +499,32 @@ const MarketTab = () => {
       setIsLoading(false);
     }
   }, []);
+
+  const refreshInventory = useCallback(async () => {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+      const items = await InventoryServiceAPI.getInventoryItems(userId);
+      if (actions.updateInventoryItems) {
+        actions.updateInventoryItems(items);
+      }
+
+      const profile = await CharacterProfileService.getCharacterProfile(userId);
+      if (profile && profile.currency) {
+        actions.dispatch({
+          type: ACTION_TYPES.UPDATE_CURRENCY,
+          payload: profile.currency
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при обновлении инвентаря:', error);
+    }
+  }, [actions, getUserId]);
+
+  useEffect(() => {
+    refreshInventory();
+  }, [state.auth?.user?.id]);
   
   // Эффект для первоначальной загрузки и при смене локации
   useEffect(() => {
@@ -661,7 +671,7 @@ const MarketTab = () => {
       const userId = getUserId();
       const sellPrice = Math.floor(price * 0.7) * quantity;
       
-      const result = await sellItemToMerchant(userId, selectedMerchant.id, selectedSellItem.itemId, quantity);
+      const result = await sellItemToMerchant(selectedMerchant.id, selectedSellItem, userId, quantity);
       
       if (result.success) {
         actions.addNotification({ message: `Вы продали ${selectedSellItem.name} x${quantity}`, type: 'success' });
@@ -679,6 +689,7 @@ const MarketTab = () => {
         });
         
         refreshMarketData();
+        refreshInventory();
         setSelectedSellItem(null);
         
       } else {
@@ -729,24 +740,25 @@ const MarketTab = () => {
     <TabContainer>
       <TabHeader>
         <TabTitle>Рынок</TabTitle>
-        <CurrencyDisplay>
-          <CurrencyItem>
-            <CurrencyIcon type="gold" />
-            <CurrencyValue>{player.inventory.currency?.gold || 0}</CurrencyValue>
-          </CurrencyItem>
-          <CurrencyItem>
-            <CurrencyIcon type="silver" />
-            <CurrencyValue>{player.inventory.currency?.silver || 0}</CurrencyValue>
-          </CurrencyItem>
-          <CurrencyItem>
-            <CurrencyIcon type="copper" />
-            <CurrencyValue>{player.inventory.currency?.copper || 0}</CurrencyValue>
-          </CurrencyItem>
-          <CurrencyItem>
-            <CurrencyIcon type="spiritStone" />
-            <CurrencyValue>{player.inventory.currency?.spiritStones || 0}</CurrencyValue>
-          </CurrencyItem>
-        </CurrencyDisplay>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          {player.inventory.currency && Object.entries(player.inventory.currency).map(([type, value]) => (
+            <div key={type} style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                marginRight: '5px',
+                background: {
+                  'copper': '#b87333',
+                  'silver': '#c0c0c0',
+                  'gold': '#ffd700',
+                  'spiritStones': '#7cb9e8'
+                }[type] || '#ccc'
+              }} />
+              <span style={{ color: '#fff' }}>{value}</span>
+            </div>
+          ))}
+        </div>
       </TabHeader>
       
       <TabMenu>

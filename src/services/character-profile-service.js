@@ -286,7 +286,8 @@ class CharacterProfileService {
    * @param {Object} currency - Данные о валюте
    * @returns {Promise<Object>} - Обновленная валюта
    */
-  static async updateCurrency(userId, currency) {
+  static async updateCurrency(userId, currency, options = {}) {
+    const { transaction } = options;
     try {
       if (isBrowser) {
         // В браузере используем объект в памяти
@@ -300,7 +301,8 @@ class CharacterProfileService {
         if (currency.gold !== undefined) profile.gold = (profile.gold || 0) + currency.gold;
         if (currency.silver !== undefined) profile.silver = (profile.silver || 0) + currency.silver;
         if (currency.copper !== undefined) profile.copper = (profile.copper || 0) + currency.copper;
-        if (currency.spiritStones !== undefined) profile.spiritStones = (profile.spiritStones || 0) + currency.spiritStones;
+        if (currency.spirit_stones !== undefined) profile.spiritStones = (profile.spirit_stones || 0) + currency.spirit_stones;
+
         
         // Возвращаем обновленную валюту
         return {
@@ -313,7 +315,8 @@ class CharacterProfileService {
         // На сервере используем базу данных
         // Получаем текущий профиль персонажа
         let profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { user_id: userId },
+          transaction
         });
         
         if (!profile) {
@@ -325,25 +328,27 @@ class CharacterProfileService {
         const updateData = {};
         
         // Получаем текущие значения для сложения
-        if (currency.gold !== undefined) {
-          updateData.gold = Sequelize.literal(`${parseInt(currency.gold)}`);
+        if (currency.gold !== undefined && currency.gold !== 0) {
+          updateData.gold = Sequelize.literal(`gold + ${parseInt(currency.gold)}`);
         }
-        if (currency.silver !== undefined) {
-          updateData.silver = Sequelize.literal(`${parseInt(currency.silver)}`);
+        if (currency.silver !== undefined && currency.silver !== 0) {
+          updateData.silver = Sequelize.literal(`silver + ${parseInt(currency.silver)}`);
         }
-        if (currency.copper !== undefined) {
-          updateData.copper = Sequelize.literal(`${parseInt(currency.copper)}`);
+        if (currency.copper !== undefined && currency.copper !== 0) {
+          updateData.copper = Sequelize.literal(`copper + ${parseInt(currency.copper)}`);
         }
-        if (currency.spiritStones !== undefined) {
-          updateData.spirit_stones = Sequelize.literal(`${parseInt(currency.spiritStones)}`);
+        if (currency.spiritStones !== undefined && currency.spiritStones !== 0) {
+          updateData.spiritStones = Sequelize.literal(`spirit_stones + ${parseInt(currency.spiritStones)}`);
         }
-        console.log(`currency.spiritStones: ${currency.spiritStones} \n updateData.spirit_stones: ${updateData.spirit_stones}`);
-        
-        await profile.update(updateData);
+        console.log(currency);
+        if (Object.keys(updateData).length > 0) {
+          await profile.update(updateData, { transaction });
+        }
         
         // Получаем обновленный профиль
         profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { user_id: userId },
+          transaction
         });
         
         // Возвращаем обновленную валюту
@@ -351,7 +356,7 @@ class CharacterProfileService {
           gold: profile.gold,
           silver: profile.silver,
           copper: profile.copper,
-          spiritStones: `currency.spiritStones: ${currency.spiritStones} \n updateData.spirit_stones: ${updateData.spirit_stones}`
+          spiritStones: profile.spirit_stones
         };
       }
     } catch (error) {

@@ -14,6 +14,7 @@ const ItemImage = require('../models/item-image');
 // Импортируем константы из общего файла
 const { merchantTypes, merchantRarityLevels } = require('../data/merchant-constants');
 const { checkItemRequirements } = require('./equipment-service');
+const CharacterProfileService = require('./character-profile-service');
 
 // Кэш для хранения данных (для оптимизации)
 let merchantsCache = [];
@@ -23,7 +24,7 @@ let merchantsById = {};
  * Получает всех торговцев из базы данных
  * @returns {Promise<Array>} Массив торговцев
  */
-exports.getAllMerchants = async function() {
+exports.getAllMerchants = async function(userId) { // Добавляем userId
   try {
     // Инициализируем реестр моделей, если он еще не инициализирован
     await modelRegistry.initializeRegistry();
@@ -36,8 +37,19 @@ exports.getAllMerchants = async function() {
     // Загружаем всех торговцев с их связями, явно указывая атрибуты
     const merchants = await Merchant.findAll({
       include: [
-        { model: MerchantInventory, as: 'inventory' },
-        { model: MerchantReputation, as: 'reputations' }
+        {
+          model: MerchantInventory,
+          as: 'inventory',
+          // Фильтруем инвентарь по userId, если он предоставлен
+          where: userId ? { userId: userId } : {},
+          required: false // Используем LEFT JOIN, чтобы торговцы без инвентаря для этого юзера все равно отображались
+        },
+        {
+          model: MerchantReputation,
+          as: 'reputations',
+          where: userId ? { userId: userId } : {},
+          required: false
+        }
       ],
       // Явно указываем атрибуты для выборки, чтобы избежать неявных присоединений
       attributes: ['id', 'name', 'description', 'location', 'specialization',
@@ -408,6 +420,36 @@ exports.buyItemFromMerchant = async function(merchantId, itemId, userId, quantit
       // Рассчитываем итоговую цену
       const basePrice = item.price;
       const finalPrice = Math.floor(basePrice * (1 - discount) * quantity);
+
+      // --- Новая логика для списания валюты ---
+      const characterProfile = await CharacterProfileService.getCharacterProfile(userId);
+      if (!characterProfile) {
+        await transaction.rollback();
+        return { success: false, message: 'Профиль игрока не найден' };
+      }
+
+      // Определяем тип валюты (логика, похожая на клиентскую)
+      const getCurrencyTypeByRarity = (rarity) => {
+        switch(rarity) {
+          case 'legendary': return 'spiritStones';
+          case 'epic': return 'gold';
+          case 'rare': return 'silver';
+          default: return 'copper';
+        }
+      };
+      const currencyType = getCurrencyTypeByRarity(item.rarity);
+      
+      // Проверяем, достаточно ли валюты
+      if (characterProfile.currency[currencyType] < finalPrice) {
+        await transaction.rollback();
+        return { success: false, message: 'Недостаточно средств' };
+      }
+
+      // Списываем валюту
+      const currencyUpdate = { gold: 0, silver: 0, copper: 0, spiritStones: 0 };
+      currencyUpdate[currencyType] = -finalPrice;
+      await CharacterProfileService.updateCurrency(userId, currencyUpdate, { transaction });
+      // --- Конец новой логики ---
       
       // Обновляем количество предметов
       await item.decreaseQuantity(quantity);
@@ -482,7 +524,7 @@ exports.sellItemToMerchant = async function(merchantId, itemData, userId, quanti
     if (!userId) {
       throw new Error('User ID is required to sell items to merchant');
     }
-    
+    console.log(`merchantId: ${merchantId}, itemData: ${JSON.stringify(itemData, null, 2)}, userId: ${userId}`);
     // Инициализируем реестр моделей, если он еще не инициализирован
     await modelRegistry.initializeRegistry();
     
@@ -513,8 +555,8 @@ exports.sellItemToMerchant = async function(merchantId, itemData, userId, quanti
         return inventoryCheck; // Возвращаем ошибку проверки инвентаря
       }
       
-      // Рассчитываем цену продажи (обычно 50% от базовой)
-      const sellPrice = Math.floor(itemData.basePrice * 0.5 * quantity);
+      // Цена продажи будет рассчитана ниже, после определения типа валюты
+      const sellPrice = Math.floor((itemData.price || itemData.basePrice) * 0.5 * quantity);
       
       // Увеличиваем репутацию пользователя с торговцем
       if (userId) {
@@ -533,6 +575,23 @@ exports.sellItemToMerchant = async function(merchantId, itemData, userId, quanti
         await transaction.rollback();
         return { success: false, message: 'Ошибка при удалении предмета из инвентаря' };
       }
+
+      // --- Новая логика для начисления валюты ---
+      const getCurrencyTypeByRarity = (rarity) => {
+        switch(rarity) {
+          case 'legendary': return 'spiritStones';
+          case 'epic': return 'gold';
+          case 'rare': return 'silver';
+          default: return 'copper';
+        }
+      };
+      const currencyType = getCurrencyTypeByRarity(itemData.rarity);
+
+      // Начисляем валюту
+      const currencyUpdate = { gold: 0, silver: 0, copper: 0, spiritStones: 0 };
+      currencyUpdate[currencyType] = +sellPrice;
+      await CharacterProfileService.updateCurrency(userId, currencyUpdate, { transaction });
+      // --- Конец новой логики ---
       
       // Фиксируем транзакцию
       await transaction.commit();

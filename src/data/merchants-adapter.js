@@ -20,9 +20,9 @@ const Merchants = {
   merchants: merchantsCache,
   
   // Функция для получения всех торговцев
-  getAllMerchants: async function() {
+  getAllMerchants: async function(userId) { // Добавляем userId
     try {
-      const merchants = await MerchantAPI.getAllMerchants();
+      const merchants = await MerchantAPI.getAllMerchants(userId); // Передаем userId в API
       merchantsCache = merchants;
       return merchants;
     } catch (error) {

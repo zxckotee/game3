@@ -396,127 +396,126 @@ function InventoryTab() {
   
   const itemsToDisplay = state.player.inventory?.items || [];
 
-  if (!isLoading && !isAuthChecking && !itemsToDisplay.length && !selectedItem) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center', color: '#aaa' }}>
-        Инвентарь пуст.
-      </div>
-    );
-  }
-  
   const equipableTypes = ['weapon', 'armor', 'accessory', 'talisman'];
   const consumableTypes = ['consumable', 'elixir'];
 
   return (
     <Container>
-      <InventoryGrid>
-        {(itemsToDisplay).map((item, index) => (
-          <ItemSlot
-            key={item.id ? `${item.id}_${index}` : `item_${index}`}
-            quality={item.quality || 'common'}
-            onClick={() => handleItemClick(item)}
-            style={selectedItem && selectedItem.id === item.id ? { 
-              borderColor: '#fff', 
-              boxShadow: `0 0 15px ${
-                item.quality === 'common' ? '#fff' :
-                item.quality === 'uncommon' ? '#2196f3' :
-                item.quality === 'rare' ? '#9c27b0' :
-                item.quality === 'epic' ? '#ff9800' : '#d4af37'
-              }` 
-            } : {}}
-          >   
-            {item.image_url ? (
-              <ItemIcon src={item.image_url} alt={item.name} />
-            ) : (
-              <div style={{width: '80%', height: '80%', backgroundColor: '#222', borderRadius: '4px'}} />
-            )}
-            {item.quantity > 1 && <ItemQuantity>{item.quantity}</ItemQuantity>}
-            {item.enrichedFailed && <div title="Не удалось загрузить полные детали предмета" style={{ position: 'absolute', top: '2px', left: '2px', color: 'red', fontSize: '1.2rem', fontWeight: 'bold', lineHeight: '1' }}>!</div>}
-          </ItemSlot>
-        ))}
-      </InventoryGrid>
-      
-      <ItemDetails>
-        {selectedItem ? (
-          <>
-            <ItemName quality={selectedItem.quality || 'common'}>{selectedItem.name || 'Неизвестный предмет'}</ItemName>
-            <ItemType>Тип: {selectedItem.type || 'N/A'} | Качество: {selectedItem.quality || 'common'}</ItemType>
-            {selectedItem.enrichedFailed && <p style={{color: 'red', fontSize: '0.9rem', marginBottom: '10px'}}>Не удалось загрузить полные детали этого предмета.</p>}
-            <ItemDescription>{selectedItem.description || 'Описание отсутствует.'}</ItemDescription>
-            
-            {selectedItem.stats && Object.entries(selectedItem.stats).map(([key, value]) => {
-              if (['name', 'description', 'type', 'quality', 'rarity', 'itemId', 'icon', 'slot', 'effects', 'requirements', 'value', 'item_id', 'item_type', 'equipped', 'quantity', 'enriched', 'enrichedFailed', 'id'].includes(key.toLowerCase())) return null;
-              if (value === null || value === undefined || value === '') return null;
-              return <div key={key} style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '3px' }}>{key.charAt(0).toUpperCase() + key.slice(1)}: {formatEffectValue(value)}</div>;
-            })}
-
-            {selectedItem.effects && selectedItem.effects.length > 0 && (
-              <div style={{ marginTop: '15px' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Эффекты:</h4>
-                {selectedItem.effects.map((effect, index) => (
-                  <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
-                    - {effect.description || `${effect.target || 'Неизвестная характеристика'} ${effect.modifier === 'add' ? '+' : '*'}${formatEffectValue(effect.value)}`}
-                    {effect.duration && ` (длительность: ${effect.duration} ходов)`}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {selectedItem.requirements && Object.keys(selectedItem.requirements).length > 0 && (
-              <div style={{ marginTop: '15px' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Требования:</h4>
-                {Array.isArray(selectedItem.requirements) ? (
-                  selectedItem.requirements.map((req, index) => (
-                    <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
-                      - {(req.type ? req.type.charAt(0).toUpperCase() + req.type.slice(1) : `Требование ${index + 1}`)}: {formatEffectValue(req.value)}
-                    </div>
-                  ))
+      {itemsToDisplay.length > 0 ? (
+        <>
+          <InventoryGrid>
+            {(itemsToDisplay).map((item, index) => (
+              <ItemSlot
+                key={item.id ? `${item.id}_${index}` : `item_${index}`}
+                quality={item.quality || 'common'}
+                onClick={() => handleItemClick(item)}
+                style={selectedItem && selectedItem.id === item.id ? {
+                  borderColor: '#fff',
+                  boxShadow: `0 0 15px ${
+                    item.quality === 'common' ? '#fff' :
+                    item.quality === 'uncommon' ? '#2196f3' :
+                    item.quality === 'rare' ? '#9c27b0' :
+                    item.quality === 'epic' ? '#ff9800' : '#d4af37'
+                  }`
+                } : {}}
+              >
+                {item.image_url ? (
+                  <ItemIcon src={item.image_url} alt={item.name} />
                 ) : (
-                  Object.entries(selectedItem.requirements).map(([key, value]) => (
-                    <div key={key} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
-                      - {key.charAt(0).toUpperCase() + key.slice(1)}: {formatEffectValue(value)}
-                    </div>
-                  ))
+                  <div style={{width: '80%', height: '80%', backgroundColor: '#222', borderRadius: '4px'}} />
                 )}
-              </div>
-            )}
-            
-            <div style={{marginTop: '20px'}}>
-              {equipableTypes.includes(selectedItem.type) && (
-                <ActionButton 
-                  onClick={handleEquipItem}
-                  disabled={isLoading} 
-                >
-                  {selectedItem.equipped ? 'Снять' : 'Экипировать'}
-                </ActionButton>
-              )}
+                {item.quantity > 1 && <ItemQuantity>{item.quantity}</ItemQuantity>}
+                {item.enrichedFailed && <div title="Не удалось загрузить полные детали предмета" style={{ position: 'absolute', top: '2px', left: '2px', color: 'red', fontSize: '1.2rem', fontWeight: 'bold', lineHeight: '1' }}>!</div>}
+              </ItemSlot>
+            ))}
+          </InventoryGrid>
+          
+          <ItemDetails>
+            {selectedItem ? (
+              <>
+                <ItemName quality={selectedItem.quality || 'common'}>{selectedItem.name || 'Неизвестный предмет'}</ItemName>
+                <ItemType>Тип: {selectedItem.type || 'N/A'} | Качество: {selectedItem.quality || 'common'}</ItemType>
+                {selectedItem.enrichedFailed && <p style={{color: 'red', fontSize: '0.9rem', marginBottom: '10px'}}>Не удалось загрузить полные детали этого предмета.</p>}
+                <ItemDescription>{selectedItem.description || 'Описание отсутствует.'}</ItemDescription>
+                
+                {selectedItem.stats && Object.entries(selectedItem.stats).map(([key, value]) => {
+                  if (['name', 'description', 'type', 'quality', 'rarity', 'itemId', 'icon', 'slot', 'effects', 'requirements', 'value', 'item_id', 'item_type', 'equipped', 'quantity', 'enriched', 'enrichedFailed', 'id'].includes(key.toLowerCase())) return null;
+                  if (value === null || value === undefined || value === '') return null;
+                  return <div key={key} style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '3px' }}>{key.charAt(0).toUpperCase() + key.slice(1)}: {formatEffectValue(value)}</div>;
+                })}
 
-              {consumableTypes.includes(selectedItem.type) && 
-               !(selectedItem.type === 'pill' && !consumableTypes.includes('pill')) && ( 
-                <ActionButton
-                  onClick={handleConsumeItem}
-                  disabled={isLoading}
-                >
-                  Использовать
-                </ActionButton>
-               )
-              }
-            </div>
-          </>
-        ) : (
-          (itemsToDisplay.length > 0) && !isLoading && !isAuthChecking && (
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', color: '#aaa', textAlign: 'center'}}>
-              Выберите предмет для просмотра деталей.
-            </div>
-          )
-        )}
-      </ItemDetails>
+                {selectedItem.effects && selectedItem.effects.length > 0 && (
+                  <div style={{ marginTop: '15px' }}>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Эффекты:</h4>
+                    {selectedItem.effects.map((effect, index) => (
+                      <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
+                        - {effect.description || `${effect.target || 'Неизвестная характеристика'} ${effect.modifier === 'add' ? '+' : '*'}${formatEffectValue(effect.value)}`}
+                        {effect.duration && ` (длительность: ${effect.duration} ходов)`}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedItem.requirements && Object.keys(selectedItem.requirements).length > 0 && (
+                  <div style={{ marginTop: '15px' }}>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Требования:</h4>
+                    {Array.isArray(selectedItem.requirements) ? (
+                      selectedItem.requirements.map((req, index) => (
+                        <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
+                          - {(req.type ? req.type.charAt(0).toUpperCase() + req.type.slice(1) : `Требование ${index + 1}`)}: {formatEffectValue(req.value)}
+                        </div>
+                      ))
+                    ) : (
+                      Object.entries(selectedItem.requirements).map(([key, value]) => (
+                        <div key={key} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
+                          - {key.charAt(0).toUpperCase() + key.slice(1)}: {formatEffectValue(value)}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+                
+                <div style={{marginTop: '20px'}}>
+                  {equipableTypes.includes(selectedItem.type) && (
+                    <ActionButton
+                      onClick={handleEquipItem}
+                      disabled={isLoading}
+                    >
+                      {selectedItem.equipped ? 'Снять' : 'Экипировать'}
+                    </ActionButton>
+                  )}
+
+                  {consumableTypes.includes(selectedItem.type) &&
+                   !(selectedItem.type === 'pill' && !consumableTypes.includes('pill')) && (
+                    <ActionButton
+                      onClick={handleConsumeItem}
+                      disabled={isLoading}
+                    >
+                      Использовать
+                    </ActionButton>
+                   )
+                  }
+                </div>
+              </>
+            ) : (
+              (itemsToDisplay.length > 0) && !isLoading && !isAuthChecking && (
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', color: '#aaa', textAlign: 'center'}}>
+                  Выберите предмет для просмотра деталей.
+                </div>
+              )
+            )}
+          </ItemDetails>
+        </>
+      ) : (
+        <div style={{ gridColumn: '1 / -1', padding: '20px', textAlign: 'center', color: '#aaa' }}>
+          Инвентарь пуст.
+        </div>
+      )}
       <CurrencyInfo>
         <CurrencyItem>Духовные камни: <span>{state.player.inventory.currency?.spiritStones || 0}</span></CurrencyItem>
         <CurrencyItem>Медь: <span>{state.player.inventory.currency?.copper || 0}</span></CurrencyItem>
         <CurrencyItem>Серебро: <span>{state.player.inventory.currency?.silver || 0}</span></CurrencyItem>
-        <CurrencyItem>Золото: <span>{state.player.inventory.currency?.gold || 0}</span></CurrencyItem> 
-       
+        <CurrencyItem>Золото: <span>{state.player.inventory.currency?.gold || 0}</span></CurrencyItem>
       </CurrencyInfo>
     </Container>
   );
