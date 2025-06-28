@@ -220,7 +220,7 @@ class InventoryService {
                 }
               )
             ]);
-            
+             
             //console.log(`[API] Найдено данных алхимии для ${catalogItem.name} (из ${sourceTable}): ${effects.length} эффектов, ${requirements.length} свойств, ${specialEffects.length} статистик`);
           }
           

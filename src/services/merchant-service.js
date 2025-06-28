@@ -10,7 +10,7 @@ const modelRegistry = require('../models/registry');
 const { calculateMerchantDiscount, applyLoyaltyDiscount } = require('../utils/sectRelationshipSyncer');
 const { sequelize } = require('../services/database'); // Импортируем sequelize для транзакций
 const InventoryService = require('./inventory-service'); // Импортируем сервис инвентаря для обновления инвентаря пользователя
-
+const ItemImage = require('../models/item-image');
 // Импортируем константы из общего файла
 const { merchantTypes, merchantRarityLevels } = require('../data/merchant-constants');
 const { checkItemRequirements } = require('./equipment-service');
@@ -240,21 +240,27 @@ exports.getMerchantInventory = async function(merchantId, userId) {
     }
     // Возврат с "обогащением"
     const merchantPromises = inventory.map(async (item) => {
+      let item_image = await ItemImage.findByPk(item.itemId);
+
+      if (item_image !== null){
+        item.dataValues.image_url = item_image.image_url;
+      }
       const itemDetails = await InventoryService.getItemDetails(item.itemId);
       const itemData = item.get({ plain: true });
       // Применяем скидки к ценам
       const finalPrice = Math.floor(itemData.price * (1 - discount));
-      
-      return {
+
+      return { 
         ...itemDetails.item,
         ...itemData,
         basePrice: itemData.price,
         price: finalPrice,
         discount
       };
+      
     }); 
-
     const merchant_inventory = Promise.all(merchantPromises);
+   // console.log(await merchant_inventory);
     return merchant_inventory;
     // Применяем скидки к ценам
     /*return inventory.map(item => {

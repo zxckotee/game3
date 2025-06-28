@@ -115,6 +115,13 @@ const ItemIcon = styled.div`
   align-items: center;
   justify-content: center;
   font-size: 20px;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const ItemInfo = styled.div`
@@ -334,6 +341,20 @@ const MarketTab = () => {
   
   const [quantity, setQuantity] = useState(1);
   
+  const formatEffectValue = (value) => {
+    if (typeof value === 'number') {
+      return Number(value.toFixed(2)).toString();
+    }
+    if (typeof value === 'object' && value !== null) {
+      if (value.hasOwnProperty('value') && (typeof value.value === 'string' || typeof value.value === 'number')) {
+        return value.value.toString();
+      }
+      console.warn('[MarketTab] formatEffectValue получил неожиданный объект:', value);
+      return '[Объект]';
+    }
+    return value;
+  };
+
   // Вспомогательная функция для получения текущего выбранного товара в зависимости от активной вкладки
   const getCurrentSelectedItem = () => {
     switch (activeTab) {
@@ -369,7 +390,6 @@ const MarketTab = () => {
   const [activeSellerFilter, setActiveSellerFilter] = useState(null); // Фильтр по ID продавца (торговца)
   const [isLoading, setIsLoading] = useState(false); // Состояние загрузки данных
   const [loadError, setLoadError] = useState(null); // Ошибка загрузки
-  const [lastUpdateTime, setLastUpdateTime] = useState(0); // Время последнего обновления данных
   
   // Создаем функцию для получения правильного ID пользователя
   const getUserId = () => {
@@ -402,83 +422,65 @@ const MarketTab = () => {
     console.warn('Не удалось определить ID пользователя, используем дефолтный ID=1');
     return 1;
   };
+
+  // Функция для получения уровня отношений с торговцем
+  const getRelationshipLevel = (merchantId, allMerchants = market.merchants) => {
+    if (!allMerchants) return 'neutral';
+    // Предполагаем, что у каждого торговца есть поле 'faction'
+    const merchant = allMerchants.find(m => m.id === merchantId);
+    if (!merchant || !merchant.faction) return 'neutral';
+    
+    const factionReputation = player.reputation[merchant.faction];
+    if (!factionReputation) return 'neutral';
+    
+    if (factionReputation >= 1000) return 'honored';
+    if (factionReputation >= 500) return 'friendly';
+    if (factionReputation <= -500) return 'hostile';
+    return 'neutral';
+  };
+
   // Создаем выделенную функцию обновления, которую можно вызывать из любого места
-  const refreshMarketData = useCallback(async (force = false) => {
-    // Проверка, не было ли обновление данных слишком недавно (минимальный интервал 5 секунд)
-    const now = Date.now();
-    if (!force && now - lastUpdateTime < 5000) {
-      console.log('Пропускаем обновление - прошло менее 5 секунд с последнего запроса');
-      return;
-    }
-    
-    // Обновляем время последнего запроса
-    setLastUpdateTime(now);
-    
-    // Обновляем состояние загрузки
+  const refreshMarketData = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
     
-    
     try {
-      // Получаем ID текущего пользователя с помощью улучшенной функции
       const userId = getUserId();
-      
-      // Сохраняем ID для будущего использования, если он не дефолтный
-      if (userId !== 1) {
-        localStorage.setItem('userId', userId);
-        
-        // Обновляем window.currentUser для будущих запросов
-        window.currentUser = window.currentUser || {};
-        window.currentUser.id = userId;
+      if (!userId) {
+        setIsLoading(false);
+        return;
       }
       
       console.log(`Обновление данных о торговцах для пользователя ID: ${userId}`);
       
-      // Асинхронно получаем данные о торговцах, включая их инвентарь
       const merchants = await getAllMerchants(userId);
       console.log('Получено торговцев:', merchants);
       
-      // Преобразуем данные о предметах торговцев в формат для отображения на рынке
       const marketItems = [];
       
-      // Обрабатываем инвентарь каждого торговца
       merchants.forEach(merchant => {
-        // Получаем уровень отношений с этим торговцем для скидок
-        const relationshipLevel = getRelationshipLevel(merchant.id);
+        const relationshipLevel = getRelationshipLevel(merchant.id, merchants);
         
-        // Проверяем наличие предметов у торговца
         if (merchant.items && merchant.items.length > 0) {
           merchant.items.forEach(item => {
-            // Пропускаем предметы типа "currency"
             if (item.itemType === 'currency') {
               return;
             }
             
-            // Применяем скидку на основе отношений
             const basePrice = item.basePrice || item.price || 100;
             const discount = calculateMerchantDiscount(relationshipLevel);
             const finalPrice = Math.round(applyLoyaltyDiscount(basePrice, relationshipLevel).finalPrice);
             
-            // Создаем объект предмета для отображения
             const marketItem = {
+              ...item,
               id: marketItems.length + 1,
-              itemId: item.itemId,
-              itemType: item.itemType,
-              name: item.name || `Предмет ${item.itemId}`,
-              description: item.description || `Описание предмета ${item.itemId}`,
-              rarity: item.rarity || 'common',
-              quantity: item.quantity < 0 ? 10 : item.quantity,
               price: finalPrice,
               originalPrice: basePrice,
               discount: discount,
               sellerId: merchant.id,
               sellerName: merchant.name,
-              maxQuantity: item.maxQuantity || item.max_quantity || 10,
-              restockRate: item.restockRate || item.restock_rate || 1,
-              lastRestockTime: item.lastRestockTime || item.last_restock_time || 0
             };
             
-            // Копируем специфические свойства предмета
             if (item.itemType === 'pet_food') {
               if (item.nutritionValue !== undefined) {
                 marketItem.nutritionValue = item.nutritionValue;
@@ -493,756 +495,266 @@ const MarketTab = () => {
         }
       });
   
-      // Обновляем Redux состояние
       actions.dispatch({
         type: ACTION_TYPES.UPDATE_MARKET_STATE,
         payload: {
           marketItems,
           merchants,
-          isLoading: false,
-          lastUpdated: new Date().toISOString() // Добавляем timestamp обновления
+          lastUpdated: Date.now()
         }
       });
-    } catch (error) {
-      console.error('Ошибка при загрузке данных о торговцах:', error);
-      setLoadError('Не удалось загрузить данные рынка. Пожалуйста, попробуйте позже.');
       
+    } catch (error) {
+      console.error('Ошибка при обновлении данных о торговцах:', error);
+      setLoadError(error);
       actions.dispatch({
-        type: ACTION_TYPES.UPDATE_MARKET_STATE,
-        payload: { error: 'Ошибка загрузки данных', isLoading: false }
+        type: ACTION_TYPES.MARKET_DATA_FETCH_FAILED,
+        payload: { error: error.message }
       });
     } finally {
       setIsLoading(false);
     }
-  }, [player?.id, state?.auth?.user?.id, actions, lastUpdateTime, setLastUpdateTime]);
-
-  // Оптимизированная загрузка данных рынка - для вкладок "Товары" и "Продажа"
+  }, []);
   
+  // Эффект для первоначальной загрузки и при смене локации
   useEffect(() => {
-    if (activeTab === 'market' || activeTab === 'sell') {
-      if (!market?.marketItems || market.marketItems.length === 0 || !market.lastUpdated) {
-        console.log('Первичная загрузка данных рынка для вкладки:', activeTab);
-        refreshMarketData(true);
-      } else {
-        const lastUpdate = new Date(market.lastUpdated);
-        const now = new Date();
-        const diffInMinutes = (now - lastUpdate) / (1000 * 60);
-        
-        if (diffInMinutes > 5) {
-          console.log('Данные устарели, обновляем');
-          refreshMarketData(true);
-        } else {
-          console.log('Используем кэшированные данные рынка');
-        }
-      }
+    refreshMarketData();
+  }, [refreshMarketData, state.world.currentLocation?.id]);
+  
+  // Обработчик выбора предмета
+  const handleSelectItem = (item) => {
+    if (selectedMarketItem?.id !== item.id) {
+      setSelectedMarketItemId(item.id);
     }
-  }, [activeTab, market?.marketItems, market?.lastUpdated, refreshMarketData]);
-  
-  // Сброс выбранного предмета при изменении фильтров в вкладке "Товары"
-  useEffect(() => {
-    if (activeTab === 'market') {
-      setSelectedMarketItem(null);
-      setSelectedMarketItemId(null);
-    }
-  }, [itemTypeFilter, rarityFilter, activeSellerFilter, searchQuery, activeTab === 'market']);
-  
-  // Сброс выбранного предмета при изменении фильтров в вкладке "Продажа"
-  useEffect(() => {
+    
+    updateSelectedItemForCurrentTab(item);
+    setQuantity(1);
+    
     if (activeTab === 'sell') {
-      setSelectedSellItem(null);
-      setSelectedSellItemId(null);
-    }
-  }, [itemTypeFilter, rarityFilter, searchQuery, activeTab === 'sell']);
-  
-  // Восстановление выбранного предмета вкладки "Товары" после обновления данных
-  useEffect(() => {
-    if (market?.marketItems && selectedMarketItemId) {
-      const item = market.marketItems.find(item => item.id === selectedMarketItemId);
-      if (item) {
-        setSelectedMarketItem(item);
-      }
-    }
-  }, [market?.marketItems, selectedMarketItemId]);
-  
-  // Восстановление выбранного предмета вкладки "Продать"
-  useEffect(() => {
-    if (player?.inventory?.items && selectedSellItemId) {
-      const item = player.inventory.items.find(item => item.id === selectedSellItemId);
-      if (item) {
-        setSelectedSellItem(item);
-      }
-    }
-  }, [player?.inventory?.items, selectedSellItemId]);
-  
-  // Восстановление выбранного торговца после обновления данных
-  useEffect(() => {
-    if (market?.merchants && selectedMerchantItemId) {
-      const merchant = market.merchants.find(m => m.id === selectedMerchantItemId);
-      if (merchant) {
-        setSelectedMerchantItem({
-          id: merchant.id,
-          name: merchant.name
+      const suitableMerchant = findSuitableMerchant(item);
+      if (suitableMerchant) {
+        setSelectedMerchant({
+          id: suitableMerchant.id,
+          name: suitableMerchant.name
         });
+      } else {
+        setSelectedMerchant(null);
       }
     }
-  }, [market?.merchants, selectedMerchantItemId]);
-  
-  // Фильтрация предметов
-  const filteredItems = React.useMemo(() => {
-    if (!market || !market.marketItems) {
-      return [];
-    }
-    
-    const filtered = market.marketItems.filter(item => {
-      // Фильтр по количеству - скрываем товары с количеством 0
-      if (item.quantity <= 0) {
-        return false;
-      }
-      
-      // Фильтр по поисковому запросу
-      const matchesSearch = searchQuery === '' || 
-        (item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      // Фильтр по типу предмета
-      const matchesType = itemTypeFilter === 'all' || (item.itemType && item.itemType === itemTypeFilter);
-      
-      // Фильтр по редкости
-      const matchesRarity = rarityFilter === 'all' || (item.rarity && item.rarity === rarityFilter);
-      
-      // Фильтр по продавцу (торговцу) - приводим к числовому типу для корректного сравнения
-      const itemSellerId = Number(item.sellerId);
-      const filterSellerId = Number(activeSellerFilter);
-      const matchesSeller = activeSellerFilter === null || 
-                           (item.sellerId !== undefined && itemSellerId === filterSellerId);
-      
-      return matchesSearch && matchesType && matchesRarity && matchesSeller;
-    });
-    
-    return filtered;
-  }, [market?.marketItems, searchQuery, itemTypeFilter, rarityFilter, activeSellerFilter]);
-  
-  // Получение уровня отношений с торговцем
-  const getRelationshipLevel = (merchantId) => {
-    // Извлекаем отношения из социальной структуры игрока
-    let playerRelationships = state?.player?.social?.relationships || [];
-    
-    // Убедимся, что playerRelationships - это массив
-    if (!Array.isArray(playerRelationships)) {
-      console.warn('Отношения не являются массивом, преобразуем их:', playerRelationships);
-      playerRelationships = typeof playerRelationships === 'object' && playerRelationships !== null
-        ? Object.values(playerRelationships)
-        : [];
-    }
-    
-    // Ищем торговца в кэшированных данных
-    const cachedMerchants = market?.merchants || [];
-    const merchantData = cachedMerchants.find(m => m.id === merchantId);
-    if (!merchantData) {
-      return 0;
-    }
-    
-    // Проверяем отношения в социальной структуре по имени торговца
-    const socialRelation = playerRelationships.find(rel => rel.name === merchantData.name);
-    if (socialRelation && socialRelation.level !== undefined) {
-      return socialRelation.level;
-    }
-    
-    // Проверяем через связь с сектой
-    if (merchantData.sect && state?.sect?.sect) {
-      const sectName = state.sect.sect.name;
-      if (merchantData.sect === sectName) {
-        // Сначала проверяем, является ли торговец членом секты
-        if (state.sect.sect.members && Array.isArray(state.sect.sect.members)) {
-          const sectMember = state.sect.sect.members.find(m => m.name === merchantData.name);
-          if (sectMember && sectMember.loyalty !== undefined) {
-            return sectMember.loyalty;
-          }
-        }
-        
-        // Если торговец не найден среди членов секты, но связан с ней
-        const sectRelation = playerRelationships.find(rel => rel.name === sectName);
-        if (sectRelation && sectRelation.level !== undefined) {
-          return sectRelation.level;
-        }
-      }
-    }
-    
-    return 0;
   };
   
   // Функция для определения типа валюты по редкости
   const getCurrencyTypeByRarity = (rarity) => {
     switch(rarity) {
-      case 'common': return 'copper';
-      case 'uncommon': return 'silver';
-      case 'rare': return 'gold';
-      case 'epic': return 'gold+spiritStones';
       case 'legendary': return 'spiritStones';
-      default: return 'gold';
+      case 'epic': return 'gold';
+      case 'rare': return 'silver';
+      default: return 'copper';
     }
   };
   
-  // Форматирование отображения цены в зависимости от типа валюты
+  // Функция для форматирования цены
   const formatPrice = (price, rarity) => {
     const currencyType = getCurrencyTypeByRarity(rarity);
-    
     switch(currencyType) {
-      case 'copper':
-        return `${price} меди`;
-      case 'silver':
-        return `${price} серебра`;
-      case 'gold':
-        return `${price} золота`;
-      case 'gold+spiritStones':
-        return `${Math.floor(price * 0.7)} золота + ${Math.ceil(price * 0.3 / 100)} дух. камней`;
-      case 'spiritStones':
-        return `${Math.ceil(price / 100)} дух. камней`;
-      default:
-        return `${price} золота`;
+      case 'spiritStones': return `${price} Камней духа`;
+      case 'gold': return `${price} золота`;
+      case 'silver': return `${price} серебра`;
+      default: return `${price} меди`;
     }
   };
   
-  // Функция для получения цены предмета из marketItems
+  // Функция для получения цены предмета (для продажи)
   const getItemPrice = (item) => {
-    if (!market?.marketItems || !item) return null;
-    
-    // Поиск по ID (приоритетный способ)
-    const marketItem = market.marketItems.find(marketItem =>
-      marketItem.itemId === item.id
-    );
-    
-    if (marketItem) {
-      return marketItem.price;
-    }
-    
-    // Если не найдено по ID, ищем по имени, типу и редкости
-    const fallbackItem = market.marketItems.find(marketItem =>
-      marketItem.name === item.name &&
-      marketItem.itemType === item.type &&
-      marketItem.rarity === item.rarity
-    );
-    
-    if (fallbackItem) {
-      return fallbackItem.price;
-    }
-    
-    return null;
+    const marketItem = market.marketItems.find(mi => mi.itemId === item.itemId);
+    return marketItem ? marketItem.originalPrice : item.price;
   };
   
-  // Проверка достаточности валюты для покупки
+  // Функция для проверки, достаточно ли у игрока валюты
   const hasSufficientCurrency = (price, rarity) => {
     const currencyType = getCurrencyTypeByRarity(rarity);
-    const totalPrice = price * quantity;
+    const currency = player.currency || {};
     
     switch(currencyType) {
-      case 'copper':
-        return (player.inventory.currency.copper || 0) >= totalPrice;
-      case 'silver':
-        return (player.inventory.currency.silver || 0) >= totalPrice;
-      case 'gold':
-        return (player.inventory.currency.gold || 0) >= totalPrice;
-      case 'gold+spiritStones': {
-        const goldCost = Math.floor(totalPrice * 0.7);
-        const spiritStonesCost = Math.ceil(totalPrice * 0.3 / 100);
-        return (player.inventory.currency.gold || 0) >= goldCost && 
-               (player.inventory.currency.spiritStones || 0) >= spiritStonesCost;
-      }
-      case 'spiritStones':
-        return (player.inventory.currency.spiritStones || 0) >= Math.ceil(totalPrice / 100);
-      default:
-        return (player.inventory.currency.gold || 0) >= totalPrice;
+      case 'spiritStones': return (currency.spiritStones || 0) >= price;
+      case 'gold': return (currency.gold || 0) >= price;
+      case 'silver': return (currency.silver || 0) >= price;
+      default: return (currency.copper || 0) >= price;
     }
   };
   
   // Обработчик покупки предмета
   const handleBuyItem = async () => {
-    if (!selectedMarketItem) return;
+    const selectedItem = getCurrentSelectedItem();
+    if (!selectedItem) return;
     
-    // Получаем тип валюты в зависимости от редкости
-    const currencyType = getCurrencyTypeByRarity(selectedMarketItem.rarity);
-    const totalPrice = selectedMarketItem.price * quantity;
-    
-    // Проверка наличия достаточного количества валюты
-    if (!hasSufficientCurrency(selectedMarketItem.price, selectedMarketItem.rarity)) {
-      alert(`Недостаточно ${
-        currencyType === 'copper' ? 'меди' :
-        currencyType === 'silver' ? 'серебра' :
-        currencyType === 'gold' ? 'золота' :
-        currencyType === 'gold+spiritStones' ? 'золота или духовных камней' :
-        'духовных камней'
-      } для покупки`);
+    if (!hasSufficientCurrency(selectedItem.price * quantity, selectedItem.rarity)) {
+      actions.addNotification({ message: 'Недостаточно средств!', type: 'error' });
       return;
     }
     
-    // Проверяем, достаточно ли товаров у торговца
-    if (selectedMarketItem.quantity < quantity) {
-      alert(`У торговца недостаточно товаров. Доступно: ${selectedMarketItem.quantity}`);
+    if (quantity > selectedItem.quantity) {
+      actions.addNotification({ message: 'Нельзя купить больше, чем есть в наличии!', type: 'error' });
       return;
     }
     
-    // Отладочный вывод для отслеживания валюты до покупки
-    console.log('Валюта до покупки:', player.inventory.currency);
-    
-    // Создаем объект для обновления валюты с отрицательными значениями
-    // Эти значения будут добавлены к текущей валюте (вычтены, т.к. отрицательные)
-    const currencyUpdate = {};
-    
-    // Вычисляем изменения валюты в зависимости от типа
-    switch(currencyType) {
-      case 'copper':
-        currencyUpdate.copper = -totalPrice; // Просто отрицательное значение для вычитания
-        break;
-      case 'silver':
-        currencyUpdate.silver = -totalPrice; // Просто отрицательное значение для вычитания
-        break;
-      case 'gold':
-        currencyUpdate.gold = -totalPrice; // Просто отрицательное значение для вычитания
-        break;
-      case 'gold+spiritStones': {
-        const goldCost = Math.floor(totalPrice * 0.7);
-        const spiritStonesCost = Math.ceil(totalPrice * 0.3 / 100);
-        currencyUpdate.gold = -goldCost; // Отрицательное значение для вычитания
-        currencyUpdate.spiritStones = -spiritStonesCost; // Отрицательное значение для вычитания
-        break;
-      }
-      case 'spiritStones':
-        currencyUpdate.spiritStones = -Math.ceil(totalPrice / 100); // Отрицательное значение для вычитания
-        break;
-    }
-    
-    // Вывод сообщения о покупке
-    alert(`Покупка ${quantity} шт. предмета "${selectedMarketItem.name}" за ${formatPrice(totalPrice, selectedMarketItem.rarity)}`);
+    setIsLoading(true);
     
     try {
-      // Получаем корректный ID пользователя
       const userId = getUserId();
       
-      // Сохраняем ID для будущего использования, если он не дефолтный
-      if (userId !== 1) {
-        localStorage.setItem('userId', userId);
-        window.currentUser = window.currentUser || {};
-        window.currentUser.id = userId;
-      }
-      
-      // Используем строковый идентификатор предмета (item_id)
-      const itemId = selectedMarketItem.item_id || selectedMarketItem.itemId || selectedMarketItem.id;
-      const sellerId = selectedMarketItem.sellerId;
-      
-      console.log('Отправляем запрос на покупку товара с параметрами:', {
-        sellerId,
-        itemId,
-        userId,
-        quantity
-      });
-      
-      if (!itemId || !sellerId) {
-        console.error('Ошибка: отсутствует идентификатор предмета или sellerId в selectedItem:', selectedMarketItem);
-        return;
-      }
-      
-      // Вызываем новый API-метод для покупки товара с обновлением инвентаря в БД
-      const result = await buyItemFromMerchant(
-        sellerId,
-        itemId,
-        userId,
-        quantity
-      );
+      const result = await buyItemFromMerchant(userId, selectedItem.sellerId, selectedItem.itemId, quantity);
       
       if (result.success) {
-        console.log('Покупка успешно завершена:', result);
+        actions.addNotification({ message: `Вы купили ${selectedItem.name} x${quantity}`, type: 'success' });
         
-        // Создаем объект для добавления в инвентарь Redux
-        const itemToAdd = {
-          id: selectedMarketItem.itemId, // itemId должен быть строковым идентификатором типа 'jade_pendant'
-          type: selectedMarketItem.itemType,
-          name: selectedMarketItem.name,
-          description: selectedMarketItem.description,
-          quality: selectedMarketItem.rarity, // Используем rarity из БД как quality в Redux
-          price: selectedMarketItem.price,
-          quantity: quantity // Указываем количество покупаемых предметов
-        };
+        const currencyType = getCurrencyTypeByRarity(selectedItem.rarity);
+        const price = selectedItem.price * quantity;
         
-        // Для обратной совместимости с кодом, ожидающим поле rarity
-        if (!itemToAdd.rarity) {
-          itemToAdd.rarity = selectedMarketItem.rarity;
-        }
-        
-        // Для товаров для питомцев, добавляем специфические свойства
-        if (selectedMarketItem.itemType === 'pet_food') {
-          // Копируем все свойства, которые могут быть полезны для кормления питомцев
-          if (selectedMarketItem.nutritionValue !== undefined) {
-            itemToAdd.nutritionValue = selectedMarketItem.nutritionValue;
-          }
-          if (selectedMarketItem.loyaltyBonus !== undefined) {
-            itemToAdd.loyaltyBonus = selectedMarketItem.loyaltyBonus;
-          }
-          // Добавляем другие возможные свойства питомцев
-          if (selectedMarketItem.statBonus) {
-            itemToAdd.statBonus = selectedMarketItem.statBonus;
-          }
-          if (selectedMarketItem.preferredTypes) {
-            itemToAdd.preferredTypes = selectedMarketItem.preferredTypes;
-          }
-        }
-        // Обновляем Redux-состояние
-        actions.addItem(itemToAdd);
-        actions.updateCurrency(currencyUpdate, true);
-        
-        // Отправляем специальное действие для покупки на рынке через dispatch напрямую
-        const action = {
-          type: ACTION_TYPES.BUY_MARKET_ITEM,
-          payload: {
-            item: itemToAdd,
-            quantity,
-            merchant: selectedMerchant
-          }
-        };
-        
-        // Используем dispatchEvent для отправки действия через DOM-события
-        // Это позволит middleware отловить и обработать действие
-        const customEvent = new CustomEvent('redux-action', {
-          detail: action,
-          bubbles: true
+        actions.dispatch({
+          type: ACTION_TYPES.UPDATE_CURRENCY,
+          payload: { [currencyType]: -price }
         });
-        document.dispatchEvent(customEvent);
         
-        // Отправляем текущие отношения на сервер после покупки
-        try {
-          const relationships = state.player.social?.relationships || [];
-          await CharacterProfileService.updateRelationships(userId, relationships);
-          console.log('Отношения обновлены на сервере после покупки товара');
-        } catch (error) {
-          console.error('Ошибка при обновлении отношений после покупки:', error);
-        }
+        const itemToAdd = {
+          ...selectedItem,
+          id: result.inventoryItemId,
+          quantity: quantity
+        };
         
+        actions.dispatch({
+          type: ACTION_TYPES.ADD_ITEM_TO_INVENTORY,
+          payload: itemToAdd
+        });
         
-        // Запрашиваем обновление данных рынка
-        refreshMarketData(true);
+        refreshMarketData();
+        updateSelectedItemForCurrentTab(null);
         
-        console.log('Локальное состояние обновлено, данные рынка обновлены');
       } else {
-        console.error('Ошибка при покупке предмета:', result.message);
-        alert(`Ошибка при покупке: ${result.message}`);
+        actions.addNotification({ message: result.message || 'Ошибка при покупке', type: 'error' });
       }
+      
     } catch (error) {
       console.error('Ошибка при покупке предмета:', error);
-      alert('Произошла ошибка при покупке. Пожалуйста, попробуйте еще раз.');
+      actions.addNotification({ message: 'Произошла ошибка на сервере', type: 'error' });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setSelectedMarketItem(null);
-    setSelectedMarketItemId(null);
-    setQuantity(1);
   };
   
   // Обработчик продажи предмета
   const handleSellItem = async () => {
-    if (!selectedSellItem) return;
-    
-    // Логирование для диагностики
-    console.log('Продажа товара. Состояние:', {
-      selectedItem: selectedSellItem,
-      selectedMerchant,
-      quantity,
-      userId: getUserId()
-    });
-    
-    // Дополнительная проверка: если торговец не выбран, но есть данные рынка, пробуем найти подходящего
-    if (!selectedMerchant && market?.marketItems?.length > 0) {
-      // Выводим информацию о предмете игрока для отладки
-      console.log(`Попытка автоматического поиска торговца для товара:`, {
-        id: selectedSellItem.id,
-        name: selectedSellItem.name,
-        type: selectedSellItem.type,
-        quality: selectedSellItem.quality
-      });
-      
-      // Используем гибкое сопоставление с учетом структуры данных
-      const matchingMarketItem = market.marketItems.find(marketItem => {
-        // Основное сопоставление: itemId торговца должен совпадать с id предмета инвентаря
-        if (marketItem.itemId === selectedSellItem.id) return true;
-        
-        // Дополнительные проверки
-        // Проверка по имени предмета как запасной вариант
-        if (marketItem.name && selectedSellItem.name &&
-            marketItem.name.toLowerCase() === selectedSellItem.name.toLowerCase()) {
-          // Дополнительно проверяем совпадение типа и редкости
-          if ((marketItem.itemType === selectedSellItem.type) &&
-              (marketItem.rarity === selectedSellItem.quality)) {
-            return true;
-          }
-        }
-        
-        return false;
-      });
-      
-      // Выводим все доступные товары в консоль для отладки, если не найдено совпадение
-      if (!matchingMarketItem) {
-        console.log('Не найдено совпадение в handleSellItem. Доступные товары:',
-          market.marketItems.map(item => ({
-            id: item.id,
-            itemId: item.itemId,
-            name: item.name,
-            itemType: item.itemType,
-            rarity: item.rarity
-          }))
-        );
-      }
-      
-      if (matchingMarketItem && matchingMarketItem.sellerId) {
-        const merchant = market.merchants?.find(m => m.id === matchingMarketItem.sellerId);
-        if (merchant) {
-          setSelectedMerchant({
-            id: merchant.id,
-            name: merchant.name
-          });
-          console.log(`Автоматически выбран торговец: ${merchant.name} (ID: ${merchant.id})`);
-          // Небольшая задержка для обновления состояния
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } else {
-          // Если нашли товар, но не нашли торговца, ищем его в списке торговцев
-          console.log(`Найден подходящий товар с sellerId=${matchingMarketItem.sellerId}, но торговец не найден в market.merchants`);
-          
-          if (market?.merchants) {
-            console.log('Доступные торговцы:', market.merchants.map(m => ({
-              id: m.id,
-              name: m.name
-            })));
-          }
-        }
-      } else {
-        // Если не удалось найти товар по нашей логике, выводим больше информации для отладки
-        console.log('Не удалось найти подходящий товар. Предмет для продажи:', {
-          id: selectedSellItem.id,
-          name: selectedSellItem.name,
-          type: selectedSellItem.type,
-          quality: selectedSellItem.quality
-        });
-        
-        // Пробуем найти торговца еще раз после обновления данных
-        if (market?.marketItems) {
-          // Используем id выбранного предмета вместо несуществующей переменной itemIdentifier
-          const refreshedItem = market.marketItems.find(
-            marketItem => marketItem.itemId === selectedSellItem.id
-          );
-          
-          if (refreshedItem && refreshedItem.sellerId) {
-            const refreshedMerchant = market.merchants?.find(m => m.id === refreshedItem.sellerId);
-            if (refreshedMerchant) {
-              setSelectedMerchant({
-                id: refreshedMerchant.id,
-                name: refreshedMerchant.name
-              });
-              console.log(`Торговец найден после обновления: ${refreshedMerchant.name}`);
-              // Небольшая задержка для обновления состояния
-              await new Promise(resolve => setTimeout(resolve, 100));
-            }
-          }
-        }
-      }
-    }
-    
-    // Проверка наличия выбранного торговца
-    if (!selectedMerchant || !selectedMerchant.id) {
-      alert("Этот предмет нельзя продать - подходящий торговец не найден");
+    if (!selectedSellItem || !selectedMerchant) {
+      actions.addNotification({ message: 'Выберите предмет и торговца для продажи', type: 'warning' });
       return;
     }
     
-    // Получаем корректный ID пользователя
-    const userId = getUserId();
-    
-    // Сохраняем ID для будущего использования, если он не дефолтный
-    if (userId !== 1) {
-      localStorage.setItem('userId', userId);
-      window.currentUser = window.currentUser || {};
-      window.currentUser.id = userId;
-    }
-    
-    // Получаем цену из marketItems
-    const itemPrice = getItemPrice(selectedSellItem);
-    
-    // Проверка наличия цены предмета
-    if (!itemPrice) {
-      alert("Этот предмет нельзя продать");
+    const price = getItemPrice(selectedSellItem);
+    if (!price) {
+      actions.addNotification({ message: 'Этот предмет нельзя продать', type: 'error' });
       return;
     }
     
-    // Проверка наличия достаточного количества предметов
-    if (selectedSellItem.quantity < quantity) {
-      alert("У вас недостаточно предметов для продажи");
-      return;
-    }
-    
-    // Определяем тип валюты в зависимости от редкости предмета
-    const currencyType = getCurrencyTypeByRarity(selectedSellItem.rarity || 'common');
-    
-    // Вычисляем сумму валюты, которую нужно добавить (70% от базовой цены)
-    const sellPrice = Math.floor(itemPrice * 0.7) * quantity;
-    
-    // Создаем объект с валютой в зависимости от типа
-    const currencyToAdd = {};
-    
-    switch(currencyType) {
-      case 'copper':
-        currencyToAdd.copper = sellPrice;
-        break;
-      case 'silver':
-        currencyToAdd.silver = sellPrice;
-        break;
-      case 'gold':
-        currencyToAdd.gold = sellPrice;
-        break;
-      case 'gold+spiritStones': {
-        const goldAmount = Math.floor(sellPrice * 0.7);
-        const spiritStonesAmount = Math.ceil(sellPrice * 0.3 / 100);
-        currencyToAdd.gold = goldAmount;
-        currencyToAdd.spiritStones = spiritStonesAmount;
-        break;
-      }
-      case 'spiritStones':
-        currencyToAdd.spiritStones = Math.ceil(sellPrice / 100);
-        break;
-      default:
-        currencyToAdd.gold = sellPrice;
-    }
-    
-    // Вывод сообщения о продаже
-    alert(`Продажа ${quantity} шт. предмета "${selectedSellItem.name}" за ${formatPrice(sellPrice, selectedSellItem.rarity)}`);
+    setIsLoading(true);
     
     try {
-      console.log(`Отправка API-запроса продажи товара с ID пользователя: ${userId}`);
+      const userId = getUserId();
+      const sellPrice = Math.floor(price * 0.7) * quantity;
       
-      // Подготавливаем данные о предмете для отправки на сервер
-      const itemData = {
-        item_id: selectedSellItem.id, // Используем item_id как основной идентификатор
-        itemId: selectedSellItem.itemId || selectedSellItem.id, // Для совместимости
-        id: selectedSellItem.id, // Для обратной совместимости
-        type: selectedSellItem.type,
-        name: selectedSellItem.name,
-        description: selectedSellItem.description,
-        rarity: selectedSellItem.rarity || selectedSellItem.quality,
-        basePrice: selectedSellItem.price
-      };
-      
-      // Вызываем новый API-метод для продажи товара с обновлением инвентаря в БД
-      const result = await sellItemToMerchant(
-        selectedMerchant.id,
-        itemData,
-        userId,
-        quantity
-      );
+      const result = await sellItemToMerchant(userId, selectedMerchant.id, selectedSellItem.itemId, quantity);
       
       if (result.success) {
-        console.log('Продажа успешно завершена:', result);
-        // Обновляем Redux-состояние
-        actions.removeItem(selectedSellItem.id, quantity);
-        actions.updateCurrency(currencyToAdd, true);
+        actions.addNotification({ message: `Вы продали ${selectedSellItem.name} x${quantity}`, type: 'success' });
         
-        // Отправляем специальное действие для продажи на рынке через dispatch напрямую
-        const action = {
-          type: ACTION_TYPES.SELL_MARKET_ITEM,
-          payload: {
-            itemId: selectedSellItem.id,
-            quantity,
-            merchant: selectedMerchant
-          }
-        };
+        const currencyType = getCurrencyTypeByRarity(selectedSellItem.rarity);
         
-        // Используем dispatchEvent для отправки действия через DOM-события
-        // Это позволит middleware отловить и обработать действие
-        const customEvent = new CustomEvent('redux-action', {
-          detail: action,
-          bubbles: true
+        actions.dispatch({
+          type: ACTION_TYPES.UPDATE_CURRENCY,
+          payload: { [currencyType]: sellPrice }
         });
-        document.dispatchEvent(customEvent);
         
-        // Отправляем текущие отношения на сервер после продажи
-        try {
-          const relationships = state.player.social?.relationships || [];
-          await CharacterProfileService.updateRelationships(userId, relationships);
-          console.log('Отношения обновлены на сервере после продажи товара');
-        } catch (error) {
-          console.error('Ошибка при обновлении отношений после продажи:', error);
-        }
+        actions.dispatch({
+          type: ACTION_TYPES.REMOVE_ITEM_FROM_INVENTORY,
+          payload: { itemId: selectedSellItem.itemId, quantity: quantity }
+        });
         
+        refreshMarketData();
+        setSelectedSellItem(null);
         
-        // Запрашиваем обновление данных рынка
-        refreshMarketData(true);
-        
-        console.log('Локальное состояние обновлено, данные рынка обновлены');
       } else {
-        console.error('Ошибка при продаже предмета:', result.message);
-        alert(`Ошибка при продаже: ${result.message}`);
+        actions.addNotification({ message: result.message || 'Ошибка при продаже', type: 'error' });
       }
+      
     } catch (error) {
       console.error('Ошибка при продаже предмета:', error);
-      alert('Произошла ошибка при продаже. Пожалуйста, попробуйте еще раз.');
+      actions.addNotification({ message: 'Произошла ошибка на сервере', type: 'error' });
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Сброс выбранного предмета и количества
-    setSelectedSellItem(null);
-    setSelectedSellItemId(null);
-    setQuantity(1);
   };
   
-  // Разметка компонента
+  // Функция для поиска подходящего торговца
+  const findSuitableMerchant = (item) => {
+    return market.merchants && market.merchants.length > 0 ? market.merchants[0] : null;
+  };
+  
+  // Функция для получения эмодзи предмета
+  const getItemEmoji = (item) => {
+    switch(item.itemType) {
+      case 'weapon': return '⚔️';
+      case 'armor': return '🛡️';
+      case 'accessory': return '💍';
+      case 'consumable': return '🧪';
+      case 'pet_food': return '🍖';
+      default: return '📦';
+    }
+  };
+  
+  // Фильтрация и поиск
+  const filteredMarketItems = market.marketItems
+    .filter(item => {
+      const sellerMatch = !activeSellerFilter || item.sellerId === activeSellerFilter;
+      const searchMatch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const typeMatch = itemTypeFilter === 'all' || item.itemType === itemTypeFilter;
+      const rarityMatch = rarityFilter === 'all' || item.rarity === rarityFilter;
+      return sellerMatch && searchMatch && typeMatch && rarityMatch;
+    });
+    
+  const filteredSellItems = player.inventory.items
+    .filter(item => item.itemType !== 'currency');
+    
+  const selectedItem = getCurrentSelectedItem();
+
   return (
     <TabContainer>
       <TabHeader>
         <TabTitle>Рынок</TabTitle>
         <CurrencyDisplay>
           <CurrencyItem>
-            <CurrencyIcon type="copper" />
-            <CurrencyValue>{player?.inventory?.currency?.copper || 0}</CurrencyValue>
+            <CurrencyIcon type="gold" />
+            <CurrencyValue>{player.currency?.gold || 0}</CurrencyValue>
           </CurrencyItem>
           <CurrencyItem>
             <CurrencyIcon type="silver" />
-            <CurrencyValue>{player?.inventory?.currency?.silver || 0}</CurrencyValue>
+            <CurrencyValue>{player.currency?.silver || 0}</CurrencyValue>
           </CurrencyItem>
           <CurrencyItem>
-            <CurrencyIcon type="gold" />
-            <CurrencyValue>{player?.inventory?.currency?.gold || 0}</CurrencyValue>
+            <CurrencyIcon type="copper" />
+            <CurrencyValue>{player.currency?.copper || 0}</CurrencyValue>
           </CurrencyItem>
           <CurrencyItem>
             <CurrencyIcon type="spiritStone" />
-            <CurrencyValue>{player?.inventory?.currency?.spiritStones || 0}</CurrencyValue>
+            <CurrencyValue>{player.currency?.spiritStones || 0}</CurrencyValue>
           </CurrencyItem>
         </CurrencyDisplay>
       </TabHeader>
       
       <TabMenu>
-        <TabButton 
-          active={activeTab === 'market'} 
-          onClick={() => setActiveTab('market')}
-        >
-          Товары
-        </TabButton>
-        <TabButton
-          active={activeTab === 'sell'}
-          onClick={() => {
-            setActiveTab('sell');
-            // При переключении на вкладку продажи, если нет выбранного торговца,
-            // выбираем первого доступного из списка
-            if (!selectedMerchant && market?.merchants && market.merchants.length > 0) {
-              const firstMerchant = market.merchants[0];
-              setSelectedMerchant({
-                id: firstMerchant.id,
-                name: firstMerchant.name
-              });
-              console.log(`Автоматически выбран торговец при переключении на вкладку продажи: ${firstMerchant.name}`);
-            }
-          }}
-        >
-          Продажа
-        </TabButton>
-        <TabButton 
-          active={activeTab === 'merchants'} 
-          onClick={() => setActiveTab('merchants')}
-        >
-          Торговцы
-        </TabButton>
+        <TabButton active={activeTab === 'market'} onClick={() => setActiveTab('market')}>Товары</TabButton>
+        <TabButton active={activeTab === 'sell'} onClick={() => setActiveTab('sell')}>Продать</TabButton>
+        <TabButton active={activeTab === 'merchants'} onClick={() => setActiveTab('merchants')}>Торговцы</TabButton>
       </TabMenu>
-      
+
       <TabContent>
         {activeTab === 'market' && (
           <>
@@ -1252,86 +764,52 @@ const MarketTab = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              
               <FilterContainer>
-                <FilterSelect 
-                  value={itemTypeFilter}
-                  onChange={(e) => setItemTypeFilter(e.target.value)}
-                >
+                <FilterSelect value={itemTypeFilter} onChange={(e) => setItemTypeFilter(e.target.value)}>
                   <option value="all">Все типы</option>
                   <option value="weapon">Оружие</option>
                   <option value="armor">Броня</option>
                   <option value="accessory">Аксессуары</option>
                   <option value="consumable">Расходники</option>
                   <option value="pet_food">Еда для питомцев</option>
-                  <option value="resource">Ресурсы</option>
-                  <option value="talisman">Талисманы</option>
-                  <option value="book">Книги</option>
-                  <option value="artifact">Артефакты</option>
-                  <option value="ingredient">Ингредиенты</option>
                 </FilterSelect>
-                
-                <FilterSelect 
-                  value={rarityFilter}
-                  onChange={(e) => setRarityFilter(e.target.value)}
-                >
-                  <option value="all">Любая редкость</option>
-                  <option value="common">Обычный</option>
-                  <option value="uncommon">Необычный</option>
-                  <option value="rare">Редкий</option>
-                  <option value="epic">Эпический</option>
-                  <option value="legendary">Легендарный</option>
-                </FilterSelect>
-                
-                <FilterSelect 
-                  value={activeSellerFilter || ''}
-                  onChange={(e) => setActiveSellerFilter(e.target.value === '' ? null : e.target.value)}
-                >
-                  <option value="">Все торговцы</option>
-                  {market?.marketItems && [...new Set(market.marketItems.map(item => item.sellerId))].map(sellerId => {
-                    const seller = market.marketItems.find(item => item.sellerId === sellerId);
-                    return (
-                      <option key={sellerId} value={sellerId}>
-                        {seller?.sellerName || `Торговец #${sellerId}`}
-                      </option>
-                    );
-                  })}
+                <FilterSelect value={rarityFilter} onChange={(e) => setRarityFilter(e.target.value)}>
+                  <option value="all">Вся редкость</option>
+                  <option value="common">Обычная</option>
+                  <option value="uncommon">Необычная</option>
+                  <option value="rare">Редкая</option>
+                  <option value="epic">Эпическая</option>
+                  <option value="legendary">Легендарная</option>
                 </FilterSelect>
               </FilterContainer>
               
               <ItemList>
-                {filteredItems.length > 0 ? (
-                  filteredItems.map(item => (
-                    <ItemCard 
-                      key={item.id} 
+                {isLoading ? (
+                  <NoItemsMessage>Загрузка...</NoItemsMessage>
+                ) : filteredMarketItems.length > 0 ? (
+                  filteredMarketItems.map(item => (
+                    <ItemCard
+                      key={item.id}
                       selected={selectedMarketItem && selectedMarketItem.id === item.id}
-                      onClick={() => {
-                        setSelectedMarketItem(item);
-                        setSelectedMarketItemId(item.id);
-                      }}
+                      onClick={() => handleSelectItem(item)}
                     >
-                      <ItemIcon>{item.itemType === 'weapon' ? '⚔️' :
-                        item.itemType === 'armor' ? '🛡️' :
-                        item.itemType === 'accessory' ? '💍' :
-                        item.itemType === 'consumable' ? '🧪' :
-                        item.itemType === 'pet_food' ? '🍖' :
-                        item.itemType === 'resource' ? '🌿' :
-                        item.itemType === 'talisman' ? '🔮' :
-                        item.itemType === 'book' ? '📚' :
-                        item.itemType === 'artifact' ? '✨' :
-                        item.itemType === 'ingredient' ? '🧪' : ''}
+                      <ItemIcon>
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} />
+                        ) : (
+                          getItemEmoji(item)
+                        )}
                       </ItemIcon>
                       <ItemInfo>
                         <ItemName rarity={item.rarity}>{item.name}</ItemName>
                         <ItemPrice currencyType={getCurrencyTypeByRarity(item.rarity)}>
                           {formatPrice(item.price, item.rarity)}
-                          {item.discount > 0 && ` (-${item.discount}%)`}
                         </ItemPrice>
                       </ItemInfo>
                     </ItemCard>
                   ))
                 ) : (
-                  <NoItemsMessage>Предметы не найдены</NoItemsMessage>
+                  <NoItemsMessage>Ничего не найдено</NoItemsMessage>
                 )}
               </ItemList>
             </LeftPanel>
@@ -1342,67 +820,45 @@ const MarketTab = () => {
                   <DetailTitle>{selectedMarketItem.name}</DetailTitle>
                   <ItemDescription>{selectedMarketItem.description}</ItemDescription>
                   
-                  <ItemDetails>
-                    <DetailRow>
-                      <DetailLabel>Тип:</DetailLabel>
-                      <DetailValue>
-                        {selectedMarketItem.itemType === 'weapon' ? 'Оружие' :
-                         selectedMarketItem.itemType === 'armor' ? 'Броня' :
-                         selectedMarketItem.itemType === 'accessory' ? 'Аксессуар' :
-                         selectedMarketItem.itemType === 'consumable' ? 'Расходник' :
-                         selectedMarketItem.itemType === 'pet_food' ? 'Еда для питомцев' :
-                         'Предмет'}
-                      </DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Редкость:</DetailLabel>
-                      <DetailValue>
-                        {selectedMarketItem.rarity === 'common' ? 'Обычный' :
-                         selectedMarketItem.rarity === 'uncommon' ? 'Необычный' :
-                         selectedMarketItem.rarity === 'rare' ? 'Редкий' :
-                         selectedMarketItem.rarity === 'epic' ? 'Эпический' :
-                         selectedMarketItem.rarity === 'legendary' ? 'Легендарный' :
-                         'Неизвестно'}
-                      </DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Цена:</DetailLabel>
-                      <DetailValue>
-                        {formatPrice(selectedMarketItem.price, selectedMarketItem.rarity)}
-                        {selectedMarketItem.discount > 0 && (
-                          <span style={{ color: '#8AFF8A', marginLeft: '8px' }}>
-                            (-{selectedMarketItem.discount}%)
-                          </span>
-                        )}
-                      </DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Продавец:</DetailLabel>
-                      <DetailValue>{selectedMarketItem.sellerName}</DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>В наличии:</DetailLabel>
-                      <DetailValue>{selectedMarketItem.quantity}</DetailValue>
-                    </DetailRow>
-                    
-                    {/* Дополнительные свойства специфичные для типа предмета */}
-                    {selectedMarketItem.itemType === 'pet_food' && (
-                      <>
-                        {selectedMarketItem.nutritionValue !== undefined && (
-                          <DetailRow>
-                            <DetailLabel>Питательность:</DetailLabel>
-                            <DetailValue>{selectedMarketItem.nutritionValue}</DetailValue>
-                          </DetailRow>
-                        )}
-                        {selectedMarketItem.loyaltyBonus !== undefined && (
-                          <DetailRow>
-                            <DetailLabel>Бонус лояльности:</DetailLabel>
-                            <DetailValue>+{selectedMarketItem.loyaltyBonus}</DetailValue>
-                          </DetailRow>
-                        )}
-                      </>
-                    )}
-                  </ItemDetails>
+                  <DetailRow>
+                    <DetailLabel>Редкость:</DetailLabel>
+                    <DetailValue>{selectedMarketItem.rarity}</DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Цена:</DetailLabel>
+                    <DetailValue>{formatPrice(selectedMarketItem.price, selectedMarketItem.rarity)}</DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>Продавец:</DetailLabel>
+                    <DetailValue>{selectedMarketItem.sellerName}</DetailValue>
+                  </DetailRow>
+                  <DetailRow>
+                    <DetailLabel>В наличии:</DetailLabel>
+                    <DetailValue>{selectedMarketItem.quantity}</DetailValue>
+                  </DetailRow>
+
+                  {selectedMarketItem.effects && selectedMarketItem.effects.length > 0 && (
+                    <div style={{ marginTop: '15px' }}>
+                      <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Эффекты:</h4>
+                      {selectedMarketItem.effects.map((effect, index) => (
+                        <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
+                          - {effect.description || `${effect.target || 'Неизвестная характеристика'} ${effect.modifier === 'add' ? '+' : '*'}${formatEffectValue(effect.value)}`}
+                          {effect.duration && ` (длительность: ${effect.duration} ходов)`}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedMarketItem.requirements && Object.keys(selectedMarketItem.requirements).length > 0 && (
+                    <div style={{ marginTop: '15px' }}>
+                      <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Требования:</h4>
+                      {Object.entries(selectedMarketItem.requirements).map(([key, value]) => (
+                        <div key={key} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
+                          - {key.charAt(0).toUpperCase() + key.slice(1)}: {formatEffectValue(value)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   
                   <QuantityControl>
                     <QuantityButton 
@@ -1427,16 +883,16 @@ const MarketTab = () => {
                     >+</QuantityButton>
                   </QuantityControl>
                   
-                  <ActionButton 
+                  <ActionButton
                     primary
                     onClick={handleBuyItem}
-                    disabled={!hasSufficientCurrency(selectedMarketItem.price, selectedMarketItem.rarity)}
+                    disabled={!hasSufficientCurrency(selectedMarketItem.price * quantity, selectedMarketItem.rarity)}
                   >
                     Купить за {formatPrice(selectedMarketItem.price * quantity, selectedMarketItem.rarity)}
                   </ActionButton>
                 </>
               ) : (
-                <NoItemsMessage>Выберите предмет для просмотра деталей</NoItemsMessage>
+                <NoItemsMessage>Выберите товар для просмотра деталей</NoItemsMessage>
               )}
             </RightPanel>
           </>
@@ -1445,234 +901,21 @@ const MarketTab = () => {
         {activeTab === 'sell' && (
           <>
             <LeftPanel>
-              <SearchBar 
-                placeholder="Поиск в инвентаре..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              
-              <FilterContainer>
-                <FilterSelect 
-                  value={itemTypeFilter}
-                  onChange={(e) => setItemTypeFilter(e.target.value)}
-                >
-                  <option value="all">Все типы</option>
-                  <option value="weapon">Оружие</option>
-                  <option value="armor">Броня</option>
-                  <option value="accessory">Аксессуары</option>
-                  <option value="consumable">Расходники</option>
-                </FilterSelect>
-                
-                <FilterSelect 
-                  value={rarityFilter}
-                  onChange={(e) => setRarityFilter(e.target.value)}
-                >
-                  <option value="all">Любая редкость</option>
-                  <option value="common">Обычный</option>
-                  <option value="uncommon">Необычный</option>
-                  <option value="rare">Редкий</option>
-                  <option value="epic">Эпический</option>
-                  <option value="legendary">Легендарный</option>
-                </FilterSelect>
-              </FilterContainer>
-              
               <ItemList>
-                {player?.inventory?.items && player.inventory.items.length > 0 ? (
-                  player.inventory.items
-                    .filter(item => 
-                      // Фильтрация предметов
-                      (itemTypeFilter === 'all' || item.type === itemTypeFilter) &&
-                      (rarityFilter === 'all' || item.rarity === rarityFilter) &&
-                      (searchQuery === '' || 
-                        (item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase())))
-                    )
-                    .map(item => (
-                      <ItemCard 
-                        key={item.id} 
-                        selected={selectedSellItem && selectedSellItem.id === item.id}
-                        onClick={() => {
-                          // Устанавливаем выбранный предмет и сохраняем его ID
-                          setSelectedSellItem(item);
-                          setSelectedSellItemId(item.id);
-                          
-                          // Ищем соответствующий товар в marketItems, чтобы найти торговца
-                          if (market?.marketItems && market.marketItems.length > 0) {
-                            // Выводим информацию о предмете игрока для отладки
-                            console.log(`Ищем торговца для товара из инвентаря:`, {
-                              id: item.id,
-                              name: item.name,
-                              type: item.type,
-                              quality: item.quality
-                            });
-                            
-                            // Используем гибкое сопоставление с учетом структуры данных
-                            const matchingMarketItem = market.marketItems.find(marketItem => {
-                              // Основное сопоставление: itemId торговца должен совпадать с id предмета инвентаря
-                              if (marketItem.itemId === item.id) return true;
-                              
-                              // Дополнительные проверки
-                              // Проверка по имени предмета как запасной вариант
-                              if (marketItem.name && item.name &&
-                                  marketItem.name.toLowerCase() === item.name.toLowerCase()) {
-                                // Дополнительно проверяем совпадение типа и редкости
-                                if ((marketItem.itemType === item.type) &&
-                                    (marketItem.rarity === item.quality)) {
-                                  return true;
-                                }
-                              }
-                              
-                              return false;
-                            });
-                            
-                            // Выводим все доступные товары в консоль для отладки, если не найдено совпадение
-                            if (!matchingMarketItem) {
-                              console.log('Не найдено совпадение. Доступные товары:',
-                                market.marketItems.map(marketItem => ({
-                                  id: marketItem.id,
-                                  itemId: marketItem.itemId,
-                                  name: marketItem.name,
-                                  itemType: marketItem.itemType,
-                                  rarity: marketItem.rarity
-                                }))
-                              );
-                            }
-                            
-                            if (matchingMarketItem && matchingMarketItem.sellerId) {
-                              // Если нашли совпадение, ищем торговца
-                              const merchant = market.merchants?.find(m => m.id === matchingMarketItem.sellerId);
-                              if (merchant) {
-                                setSelectedMerchant({
-                                  id: merchant.id,
-                                  name: merchant.name
-                                });
-                                console.log(`Найден торговец для этого товара: ${merchant.name} (ID: ${merchant.id})`);
-                              } else {
-                                console.log(`Не найден торговец с ID: ${matchingMarketItem.sellerId}, проверяем дополнительные возможности поиска`);
-                                
-                                // Ищем торговца во всех доступных торговцах более гибким способом
-                                if (market?.merchants) {
-                                  console.log(`Доступные торговцы:`,
-                                    market.merchants.map(m => ({id: m.id, name: m.name})));
-                                    
-                                  // Попытка поиска по строковому совпадению (на случай если типы разные)
-                                  const merchantByStringId = market.merchants.find(m =>
-                                    String(m.id) === String(matchingMarketItem.sellerId));
-                                  
-                                  if (merchantByStringId) {
-                                    setSelectedMerchant({
-                                      id: merchantByStringId.id,
-                                      name: merchantByStringId.name
-                                    });
-                                    console.log(`Торговец найден при строковом сравнении ID: ${merchantByStringId.name}`);
-                                  } else {
-                                    console.log(`Не удалось найти торговца даже при строковом сравнении ID`);
-                                    setSelectedMerchant(null);
-                                  }
-                                } else {
-                                  setSelectedMerchant(null);
-                                }
-                              }
-                            } else {
-                              console.log(`Не найден подходящий товар для предмета:`, {
-                                id: item.id,
-                                name: item.name,
-                                type: item.type,
-                                quality: item.quality
-                              });
-                              setSelectedMerchant(null); // Товар нельзя продать, нет соответствующего торговца
-                              
-                              // Ищем торговца по имени предмета как запасной вариант
-                              if (market?.merchants && market.merchants.length > 0) {
-                                console.log('Попытка найти торговца на основе специализации:');
-                                // Если предмет оружие, ищем торговца оружием и т.д.
-                                const itemTypeMappings = {
-                                  'weapon': ['оружейник', 'кузнец', 'оружие'],
-                                  'armor': ['бронник', 'кузнец', 'доспех'],
-                                  'consumable': ['алхимик', 'травник', 'зелье']
-                                };
-                                
-                                const keywords = itemTypeMappings[item.type] || [];
-                                let foundMerchant = null;
-                                
-                                if (keywords.length > 0) {
-                                  foundMerchant = market.merchants.find(m =>
-                                    keywords.some(keyword =>
-                                      m.name && m.name.toLowerCase().includes(keyword.toLowerCase())
-                                    )
-                                  );
-                                }
-                                
-                                if (foundMerchant) {
-                                  setSelectedMerchant({
-                                    id: foundMerchant.id,
-                                    name: foundMerchant.name
-                                  });
-                                  console.log(`Нашли торговца по специализации: ${foundMerchant.name}`);
-                                }
-                              }
-                            }
-                          } else {
-                            console.log('Нет доступных товаров на рынке для сопоставления');
-                            setSelectedMerchant(null);
-                            
-                            // Ищем подходящего торговца на основе типа предмета
-                            if (market?.merchants && market.merchants.length > 0) {
-                              console.log('Попытка найти торговца на основе типа предмета без сопоставления товаров');
-                              
-                              // Если предмет оружие, ищем торговца оружием и т.д.
-                              const itemTypeMappings = {
-                                'weapon': ['оружейник', 'кузнец', 'оружие'],
-                                'armor': ['бронник', 'кузнец', 'доспех'],
-                                'consumable': ['алхимик', 'травник', 'зелье']
-                              };
-                              
-                              const keywords = itemTypeMappings[item.type] || [];
-                              
-                              // Выводим доступных торговцев для отладки
-                              console.log('Доступные торговцы:', market.merchants.map(m =>
-                                ({id: m.id, name: m.name, specialization: m.specialization})
-                              ));
-                              
-                              if (keywords.length > 0) {
-                                const foundMerchant = market.merchants.find(m =>
-                                  keywords.some(keyword =>
-                                    (m.name && m.name.toLowerCase().includes(keyword.toLowerCase())) ||
-                                    (m.specialization && m.specialization.toLowerCase().includes(keyword.toLowerCase()))
-                                  )
-                                );
-                                
-                                if (foundMerchant) {
-                                  setSelectedMerchant({
-                                    id: foundMerchant.id,
-                                    name: foundMerchant.name
-                                  });
-                                  console.log(`Нашли торговца по типу предмета: ${foundMerchant.name}`);
-                                } else {
-                                  // Если не удалось найти по типу, берем первого торговца из списка
-                                  const defaultMerchant = market.merchants[0];
-                                  setSelectedMerchant({
-                                    id: defaultMerchant.id,
-                                    name: defaultMerchant.name
-                                  });
-                                  console.log(`Выбран первый доступный торговец: ${defaultMerchant.name}`);
-                                }
-                              }
-                            }
-                          }
-                        }}
-                      >
-                        <ItemIcon>{item.type === 'weapon' ? '⚔️' : 
-                          item.type === 'armor' ? '🛡️' : 
-                          item.type === 'accessory' ? '💍' : 
-                          item.type === 'consumable' ? '🧪' : '📦'}
-                        </ItemIcon>
-                        <ItemInfo>
-                          <ItemName rarity={item.rarity}>{item.name}</ItemName>
-                          <div>x{item.quantity || 1}</div>
-                        </ItemInfo>
-                      </ItemCard>
-                    ))
+                {filteredSellItems.length > 0 ? (
+                  filteredSellItems.map(item => (
+                    <ItemCard
+                      key={item.id}
+                      selected={selectedSellItem && selectedSellItem.id === item.id}
+                      onClick={() => handleSelectItem(item)}
+                    >
+                      <ItemIcon>{getItemEmoji(item)}</ItemIcon>
+                      <ItemInfo>
+                        <ItemName rarity={item.rarity}>{item.name}</ItemName>
+                        <div>x{item.quantity || 1}</div>
+                      </ItemInfo>
+                    </ItemCard>
+                  ))
                 ) : (
                   <NoItemsMessage>В инвентаре ничего нет</NoItemsMessage>
                 )}
@@ -1771,40 +1014,25 @@ const MarketTab = () => {
               />
               
               <ItemList>
-                {market?.marketItems && [...new Set(market.marketItems.map(item => item.sellerId))].map(sellerId => {
-                  const merchant = market.marketItems.find(item => item.sellerId === sellerId);
-                  
-                  if (!merchant) return null;
-                  
-                  const merchantName = merchant.sellerName || `Торговец #${sellerId}`;
-                  
-                  // Фильтрация по поиску
-                  if (searchQuery && !merchantName.toLowerCase().includes(searchQuery.toLowerCase())) {
-                    return null;
-                  }
-                  
-                  return (
+                {market?.merchants && market.merchants
+                  .filter(merchant => searchQuery ? merchant.name.toLowerCase().includes(searchQuery.toLowerCase()) : true)
+                  .map(merchant => (
                     <ItemCard 
-                      key={sellerId}
-                      selected={selectedMerchantItem && selectedMerchantItem.id === sellerId}
+                      key={merchant.id}
+                      selected={selectedMerchantItem && selectedMerchantItem.id === merchant.id}
                       onClick={() => {
-                        setSelectedMerchantItem({
-                          id: sellerId,
-                          name: merchantName
-                        });
-                        setSelectedMerchantItemId(sellerId);
-                        // Устанавливаем фильтр по торговцу для вкладки "Товары"
-                        setActiveSellerFilter(sellerId);
+                        setSelectedMerchantItem(merchant);
+                        setSelectedMerchantItemId(merchant.id);
+                        setActiveSellerFilter(merchant.id);
                       }}
                     >
                       <ItemIcon>🧙</ItemIcon>
                       <ItemInfo>
-                        <ItemName>{merchantName}</ItemName>
-                        <div>Отношения: {getRelationshipLevel(sellerId)}</div>
+                        <ItemName>{merchant.name}</ItemName>
+                        <div>Отношения: {getRelationshipLevel(merchant.id)}</div>
                       </ItemInfo>
                     </ItemCard>
-                  );
-                })}
+                  ))}
               </ItemList>
             </LeftPanel>
             
@@ -1812,29 +1040,10 @@ const MarketTab = () => {
               {selectedMerchantItem ? (
                 <>
                   <DetailTitle>{selectedMerchantItem.name}</DetailTitle>
-                  
-                  <ItemDetails>
-                    <DetailRow>
-                      <DetailLabel>Отношения:</DetailLabel>
-                      <DetailValue>{getRelationshipLevel(selectedMerchantItem.id)}</DetailValue>
-                    </DetailRow>
-                    <DetailRow>
-                      <DetailLabel>Скидка:</DetailLabel>
-                      <DetailValue>{calculateMerchantDiscount(getRelationshipLevel(selectedMerchantItem.id))}%</DetailValue>
-                    </DetailRow>
-                  </ItemDetails>
-                  
-                  <ActionButton
-                    onClick={() => {
-                      setActiveTab('market');
-                      setActiveSellerFilter(selectedMerchantItem.id);
-                    }}
-                  >
-                    Показать товары
-                  </ActionButton>
+                  {/* Здесь можно добавить больше деталей о торговце */}
                 </>
               ) : (
-                <NoItemsMessage>Выберите торговца для просмотра информации</NoItemsMessage>
+                <NoItemsMessage>Выберите торговца</NoItemsMessage>
               )}
             </RightPanel>
           </>
