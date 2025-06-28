@@ -261,7 +261,7 @@ exports.getMerchantInventory = async function(merchantId, userId) {
       const itemData = item.get({ plain: true });
       // Применяем скидки к ценам
       const finalPrice = Math.floor(itemData.price * (1 - discount));
-      if (item.type == 'accessory') {console.log(JSON.stringify(itemDetails))}
+      //if (item.type == 'accessory') {console.log(JSON.stringify(itemDetails))}
       return { 
         ...itemDetails.item,
         ...itemData,
