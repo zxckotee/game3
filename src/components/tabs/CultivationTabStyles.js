@@ -102,6 +102,33 @@ export const MeditationPanel = styled(Panel)`
   flex-direction: column;
   gap: 15px;
 `;
+export const BreakthroughPanel = styled(Panel)`
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+`;
+
+export const TribulationPanel = styled(Panel)`
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+`;
+
+export const TribulationResult = styled.div`
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: center;
+  background: ${props => props.success ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)'};
+  color: ${props => props.success ? '#4caf50' : '#f44336'};
+  border: 1px solid ${props => props.success ? '#4caf50' : '#f44336'};
+`;
+
+export const InsightPanel = styled(Panel)`
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+`;
 
 export const ProgressInfo = styled.div`
   display: flex;
@@ -161,6 +188,7 @@ export const StatValue = styled.span`
 `;
 
 export const Button = styled.button`
+  width: 100%;
   padding: 12px;
   background: ${props => props.active ? '#d4af37' : 'rgba(0, 0, 0, 0.2)'};
   color: ${props => props.active ? '#000' : '#d4af37'};
@@ -222,12 +250,14 @@ export const Requirement = styled.li`
 `;
 
 export const ResourceList = styled.div`
-  margin-top: 15px;
   padding: 10px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   animation: ${fadeIn} 0.5s ease-in-out;
   box-shadow: 0 0 5px rgba(212, 175, 55, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 `;
 
 export const ResourceItem = styled.div`
@@ -250,4 +280,14 @@ export const ResourceItem = styled.div`
 export const TribulationProgressBar = styled(ProgressBar)`
   box-shadow: 0 0 10px #d4af37;
   animation: ${pulse} 2s infinite;
+`;
+
+
+export const StatsPanel = styled(Panel)``;
+
+export const RequirementsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
 `;

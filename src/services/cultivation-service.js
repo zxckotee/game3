@@ -48,8 +48,7 @@ class CultivationService {
             bottleneckProgress: 0,
             requiredBottleneckProgress: 100,
             lastInsightTime: new Date(),
-            cultivationEfficiency: 1.0,
-            requiredResources: {}
+            cultivationEfficiency: 1.0
           };
         }
         
@@ -67,8 +66,7 @@ class CultivationService {
           insightPoints: cultivation.insightPoints,
           bottleneckProgress: cultivation.bottleneckProgress,
           requiredBottleneckProgress: cultivation.requiredBottleneckProgress,
-          cultivationEfficiency: cultivation.cultivationEfficiency,
-          requiredResources: cultivation.requiredResources
+          cultivationEfficiency: cultivation.cultivationEfficiency
         };
       } else {
         // На сервере используем базу данных
@@ -103,8 +101,7 @@ class CultivationService {
             bottleneckProgress: 0,
             requiredBottleneckProgress: 100,
             lastInsightTime: new Date(),
-            cultivationEfficiency: 1.0,
-            requiredResources: {}
+            cultivationEfficiency: 1.0
           });
         }
         
@@ -120,8 +117,7 @@ class CultivationService {
           insightPoints: cultivation.insightPoints,
           bottleneckProgress: cultivation.bottleneckProgress,
           requiredBottleneckProgress: cultivation.requiredBottleneckProgress,
-          cultivationEfficiency: cultivation.cultivationEfficiency,
-          requiredResources: cultivation.requiredResources
+          cultivationEfficiency: cultivation.cultivationEfficiency
         };
       }
     } catch (error) {
@@ -160,8 +156,7 @@ class CultivationService {
             bottleneckProgress: 0,
             requiredBottleneckProgress: 100,
             lastInsightTime: new Date(),
-            cultivationEfficiency: 1.0,
-            requiredResources: {}
+            cultivationEfficiency: 1.0
           };
         }
         
@@ -211,10 +206,6 @@ class CultivationService {
           browserCultivationData[userId].cultivationEfficiency = data.cultivationEfficiency;
         }
         
-        if (data.requiredResources !== undefined) {
-          browserCultivationData[userId].requiredResources = data.requiredResources;
-        }
-        
         // Возвращаем обновленные данные
         const cultivation = browserCultivationData[userId];
         
@@ -229,8 +220,7 @@ class CultivationService {
           insightPoints: cultivation.insightPoints,
           bottleneckProgress: cultivation.bottleneckProgress,
           requiredBottleneckProgress: cultivation.requiredBottleneckProgress,
-          cultivationEfficiency: cultivation.cultivationEfficiency,
-          requiredResources: cultivation.requiredResources
+          cultivationEfficiency: cultivation.cultivationEfficiency
         };
       } else {
         // На сервере используем базу данных
@@ -265,8 +255,7 @@ class CultivationService {
             bottleneckProgress: 0,
             requiredBottleneckProgress: 100,
             lastInsightTime: new Date(),
-            cultivationEfficiency: 1.0,
-            requiredResources: {}
+            cultivationEfficiency: 1.0
           });
         }
         
@@ -282,7 +271,8 @@ class CultivationService {
         }
         
         if (data.experience !== undefined) {
-          updateData.experience = data.experience;
+          const Sequelize = require('sequelize');
+          updateData.experience = Sequelize.literal(`experience + ${data.experience}`);
         }
         
         if (data.experienceToNextLevel !== undefined) {
@@ -317,9 +307,6 @@ class CultivationService {
           updateData.cultivationEfficiency = data.cultivationEfficiency;
         }
         
-        if (data.requiredResources !== undefined) {
-          updateData.requiredResources = data.requiredResources;
-        }
         //console.log(`[CULTIVATION SERVICE] updateCultivationProgress: ${userId} ${JSON.stringify(updateData)}`);
         // Обновляем данные
         await cultivation.update(updateData);
@@ -342,8 +329,7 @@ class CultivationService {
           insightPoints: cultivation.insightPoints,
           bottleneckProgress: cultivation.bottleneckProgress,
           requiredBottleneckProgress: cultivation.requiredBottleneckProgress,
-          cultivationEfficiency: cultivation.cultivationEfficiency,
-          requiredResources: cultivation.requiredResources
+          cultivationEfficiency: cultivation.cultivationEfficiency
         };
       }
     } catch (error) {
@@ -360,13 +346,9 @@ class CultivationService {
    */
   static generateBreakthroughRequirements(stage, level) {
     const requirements = {
-      resources: {},
       tribulation: null,
       bottleneckProgress: 0
     };
-    
-    // Получаем требуемые ресурсы из сервиса ресурсов
-    requirements.resources = ResourceService.getBreakthroughResources(stage, level);
     
     // Определяем требуемый прогресс "бутылочного горлышка" в зависимости от ступени и уровня
     switch(stage) {
@@ -481,16 +463,8 @@ class CultivationService {
       // Проверяем прогресс "бутылочного горлышка"
       const passedBottleneck = cultivation.bottleneckProgress >= cultivation.requiredBottleneckProgress;
       
-      // Получаем требования для прорыва
-      const requirements = this.generateBreakthroughRequirements(cultivation.stage, cultivation.level);
-      
-      // Проверяем наличие требуемых ресурсов
-      // Здесь должна быть логика проверки инвентаря пользователя
-      // Для примера предположим, что у пользователя есть все ресурсы
-      const hasRequiredResources = true;
-      
       // Формируем результат проверки
-      const canBreakthrough = hasEnoughExperience && hasEnoughEnergy && passedTribulation && passedBottleneck && hasRequiredResources;
+      const canBreakthrough = hasEnoughExperience && hasEnoughEnergy;
       
       // Формируем список недостающих требований
       const missingRequirements = [];
@@ -503,24 +477,11 @@ class CultivationService {
         missingRequirements.push(`Недостаточно энергии (требуется 80% от максимума)`);
       }
       
-      if (needsTribulation && !passedTribulation) {
-        missingRequirements.push(`Не пройдена трибуляция (${requirements.tribulation.type})`);
-      }
-      
-      if (!passedBottleneck) {
-        missingRequirements.push(`Не преодолено "бутылочное горлышко" (${cultivation.bottleneckProgress}/${cultivation.requiredBottleneckProgress})`);
-      }
-      
-      if (!hasRequiredResources) {
-        missingRequirements.push('Недостаточно ресурсов для прорыва');
-      }
-      
       return {
         canBreakthrough,
-        requirements,
         missingRequirements,
-        message: canBreakthrough 
-          ? 'Вы готовы к прорыву!' 
+        message: canBreakthrough
+          ? 'Вы готовы к прорыву!'
           : 'Для прорыва необходимо выполнить дополнительные требования'
       };
     } catch (error) {

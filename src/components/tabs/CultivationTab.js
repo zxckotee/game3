@@ -3,6 +3,7 @@ import * as S from './CultivationTabStyles';
 import { useGame } from '../../context/GameContext';
 import ResourceService from '../../services/resource-adapter';
 import CultivationAdapter from '../../services/cultivation-adapter';
+import { getCultivationProgress } from '../../services/cultivation-api';
 
 // Компонент для отображения содержимого вкладок
 const TabContent = ({ active, children }) => {
@@ -23,36 +24,39 @@ function CultivationTab() {
   const refreshCultivationData = useCallback(async () => {
     const userId = state.player?.id;
     if (!userId) return;
+
     try {
-      const cultivationData = await CultivationAdapter.getCultivationProgress(userId);
+      console.log('[CultivationTab] Refreshing cultivation data...');
+      const cultivationData = await getCultivationProgress(userId);
       if (cultivationData) {
         actions.updateCultivation(cultivationData);
+        console.log('[CultivationTab] Cultivation data refreshed successfully.');
       }
     } catch (error) {
-      console.error('Ошибка при обновлении данных культивации:', error);
+      console.error('Ошибка при обновлении данных о культивации:', error);
       actions.addNotification({
-        message: 'Не удалось обновить данные культивации.',
+        message: 'Не удалось обновить данные о культивации.',
         type: 'error'
       });
     }
   }, [state.player?.id, actions]);
 
   useEffect(() => {
-    // Загружаем данные инвентаря и культивации при монтировании
+    // Загружаем данные инвентаря при монтировании, если они нужны и еще не загружены
+    // или если userId изменился.
     const userId = state.player?.id;
-    if (userId) {
+    if (userId && actions.loadInventoryData) {
+      // Простая проверка: если items пустой, загружаем.
+      // В более сложном сценарии можно добавить флаг isInventoryLoaded в state.
       if (!state.player.inventory?.items || state.player.inventory.items.length === 0) {
-        if (actions.loadInventoryData) {
-          console.log('[CultivationTab] Инвентарь пуст, загрузка данных...');
-          actions.loadInventoryData(userId);
-        }
+        console.log('[CultivationTab] Инвентарь пуст, загрузка данных...');
+        actions.loadInventoryData(userId);
       }
-      refreshCultivationData();
     }
-  }, [state.player?.id, actions, refreshCultivationData]);
+  }, [state.player?.id, actions, state.player.inventory?.items]);
   
   // Function to handle meditation completion
-  const handleMeditationComplete = useCallback(async () => {
+  const handleMeditationComplete = useCallback(() => {
     const cultivationEfficiency = state.player.cultivation.cultivationEfficiency || 1.0;
     const experienceGain = Math.floor((Math.random() * 10 + 10) * cultivationEfficiency);
     const energyGain = Math.floor((Math.random() * 5 + 5) * cultivationEfficiency);
@@ -156,24 +160,29 @@ function CultivationTab() {
     const userId = state.player.id;
     if (userId) {
       try {
-        await CultivationAdapter.updateCultivationProgress(userId, cultivationUpdates);
+        CultivationAdapter.updateCultivationProgress(userId, cultivationUpdates)
+          .then(updatedCultivation => {
+            console.log('Данные культивации обновлены через API:', updatedCultivation);
+            refreshCultivationData(); // Обновляем данные
+          })
+          .catch(error => {
+            console.error('Ошибка при обновлении данных культивации через API:', error);
+            
+            // Резервное обновление через Redux в случае ошибки
+            actions.updateCultivation(cultivationUpdates);
+          });
       } catch (error) {
         console.error('Ошибка при вызове API для обновления культивации:', error);
-        // В случае ошибки можно показать уведомление
-        actions.addNotification({
-          message: 'Ошибка при обновлении данных культивации.',
-          type: 'error'
-        });
-      } finally {
-        // Обновляем данные в любом случае
-        refreshCultivationData();
+        
+        // Резервное обновление через Redux в случае ошибки
+        actions.updateCultivation(cultivationUpdates);
       }
     } else {
       console.warn('Невозможно отправить запрос на сервер: отсутствует userId');
       // Используем традиционный подход, если userId не доступен
       actions.updateCultivation(cultivationUpdates);
     }
-  }, [actions, state.player.cultivation, refreshCultivationData]);
+  }, [actions, state.player.cultivation]);
 
   useEffect(() => {
     let timer;
@@ -478,6 +487,7 @@ function CultivationTab() {
             });
             
             // Другие компоненты будут уведомлены через событие, отправленное из API-метода
+            refreshCultivationData(); // Обновляем данные
           } else {
             // Отображаем уведомление о неудаче
             actions.addNotification({
@@ -505,12 +515,9 @@ function CultivationTab() {
             type: 'error'
           });
         }
-      } finally {
-        // Обновляем данные в любом случае
-        refreshCultivationData();
       }
     }, 0);
-  }, [actions, canBreakthrough, state.player, requiredResources, fallbackBreakthrough, refreshCultivationData]);
+  }, [actions, canBreakthrough, state.player, requiredResources, fallbackBreakthrough]);
   
   // Обработка трибуляции
   useEffect(() => {
@@ -761,6 +768,8 @@ function CultivationTab() {
               message: result.message || 'Вы получили прозрение! Эффективность культивации увеличена.',
               type: 'success'
             });
+            refreshCultivationData(); // Обновляем данные
+            refreshCultivationData(); // Обновляем данные
           } else {
             setInsightCooldown(12 * 60 * 60);
             
@@ -813,11 +822,9 @@ function CultivationTab() {
         });
         
         setInsightCooldown(6 * 60 * 60); // Меньший кулдаун при ошибке
-      } finally {
-        refreshCultivationData();
       }
     }, 0);
-  }, [actions, insightCooldown, state.player.cultivation, refreshCultivationData]);
+  }, [actions, insightCooldown, state.player.cultivation]);
   
   return (
     <S.Container>
