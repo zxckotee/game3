@@ -483,7 +483,7 @@ class CultivationService {
    * @param {Object} tribulationResult - Результат прохождения трибуляции
    */
   static async completeTribulation(userId, tribulationResult) {
-    console.log(`[CULTIVATION SERVICE] completeTribulation ${user}: ${tribulationResult}`);
+    console.log(`[CULTIVATION SERVICE] completeTribulation ${userId}: ${JSON.stringify(tribulationResult)}`);
     try {
       if (isBrowser) {
         // В браузере используем объект в памяти

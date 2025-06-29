@@ -3,7 +3,7 @@ import * as S from './CultivationTabStyles';
 import { useGame } from '../../context/GameContext';
 import ResourceService from '../../services/resource-adapter';
 import CultivationAdapter from '../../services/cultivation-adapter';
-import { getCultivationProgress } from '../../services/cultivation-api';
+import { getCultivationProgress, completeTribulation as completeTribulationAPI } from '../../services/cultivation-api';
 
 // Компонент для отображения содержимого вкладок
 const TabContent = ({ active, children }) => {
@@ -597,7 +597,7 @@ function CultivationTab() {
         const userId = state.player.id;
         if (userId) {
           try {
-            const result = await CultivationService.completeTribulation(userId, tribulationData);
+            const result = await completeTribulationAPI(userId, tribulationData);
             console.log('Трибуляция завершена через API:', result);
             
             // Устанавливаем результат трибуляции на основе ответа API
