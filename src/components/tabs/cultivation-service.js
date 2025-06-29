@@ -19,7 +19,6 @@ class CultivationService {
    */
   static async getCultivationProgress(userId) {
     try {
-      //console.log(`[CULTIVATION SERVICE] getCultivationProgress: ${userId}`);
       if (isBrowser) {
         // В браузере используем объект в памяти
         if (!browserCultivationData[userId]) {
@@ -130,7 +129,6 @@ class CultivationService {
    * @returns {Promise<Object>} - Обновленные данные о культивации
    */
   static async updateCultivationProgress(userId, data) {
-    console.log(`[CULTIVATION SERVICE] updateCultivationProgress: ${userId} ${JSON.stringify(data)}`);
     try {
       if (isBrowser) {
         // В браузере используем объект в памяти
@@ -275,7 +273,9 @@ class CultivationService {
         }
         
         if (data.experience !== undefined) {
-          updateData.experience = data.experience;
+          // Используем Sequelize.literal для добавления опыта к существующему значению
+          const { Sequelize } = require('sequelize');
+          updateData.experience = Sequelize.literal(`experience + ${parseInt(data.experience)}`);
         }
         
         if (data.experienceToNextLevel !== undefined) {
@@ -313,10 +313,9 @@ class CultivationService {
         if (data.requiredResources !== undefined) {
           updateData.requiredResources = data.requiredResources;
         }
-        //console.log(`[CULTIVATION SERVICE] updateCultivationProgress: ${userId} ${JSON.stringify(updateData)}`);
+        
         // Обновляем данные
         await cultivation.update(updateData);
-        console.log(`[CULTIVATION SERVICE] updateCultivationProgress ${updateData} `);
         
         // Получаем обновленные данные
         cultivation = await CultivationProgress.findOne({
