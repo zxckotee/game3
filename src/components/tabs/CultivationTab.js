@@ -368,7 +368,7 @@ function CultivationTab() {
             energy: newMaxEnergy,
             tribulationCompleted: false,
             bottleneckProgress: 0,
-            requiredBottleneckProgress: 100
+            requiredBottleneckProgress: 100 // Сбрасываем при смене этапа
           });
           
           actions.addNotification({
@@ -387,7 +387,7 @@ function CultivationTab() {
           energy: newMaxEnergy,
           tribulationCompleted: false,
           bottleneckProgress: 0,
-          requiredBottleneckProgress: newLevel * 10
+          requiredBottleneckProgress: (state.player.cultivation.requiredBottleneckProgress || 100) + newLevel * 10
         });
         
         actions.updatePlayerStats({

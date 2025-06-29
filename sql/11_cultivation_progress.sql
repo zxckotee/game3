@@ -108,3 +108,31 @@ COMMENT ON TABLE cultivation_progresses IS 'Таблица для хранени
 COMMENT ON VIEW "CultivationProgress" IS 'Представление таблицы cultivation_progresses в формате CamelCase для совместимости';
 COMMENT ON FUNCTION sync_cultivation_data() IS 'Функция триггера для синхронизации данных культивации между таблицами';
 COMMENT ON TRIGGER cultivation_sync_trigger ON cultivation_progresses IS 'Триггер для автоматического обновления данных культивации в таблицах users и character_profile';
+
+--
+-- Триггер для автоматического создания записи о прогрессе культивации для нового пользователя
+--
+
+-- 1. Функция-триггер
+CREATE OR REPLACE FUNCTION create_cultivation_progress_for_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Вставляем новую запись в cultivation_progresses с user_id нового пользователя
+    -- Все остальные поля получат значения по умолчанию, определенные в таблице
+    INSERT INTO cultivation_progresses (user_id)
+    VALUES (NEW.id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Создание триггера на таблице users
+-- Убедимся, что предыдущая версия триггера удалена, если она существует
+DROP TRIGGER IF EXISTS new_user_cultivation_trigger ON users;
+CREATE TRIGGER new_user_cultivation_trigger
+AFTER INSERT ON users
+FOR EACH ROW
+EXECUTE FUNCTION create_cultivation_progress_for_new_user();
+
+-- 3. Комментарии для документации
+COMMENT ON FUNCTION create_cultivation_progress_for_new_user() IS 'Функция-триггер для создания записи о прогрессе культивации для нового пользователя';
+COMMENT ON TRIGGER new_user_cultivation_trigger ON users IS 'Триггер, который автоматически создает запись о прогрессе культивации при создании нового пользователя';

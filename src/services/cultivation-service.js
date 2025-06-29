@@ -877,7 +877,7 @@ class CultivationService {
       };
 
       const requirements = this.generateBreakthroughRequirements(newStage, newLevel);
-      updateData.requiredBottleneckProgress = requirements.bottleneckProgress;
+      updateData.requiredBottleneckProgress = (cultivation.requiredBottleneckProgress || 100) + requirements.bottleneckProgress;
 
       await cultivation.update(updateData);
 
