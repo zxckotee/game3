@@ -393,19 +393,31 @@ const MarketTab = () => {
   };
 
   // Функция для получения уровня отношений с торговцем
-  const getRelationshipLevel = (merchantId, allMerchants = market.merchants) => {
-    if (!allMerchants) return 'neutral';
-    // Предполагаем, что у каждого торговца есть поле 'faction'
-    const merchant = allMerchants.find(m => m.id === merchantId);
-    if (!merchant || !merchant.faction) return 'neutral';
-    
-    const factionReputation = player.reputation[merchant.faction];
-    if (!factionReputation) return 'neutral';
-    
-    if (factionReputation >= 1000) return 'honored';
-    if (factionReputation >= 500) return 'friendly';
-    if (factionReputation <= -500) return 'hostile';
+  const getRelationshipLevel = (merchant) => {
+    if (!merchant || !merchant.reputation || !Array.isArray(merchant.reputation) || merchant.reputation.length === 0) {
+      return 'neutral';
+    }
+    const reputationValue = merchant.reputation[0].reputation;
+    if (reputationValue >= 80) return 'friendly';
+    if (reputationValue <= 20) return 'hostile';
     return 'neutral';
+  };
+
+  const getRelationshipText = (merchant) => {
+    const level = getRelationshipLevel(merchant);
+    switch (level) {
+      case 'friendly': return 'Дружелюбный';
+      case 'hostile': return 'Враждебный';
+      default: return 'Нейтральный';
+    }
+  };
+
+  const calculateReputationDiscount = (reputation) => {
+    if (reputation >= 80) return 0.20; // 20%
+    if (reputation >= 60) return 0.15; // 15%
+    if (reputation >= 40) return 0.10; // 10%
+    if (reputation >= 20) return 0.05; // 5%
+    return 0;
   };
 
   // Создаем выделенную функцию обновления, которую можно вызывать из любого места
@@ -428,8 +440,9 @@ const MarketTab = () => {
       const marketItems = [];
       
       merchants.forEach(merchant => {
-        const relationshipLevel = getRelationshipLevel(merchant.id, merchants);
-        
+        const reputationValue = (merchant.reputation && merchant.reputation[0]) ? merchant.reputation[0].reputation : 0;
+        const discount = calculateReputationDiscount(reputationValue);
+
         if (merchant.items && merchant.items.length > 0) {
           merchant.items.forEach(item => {
             if (item.itemType === 'currency' || item.quantity === 0) {
@@ -437,8 +450,7 @@ const MarketTab = () => {
             }
             
             const basePrice = item.basePrice || item.price || 100;
-            const discount = calculateMerchantDiscount(relationshipLevel);
-            const finalPrice = Math.round(applyLoyaltyDiscount(basePrice, relationshipLevel).finalPrice);
+            const finalPrice = Math.round(basePrice * (1 - discount));
             
             const marketItem = {
               ...item,
@@ -448,6 +460,7 @@ const MarketTab = () => {
               discount: discount,
               sellerId: merchant.id,
               sellerName: merchant.name,
+              reputation: reputationValue
             };
             
             if (item.itemType === 'pet_food') {
@@ -848,8 +861,14 @@ const MarketTab = () => {
                     <DetailLabel>В наличии:</DetailLabel>
                     <DetailValue>{selectedMarketItem.quantity}</DetailValue>
                   </DetailRow>
-
-
+                  <DetailRow>
+                    <DetailLabel>Репутация:</DetailLabel>
+                    <DetailValue>{selectedMarketItem.reputation}</DetailValue>
+                  </DetailRow>
+                   <DetailRow>
+                    <DetailLabel>Скидка:</DetailLabel>
+                    <DetailValue>{Math.round(selectedMarketItem.discount * 100)}%</DetailValue>
+                  </DetailRow>
                   
                   <QuantityControl>
                     <QuantityButton 
@@ -1026,7 +1045,7 @@ const MarketTab = () => {
                       <ItemIcon>🧙</ItemIcon>
                       <ItemInfo>
                         <ItemName>{merchant.name}</ItemName>
-                        <div>Отношения: {getRelationshipLevel(merchant.id)}</div>
+                        <div>Отношения: {getRelationshipText(merchant)}</div>
                       </ItemInfo>
                     </ItemCard>
                   ))}
@@ -1037,7 +1056,25 @@ const MarketTab = () => {
               {selectedMerchantItem ? (
                 <>
                   <DetailTitle>{selectedMerchantItem.name}</DetailTitle>
-                  {/* Здесь можно добавить больше деталей о торговце */}
+                  <ItemDescription>{selectedMerchantItem.description}</ItemDescription>
+                  <ItemDetails>
+                    <DetailRow>
+                      <DetailLabel>Репутация:</DetailLabel>
+                      <DetailValue>{selectedMerchantItem.reputation && selectedMerchantItem.reputation[0] ? selectedMerchantItem.reputation[0].reputation : 'N/A'}</DetailValue>
+                    </DetailRow>
+                    <DetailRow>
+                      <DetailLabel>Скидка:</DetailLabel>
+                      <DetailValue>{selectedMerchantItem.reputation && selectedMerchantItem.reputation[0] ? `${calculateReputationDiscount(selectedMerchantItem.reputation[0].reputation) * 100}%` : 'N/A'}</DetailValue>
+                    </DetailRow>
+                     <DetailRow>
+                      <DetailLabel>Специализация:</DetailLabel>
+                      <DetailValue>{selectedMerchantItem.specialization}</DetailValue>
+                    </DetailRow>
+                     <DetailRow>
+                      <DetailLabel>Локация:</DetailLabel>
+                      <DetailValue>{selectedMerchantItem.location}</DetailValue>
+                    </DetailRow>
+                  </ItemDetails>
                 </>
               ) : (
                 <NoItemsMessage>Выберите торговца</NoItemsMessage>

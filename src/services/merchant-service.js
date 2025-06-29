@@ -58,14 +58,14 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
     
     // Преобразуем в нужный формат для клиента
     const formattedMerchants = merchants.map(merchant => formatMerchant(merchant));
-    
+    console.log(formattedMerchants);
     // Обновляем кэш
     merchantsCache = formattedMerchants;
+
     merchantsById = formattedMerchants.reduce((acc, merchant) => {
       acc[merchant.id] = merchant;
       return acc;
     }, {});
-    
     return formattedMerchants;
   } catch (error) {
     console.error('Ошибка при получении торговцев:', error);
@@ -1294,6 +1294,7 @@ function formatMerchant(merchant) {
       rarity: item.rarity,
       quantity: item.quantity,
       price: item.price
-    })) : []
+    })) : [],
+    reputation: plainMerchant.reputations
   };
 }

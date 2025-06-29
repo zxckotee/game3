@@ -259,26 +259,41 @@ RETURNS TRIGGER AS $$
 BEGIN
     -- Копируем данные из шаблонов в таблицу инвентаря для нового пользователя
     INSERT INTO merchant_inventories (
-        user_id, merchant_id, item_id, item_type, name, description, 
-        price, quantity, max_quantity, restock_rate, last_restock_time, 
+        user_id, merchant_id, item_id, item_type, name, description,
+        price, quantity, max_quantity, restock_rate, last_restock_time,
         rarity, nutrition_value, loyalty_bonus, restock_time
     )
-    SELECT 
+    SELECT
         NEW.id, -- ID нового пользователя
-        template.merchant_id, template.item_id, template.item_type, template.name, template.description, 
-        template.price, template.quantity, template.max_quantity, template.restock_rate, template.last_restock_time, 
+        template.merchant_id, template.item_id, template.item_type, template.name, template.description,
+        template.price, template.quantity, template.max_quantity, template.restock_rate, template.last_restock_time,
         template.rarity, template.nutrition_value, template.loyalty_bonus, template.restock_time
-    FROM 
+    FROM
         merchant_inventory_templates AS template;
+
+    -- Добавляем начальную репутацию для нового пользователя
+    INSERT INTO merchant_reputations (user_id, merchant_id, reputation, discount_rate)
+    SELECT
+        NEW.id,
+        m.id,
+        CASE
+            WHEN m.name = 'Мастер Ли' THEN 80
+            WHEN m.name = 'Старейшина Чжан' THEN 60
+            ELSE 40
+        END,
+        0 -- начальная скидка
+    FROM
+        merchants m;
     
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Повторно создаем триггер, если его еще нет
-DROP TRIGGER IF EXISTS after_user_created ON users;
+-- ВАЖНО: Sequelize использует 'Users', а не 'users'
+DROP TRIGGER IF EXISTS after_user_created ON "users";
 CREATE TRIGGER after_user_created
-AFTER INSERT ON users
+AFTER INSERT ON "users"
 FOR EACH ROW
 EXECUTE FUNCTION initialize_merchant_inventory_for_user();
 
