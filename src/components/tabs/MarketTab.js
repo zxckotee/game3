@@ -356,7 +356,7 @@ const MarketTab = () => {
   const [itemTypeFilter, setItemTypeFilter] = useState('all');
   const [rarityFilter, setRarityFilter] = useState('all');
   const [selectedMerchant, setSelectedMerchant] = useState(null);
-  const [activeSellerFilter, setActiveSellerFilter] = useState(null); // Фильтр по ID продавца (торговца)
+  const [activeSellerFilter, setActiveSellerFilter] = useState('all'); // Фильтр по ID продавца (торговца)
   const [isLoading, setIsLoading] = useState(false); // Состояние загрузки данных
   const [loadError, setLoadError] = useState(null); // Ошибка загрузки
   
@@ -737,7 +737,7 @@ const MarketTab = () => {
   // Фильтрация и поиск
   const filteredMarketItems = market.marketItems
     .filter(item => {
-      const sellerMatch = !activeSellerFilter || item.sellerId === activeSellerFilter;
+      const sellerMatch = activeSellerFilter === 'all' || item.sellerId == activeSellerFilter;
       const searchMatch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
       const typeMatch = itemTypeFilter === 'all' || item.itemType === itemTypeFilter;
       const rarityMatch = rarityFilter === 'all' || item.rarity === rarityFilter;
@@ -805,6 +805,12 @@ const MarketTab = () => {
                   <option value="rare">Редкая</option>
                   <option value="epic">Эпическая</option>
                   <option value="legendary">Легендарная</option>
+                </FilterSelect>
+                <FilterSelect value={activeSellerFilter} onChange={(e) => setActiveSellerFilter(e.target.value)}>
+                  <option value="all">Все торговцы</option>
+                  {market.merchants && market.merchants.map(merchant => (
+                    <option key={merchant.id} value={merchant.id}>{merchant.name}</option>
+                  ))}
                 </FilterSelect>
               </FilterContainer>
               
@@ -1039,7 +1045,6 @@ const MarketTab = () => {
                       onClick={() => {
                         setSelectedMerchantItem(merchant);
                         setSelectedMerchantItemId(merchant.id);
-                        setActiveSellerFilter(merchant.id);
                       }}
                     >
                       <ItemIcon>🧙</ItemIcon>
@@ -1075,6 +1080,15 @@ const MarketTab = () => {
                       <DetailValue>{selectedMerchantItem.location}</DetailValue>
                     </DetailRow>
                   </ItemDetails>
+                  <ActionButton
+                    primary
+                    onClick={() => {
+                      setActiveSellerFilter(selectedMerchantItem.id);
+                      setActiveTab('market');
+                    }}
+                  >
+                    Показать товары
+                  </ActionButton>
                 </>
               ) : (
                 <NoItemsMessage>Выберите торговца</NoItemsMessage>
