@@ -170,8 +170,11 @@ class CultivationService {
         }
         
         if (data.experience !== undefined) {
-          // Добавляем к существующему значению вместо замены
-          browserCultivationData[userId].experience = (browserCultivationData[userId].experience || 0) + data.experience;
+          // Устанавливаем значение, но не больше максимального
+          browserCultivationData[userId].experience = Math.min(
+            data.experience,
+            browserCultivationData[userId].experienceToNextLevel
+          );
         }
         
         if (data.experienceToNextLevel !== undefined) {
@@ -179,7 +182,11 @@ class CultivationService {
         }
         
         if (data.energy !== undefined) {
-          browserCultivationData[userId].energy = data.energy;
+          // Устанавливаем значение, но не больше максимального
+          browserCultivationData[userId].energy = Math.min(
+            data.energy,
+            browserCultivationData[userId].maxEnergy
+          );
         }
         
         if (data.maxEnergy !== undefined) {
@@ -195,7 +202,11 @@ class CultivationService {
         }
         
         if (data.bottleneckProgress !== undefined) {
-          browserCultivationData[userId].bottleneckProgress = data.bottleneckProgress;
+          // Устанавливаем значение, но не больше максимального
+          browserCultivationData[userId].bottleneckProgress = Math.min(
+            data.bottleneckProgress,
+            browserCultivationData[userId].requiredBottleneckProgress
+          );
         }
         
         if (data.requiredBottleneckProgress !== undefined) {
@@ -262,49 +273,25 @@ class CultivationService {
         // Преобразуем данные из клиента в формат базы данных
         const updateData = {};
         
-        if (data.stage !== undefined && data.stage !== null) {
-          updateData.stage = typeof data.stage === 'string' ? data.stage : 'Закалка тела';
-        }
-        
-        if (data.level !== undefined) {
-          updateData.level = data.level;
-        }
-        
+        // Простое копирование незащищенных полей
+        const simpleFields = ['stage', 'level', 'experienceToNextLevel', 'maxEnergy', 'tribulationCompleted', 'insightPoints', 'requiredBottleneckProgress', 'cultivationEfficiency'];
+        simpleFields.forEach(field => {
+          if (data[field] !== undefined) {
+            updateData[field] = data[field];
+          }
+        });
+
+        // Обновление полей с ограничением максимального значения
         if (data.experience !== undefined) {
-          const Sequelize = require('sequelize');
-          updateData.experience = Sequelize.literal(`experience + ${data.experience}`);
+          updateData.experience = Math.min(data.experience, cultivation.experienceToNextLevel);
         }
-        
-        if (data.experienceToNextLevel !== undefined) {
-          updateData.experienceToNextLevel = data.experienceToNextLevel;
-        }
-        
+
         if (data.energy !== undefined) {
-          updateData.energy = data.energy;
+          updateData.energy = Math.min(data.energy, cultivation.maxEnergy);
         }
-        
-        if (data.maxEnergy !== undefined) {
-          updateData.maxEnergy = data.maxEnergy;
-        }
-        
-        if (data.tribulationCompleted !== undefined) {
-          updateData.tribulationCompleted = data.tribulationCompleted;
-        }
-        
-        if (data.insightPoints !== undefined) {
-          updateData.insightPoints = data.insightPoints;
-        }
-        
+
         if (data.bottleneckProgress !== undefined) {
-          updateData.bottleneckProgress = data.bottleneckProgress;
-        }
-        
-        if (data.requiredBottleneckProgress !== undefined) {
-          updateData.requiredBottleneckProgress = data.requiredBottleneckProgress;
-        }
-        
-        if (data.cultivationEfficiency !== undefined) {
-          updateData.cultivationEfficiency = data.cultivationEfficiency;
+          updateData.bottleneckProgress = Math.min(data.bottleneckProgress, cultivation.requiredBottleneckProgress);
         }
         
         //console.log(`[CULTIVATION SERVICE] updateCultivationProgress: ${userId} ${JSON.stringify(updateData)}`);
