@@ -8,6 +8,13 @@ const isBrowser = typeof window !== 'undefined';
 // Храним данные о культивации в памяти для браузера
 let browserCultivationData = {};
 
+const STAGE_CONFIG = [
+ { name: 'Закалка тела', endLevel: 4 },
+ { name: 'Очищение Ци', endLevel: 7 },
+ { name: 'Золотое ядро', endLevel: 13 },
+ { name: 'Формирование души', endLevel: Infinity }
+];
+
 /**
  * Сервис для работы с данными о культивации
  */
@@ -362,17 +369,17 @@ class CultivationService {
     requirements.resources = ResourceService.getBreakthroughResources(stage, level);
     
     // Определяем требуемый прогресс "бутылочного горлышка" в зависимости от ступени и уровня
-    switch(stage.toLowerCase()) {
-      case 'закалка тела':
+    switch(stage) {
+      case 'Закалка тела':
         requirements.bottleneckProgress = level * 10;
         break;
-      case 'очищение ци':
+      case 'Очищение Ци':
         requirements.bottleneckProgress = level * 15;
         break;
-      case 'золотое ядро':
+      case 'Золотое ядро':
         requirements.bottleneckProgress = level * 20;
         break;
-      case 'формирование души':
+      case 'Формирование души':
         requirements.bottleneckProgress = level * 25;
         break;
       default:
@@ -381,8 +388,8 @@ class CultivationService {
     
     // Определяем тип трибуляции в зависимости от ступени и уровня
     if (level === 3 || level === 6 || level === 9) {
-      switch(stage.toLowerCase()) {
-        case 'закалка тела':
+      switch(stage) {
+        case 'Закалка тела':
           requirements.tribulation = {
             type: 'физическая',
             difficulty: level * 10,
@@ -390,7 +397,7 @@ class CultivationService {
           };
           break;
           
-        case 'очищение ци':
+        case 'Очищение Ци':
           requirements.tribulation = {
             type: 'энергетическая',
             difficulty: level * 15,
@@ -398,7 +405,7 @@ class CultivationService {
           };
           break;
           
-        case 'золотое ядро':
+        case 'Золотое ядро':
           requirements.tribulation = {
             type: 'грозовая',
             difficulty: level * 20,
@@ -528,6 +535,7 @@ class CultivationService {
    * @param {Object} tribulationResult - Результат прохождения трибуляции
    */
   static async completeTribulation(userId, tribulationResult) {
+    console.log(`[CULTIVATION SERVICE] completeTribulation ${user}: ${tribulationResult}`);
     try {
       if (isBrowser) {
         // В браузере используем объект в памяти
@@ -875,11 +883,8 @@ class CultivationService {
    * @returns {Promise<Object>} - Результат прорыва
    */
   static async performBreakthrough(userId) {
-    
     try {
-      // Проверяем возможность прорыва
       const checkResult = await this.checkBreakthroughPossibility(userId);
-      
       if (!checkResult.canBreakthrough) {
         return {
           success: false,
@@ -887,129 +892,64 @@ class CultivationService {
           missingRequirements: checkResult.missingRequirements
         };
       }
-      
-      // Получаем текущие данные о культивации
-      let cultivation;
-      
-      if (isBrowser) {
-        // В браузере используем объект в памяти
-        cultivation = browserCultivationData[userId];
-        
-        if (!cultivation) {
-          return {
-            success: false,
-            message: 'Данные о культивации не найдены'
-          };
-        }
-      } else {
-        // На сервере используем базу данных
-        cultivation = await CultivationProgress.findOne({
-          where: { userId }
-        });
-        
-        if (!cultivation) {
-          return {
-            success: false,
-            message: 'Данные о культивации не найдены'
-          };
-        }
+
+      const cultivation = await CultivationProgress.findOne({ where: { userId } });
+      if (!cultivation) {
+        return { success: false, message: 'Данные о культивации не найдены' };
       }
-      
-      // Сохраняем текущие значения для сравнения
+
       const previousLevel = cultivation.level;
       const previousStage = cultivation.stage;
       
-      // Вычисляем новые значения
-      let newLevel = cultivation.level + 1;
-      let newStage = cultivation.stage;
-      
-      // Определяем, нужно ли переходить на новую ступень
-      // Предполагаем, что каждая ступень имеет максимум 9 уровней
-      if ((previousStage === 'Закалка тела' && newLevel > 9) ||
-          (previousStage === 'Очищение ци' && newLevel > 9) ||
-          (previousStage === 'Золотое ядро' && newLevel > 9) ||
-          (previousStage === 'Формирование души' && newLevel > 9)) {
-        
-        // Переход на следующую ступень
-        newLevel = 1;
-        
-        // Определяем следующую ступень культивации
-        if (previousStage === 'Закалка тела') {
-          newStage = 'Очищение ци';
-        } else if (previousStage === 'Очищение ци') {
-          newStage = 'Золотое ядро';
-        } else if (previousStage === 'Золотое ядро') {
-          newStage = 'Формирование души';
-        } else if (previousStage === 'Формирование души') {
-          newStage = 'Пустое ядро';
+      const newLevel = previousLevel + 1;
+      let newStage = previousStage;
+
+      const currentStageConfig = STAGE_CONFIG.find(s => s.name === previousStage);
+      if (currentStageConfig && newLevel > currentStageConfig.endLevel) {
+        const currentStageIndex = STAGE_CONFIG.findIndex(s => s.name === previousStage);
+        const nextStageConfig = STAGE_CONFIG[currentStageIndex + 1];
+        if (nextStageConfig) {
+          newStage = nextStageConfig.name;
         }
       }
       
-      // Рассчитываем новые значения характеристик
       const newExperienceToNextLevel = newLevel * 100;
-      const energyBonus = Math.floor(cultivation.maxEnergy * 0.1); // Бонус к максимальной энергии 10%
+      const energyBonus = Math.floor(cultivation.maxEnergy * 0.1);
       const newMaxEnergy = cultivation.maxEnergy + energyBonus;
-      
-      // Подготавливаем обновления
+
       const updateData = {
         level: newLevel,
         stage: newStage,
-        experience: 0, // Сбрасываем опыт
+        experience: 0,
         experienceToNextLevel: newExperienceToNextLevel,
-        bottleneckProgress: 0, // Сбрасываем прогресс "бутылочного горлышка"
+        bottleneckProgress: 0,
         maxEnergy: newMaxEnergy,
-        energy: newMaxEnergy, // Восстанавливаем энергию до максимума
-        tribulationCompleted: false // Сбрасываем флаг прохождения трибуляции
+        energy: newMaxEnergy,
+        tribulationCompleted: false
       };
-      
-      // Генерируем новые требования для следующего уровня
+
       const requirements = this.generateBreakthroughRequirements(newStage, newLevel);
       updateData.requiredBottleneckProgress = requirements.bottleneckProgress;
-      
-      // Обновляем данные
-      if (isBrowser) {
-        // В браузере обновляем объект в памяти
-        Object.assign(browserCultivationData[userId], updateData);
-      } else {
-        // На сервере обновляем запись в базе данных
-        await cultivation.update(updateData);
-        
-        // Также обновляем уровень культивации в таблице пользователей
-        const user = await User.findByPk(userId);
-        if (user) {
-          await user.update({
-            cultivation_level: newLevel
-          });
-        }
+
+      await cultivation.update(updateData);
+
+      const user = await User.findByPk(userId);
+      if (user) {
+        await user.update({ cultivation_level: newLevel });
       }
-      
-      // Определяем, получен ли новый этап
+
       const isNewStage = previousStage !== newStage;
-      
-      // Формируем сообщение о прорыве
-      let message;
-      if (isNewStage) {
-        message = `Поздравляем! Вы достигли нового этапа культивации: ${newStage} уровень ${newLevel}!`;
-      } else {
-        message = `Поздравляем! Вы успешно совершили прорыв на уровень ${newLevel}!`;
-      }
-      
-      // Формируем результат прорыва
+      let message = isNewStage
+        ? `Поздравляем! Вы достигли нового этапа культивации: ${newStage} (уровень ${newLevel})!`
+        : `Поздравляем! Вы успешно совершили прорыв на уровень ${newLevel}!`;
+
       return {
         success: true,
         message: message,
-        previousState: {
-          stage: previousStage,
-          level: previousLevel
-        },
-        newState: {
-          stage: newStage,
-          level: newLevel
-        },
-        bonuses: {
-          maxEnergy: energyBonus
-        },
-        statPoints: 5, // Количество очков характеристик, получаемых при прорыве
+        previousState: { stage: previousStage, level: previousLevel },
+        newState: { stage: newStage, level: newLevel },
+        bonuses: { maxEnergy: energyBonus },
+        statPoints: 5,
         isNewStage: isNewStage
       };
     } catch (error) {

@@ -20,22 +20,39 @@ function CultivationTab() {
   const [tribulationResult, setTribulationResult] = useState(null);
   const [insightCooldown, setInsightCooldown] = useState(0);
 
-  useEffect(() => {
-    // Загружаем данные инвентаря при монтировании, если они нужны и еще не загружены
-    // или если userId изменился.
+  const refreshCultivationData = useCallback(async () => {
     const userId = state.player?.id;
-    if (userId && actions.loadInventoryData) {
-      // Простая проверка: если items пустой, загружаем.
-      // В более сложном сценарии можно добавить флаг isInventoryLoaded в state.
-      if (!state.player.inventory?.items || state.player.inventory.items.length === 0) {
-        console.log('[CultivationTab] Инвентарь пуст, загрузка данных...');
-        actions.loadInventoryData(userId);
+    if (!userId) return;
+    try {
+      const cultivationData = await CultivationAdapter.getCultivationProgress(userId);
+      if (cultivationData) {
+        actions.updateCultivation(cultivationData);
       }
+    } catch (error) {
+      console.error('Ошибка при обновлении данных культивации:', error);
+      actions.addNotification({
+        message: 'Не удалось обновить данные культивации.',
+        type: 'error'
+      });
     }
-  }, [state.player?.id, actions, state.player.inventory?.items]);
+  }, [state.player?.id, actions]);
+
+  useEffect(() => {
+    // Загружаем данные инвентаря и культивации при монтировании
+    const userId = state.player?.id;
+    if (userId) {
+      if (!state.player.inventory?.items || state.player.inventory.items.length === 0) {
+        if (actions.loadInventoryData) {
+          console.log('[CultivationTab] Инвентарь пуст, загрузка данных...');
+          actions.loadInventoryData(userId);
+        }
+      }
+      refreshCultivationData();
+    }
+  }, [state.player?.id, actions, refreshCultivationData]);
   
   // Function to handle meditation completion
-  const handleMeditationComplete = useCallback(() => {
+  const handleMeditationComplete = useCallback(async () => {
     const cultivationEfficiency = state.player.cultivation.cultivationEfficiency || 1.0;
     const experienceGain = Math.floor((Math.random() * 10 + 10) * cultivationEfficiency);
     const energyGain = Math.floor((Math.random() * 5 + 5) * cultivationEfficiency);
@@ -139,28 +156,24 @@ function CultivationTab() {
     const userId = state.player.id;
     if (userId) {
       try {
-        CultivationAdapter.updateCultivationProgress(userId, cultivationUpdates)
-          .then(updatedCultivation => {
-            console.log('Данные культивации обновлены через API:', updatedCultivation);
-          })
-          .catch(error => {
-            console.error('Ошибка при обновлении данных культивации через API:', error);
-            
-            // Резервное обновление через Redux в случае ошибки
-            actions.updateCultivation(cultivationUpdates);
-          });
+        await CultivationAdapter.updateCultivationProgress(userId, cultivationUpdates);
       } catch (error) {
         console.error('Ошибка при вызове API для обновления культивации:', error);
-        
-        // Резервное обновление через Redux в случае ошибки
-        actions.updateCultivation(cultivationUpdates);
+        // В случае ошибки можно показать уведомление
+        actions.addNotification({
+          message: 'Ошибка при обновлении данных культивации.',
+          type: 'error'
+        });
+      } finally {
+        // Обновляем данные в любом случае
+        refreshCultivationData();
       }
     } else {
       console.warn('Невозможно отправить запрос на сервер: отсутствует userId');
       // Используем традиционный подход, если userId не доступен
       actions.updateCultivation(cultivationUpdates);
     }
-  }, [actions, state.player.cultivation]);
+  }, [actions, state.player.cultivation, refreshCultivationData]);
 
   useEffect(() => {
     let timer;
@@ -492,9 +505,12 @@ function CultivationTab() {
             type: 'error'
           });
         }
+      } finally {
+        // Обновляем данные в любом случае
+        refreshCultivationData();
       }
     }, 0);
-  }, [actions, canBreakthrough, state.player, requiredResources, fallbackBreakthrough]);
+  }, [actions, canBreakthrough, state.player, requiredResources, fallbackBreakthrough, refreshCultivationData]);
   
   // Обработка трибуляции
   useEffect(() => {
@@ -797,9 +813,11 @@ function CultivationTab() {
         });
         
         setInsightCooldown(6 * 60 * 60); // Меньший кулдаун при ошибке
+      } finally {
+        refreshCultivationData();
       }
     }, 0);
-  }, [actions, insightCooldown, state.player.cultivation]);
+  }, [actions, insightCooldown, state.player.cultivation, refreshCultivationData]);
   
   return (
     <S.Container>
