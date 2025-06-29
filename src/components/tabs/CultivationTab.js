@@ -638,6 +638,7 @@ function CultivationTab() {
             window.dispatchEvent(new CustomEvent('tribulation-complete', {
               detail: { success, result }
             }));
+            refreshCultivationData();
           } catch (error) {
             console.error('Ошибка при завершении трибуляции через API:', error);
             // Продолжаем с традиционным подходом в случае ошибки
@@ -781,6 +782,7 @@ function CultivationTab() {
           
           // Создаем событие для уведомления других компонентов
           window.dispatchEvent(new CustomEvent('insight-gained'));
+          refreshCultivationData();
         } else {
           // Используем традиционный подход, если API не доступно
           const currentEfficiency = state.player.cultivation.cultivationEfficiency || 1.0;
