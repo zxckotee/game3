@@ -4,6 +4,7 @@ import { useGame } from '../../context/GameContext';
 import { startCombat as startCombatAPI, performCombatAction, getCombatState } from '../../services/combat-api';
 import { enemies, getModifiedEnemySpawns } from '../../data/enemies-adapter';
 import PveBattleInterface from '../battle/PveBattleInterface';
+import BattleResult from '../battle/BattleResult';
 
 const Container = styled.div`
   position: relative;
@@ -403,17 +404,18 @@ function CombatArea({ areaId }) {
 
   if (combatState && activeEnemy) {
     if (combatState.status === 'completed') {
-        return (
-            <Container>
-                <WorldArea>
-                    <AreaInfo>
-                        <AreaTitle>Бой окончен</AreaTitle>
-                        <AreaDescription>Победитель: {combatState.winner}</AreaDescription>
-                        <button onClick={() => { setCombatState(null); setActiveEnemy(null); }}>Вернуться</button>
-                    </AreaInfo>
-                </WorldArea>
-            </Container>
-        );
+      return (
+        <BattleResult
+          result={combatState.winner === 'player' ? 'victory' : 'defeat'}
+          rewards={combatState.rewards}
+          onClose={() => {
+            setCombatState(null);
+            setActiveEnemy(null);
+            // Возможно, здесь нужно будет обновить состояние игрока в GameContext
+            // actions.fetchPlayerState();
+          }}
+        />
+      );
     }
 
     return <PveBattleInterface

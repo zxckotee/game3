@@ -2,8 +2,19 @@
  * Combat Service - сервис для управления боями с NPC (PvE)
  */
 const modelRegistry = require('../models/registry');
-const { Op } = require('sequelize');
+const { Op, QueryTypes } = require('sequelize');
+const { unifiedDatabase, initializeDatabaseConnection } = require('./database-connection-manager');
+const { Sequelize } = require('sequelize');
 
+let sequelize;
+// Асинхронная функция для получения экземпляра
+async function getSequelizeInstance() {
+  if (!sequelize) {
+    const { db } = await initializeDatabaseConnection();
+    sequelize = db;
+  }
+  return sequelize;
+}
 /**
  * Класс для работы с PvE боями
  */
@@ -194,7 +205,8 @@ class CombatService {
       combat.status = 'completed';
       combat.winner = 'player';
       combat.log.push({ message: 'Противник повержен!' });
-      // TODO: Начислить награды
+      const rewards = await this._processRewards(combat, userId);
+      combat.rewards = rewards; // Динамически добавляем награды в объект
     } else {
       combat.turn = 'player'; // Возвращаем ход игроку
     }
@@ -206,7 +218,11 @@ class CombatService {
 
     await combat.save();
 
-    return { success: true, combat: combat.toJSON() };
+    const finalCombatState = combat.toJSON();
+    if (combat.rewards) {
+      finalCombatState.rewards = combat.rewards;
+    }
+    return { success: true, combat: finalCombatState };
   }
 
   /**
@@ -297,6 +313,116 @@ class CombatService {
     await combat.save();
 
     return { success: true, combat: combat.toJSON() };
+  }
+  /**
+   * Обработка и начисление наград игроку после победы
+   * @param {Object} combat - Экземпляр боя
+   * @param {number} userId - ID игрока
+   * @returns {Promise<Object>} - Объект с информацией о полученных наградах
+   * @private
+   */
+  static async _processRewards(combat, userId) {
+    const sequelize = await getSequelizeInstance();
+    const CharacterProfile = modelRegistry.getModel('CharacterProfile');
+    const InventoryItem = modelRegistry.getModel('InventoryItem');
+    const Enemy = modelRegistry.getModel('Enemy');
+
+    const rewards = {
+      currency: {},
+      items: [],
+      experience: 0
+    };
+
+    // --- 1. Начисление предметов ---
+    const rarityWeights = {
+      common: 100,
+      uncommon: 50,
+      rare: 20,
+      epic: 5,
+      legendary: 1
+    };
+
+    const itemQuery = `
+      SELECT item_id, name, rarity, type, description
+      FROM item_catalog
+      WHERE (type = 'ресурс' OR type = 'артефакт')
+        AND item_id NOT LIKE '%pvp_reward%'
+      ORDER BY RANDOM() *
+        CASE rarity
+          WHEN 'common' THEN ${rarityWeights.common}
+          WHEN 'uncommon' THEN ${rarityWeights.uncommon}
+          WHEN 'rare' THEN ${rarityWeights.rare}
+          WHEN 'epic' THEN ${rarityWeights.epic}
+          WHEN 'legendary' THEN ${rarityWeights.legendary}
+          ELSE 0.1
+        END
+      LIMIT 1;
+    `;
+    
+    const [item] = await sequelize.query(itemQuery, { type: QueryTypes.SELECT });
+
+    if (item) {
+      const quantity = Math.floor(Math.random() * 3) + 1;
+      const existingItem = await InventoryItem.findOne({ where: { userId, itemId: item.item_id } });
+
+      if (existingItem) {
+        existingItem.quantity += quantity;
+        await existingItem.save();
+      } else {
+        await InventoryItem.create({
+          userId,
+          itemId: item.item_id,
+          name: item.name,
+          description: item.description,
+          item_type: item.type,
+          rarity: item.rarity,
+          quantity: quantity
+        });
+      }
+      rewards.items.push({ ...item, quantity, icon: '❓' }); // Иконку пока не берем
+      console.log(`[CombatService] Игроку ${userId} выпал предмет: ${item.name} x${quantity}.`);
+    }
+
+    // --- 2. Начисление валюты ---
+    const currencyRoll = Math.random() * 100;
+    const profile = await CharacterProfile.findOne({ where: { userId } });
+
+    if (profile) {
+      let currencyType = null;
+      let amount = 0;
+
+      if (currencyRoll < 10) { // 10% шанс на золото
+        currencyType = 'gold';
+        amount = Math.floor(Math.random() * 5) + 1; // 1-5 золота
+      } else if (currencyRoll < 40) { // 30% шанс на серебро
+        currencyType = 'silver';
+        amount = Math.floor(Math.random() * 50) + 10; // 10-60 серебра
+      } else { // 60% шанс на медь
+        currencyType = 'copper';
+        amount = Math.floor(Math.random() * 200) + 50; // 50-250 меди
+      }
+      
+      if (amount > 0) {
+        profile[currencyType] += amount;
+        await profile.save();
+        rewards.currency = { type: currencyType, amount };
+        console.log(`[CombatService] Игроку ${userId} начислено ${amount} ${currencyType}.`);
+      }
+    }
+
+    // --- 3. Начисление опыта ---
+    const enemy = await Enemy.findByPk(combat.enemy_id);
+    if (enemy && enemy.experience > 0) {
+      const user = await modelRegistry.getModel('User').findByPk(userId);
+      if (user) {
+        user.experience += enemy.experience;
+        await user.save();
+        rewards.experience = enemy.experience;
+        console.log(`[CombatService] Игроку ${userId} начислено ${enemy.experience} опыта.`);
+      }
+    }
+
+    return rewards;
   }
 }
 
