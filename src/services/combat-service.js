@@ -116,15 +116,12 @@ class CombatService {
     const Combat = modelRegistry.getModel('Combat');
     const combat = await Combat.findByPk(combatId);
 
-    // Обновляем длительность эффектов перед каждым действием
-    if (combat) {
-      await this.updateEffectsDuration(combat);
-    }
-
-
     if (!combat) {
       throw new Error('Бой не найден');
     }
+
+    // Обновляем длительность эффектов перед каждым действием
+    await this.updateEffectsDuration(combat);
 
     if (combat.user_id !== userId) {
       throw new Error('Вы не можете действовать в чужом бою');
@@ -277,8 +274,29 @@ class CombatService {
     if (changed) {
       combat.changed('player_state', true);
       combat.changed('enemy_state', true);
-      // Сохранение не требуется здесь, так как оно будет в конце performAction
     }
+  }
+
+  /**
+   * Получение актуального состояния боя
+   * @param {number} combatId - ID боя
+   * @param {number} userId - ID игрока
+   * @returns {Object} - Актуальное состояние боя
+   */
+  static async getCombatState(combatId) {
+    const Combat = modelRegistry.getModel('Combat');
+    const combat = await Combat.findByPk(combatId);
+
+    if (!combat) {
+      throw new Error('Бой не найден');
+    }
+
+    // Обновляем длительность эффектов перед отправкой состояния клиенту
+    await this.updateEffectsDuration(combat);
+
+    await combat.save();
+
+    return { success: true, combat: combat.toJSON() };
   }
 }
 

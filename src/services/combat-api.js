@@ -37,3 +37,21 @@ export const performCombatAction = async (combatId, action) => {
     };
   }
 };
+
+/**
+ * Получает актуальное состояние боя с сервера
+ * @param {number} combatId - ID боя
+ * @returns {Promise<Object>} Промис с актуальным состоянием боя
+ */
+export const getCombatState = async (combatId) => {
+  try {
+    const response = await apiRequest('GET', `/api/combat/${combatId}/state`);
+    return response;
+  } catch (error) {
+    console.error(`Ошибка при получении состояния боя ${combatId}:`, error);
+    return {
+      success: false,
+      message: error.message || 'Сетевая ошибка или сервер недоступен'
+    };
+  }
+};

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import './BattleInterface.css';
 import BattleEffects from './BattleEffects';
 import ActionPanel from './ActionPanel';
@@ -22,9 +22,9 @@ const PveBattleInterface = ({
   const logRef = useRef(null);
 
   // Автоматическая прокрутка лога боя
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (logRef.current) {
-      logRef.current.scrollTop = 0;
+      logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [log]);
 

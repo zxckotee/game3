@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useGame } from '../../context/GameContext';
-import { startCombat as startCombatAPI, performCombatAction } from '../../services/combat-api';
+import { startCombat as startCombatAPI, performCombatAction, getCombatState } from '../../services/combat-api';
 import { enemies, getModifiedEnemySpawns } from '../../data/enemies-adapter';
 import PveBattleInterface from '../battle/PveBattleInterface';
 
@@ -204,6 +204,21 @@ function CombatArea({ areaId }) {
   
   const [combatState, setCombatState] = useState(null);
   const [activeEnemy, setActiveEnemy] = useState(null); // Хранит полный объект врага во время боя
+
+  useEffect(() => {
+    if (!combatState || combatState.status !== 'active') {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      const updatedState = await getCombatState(combatState.id);
+      if (updatedState.success) {
+        setCombatState(updatedState.combat);
+      }
+    }, 2000); // Опрос каждые 2 секунды
+
+    return () => clearInterval(interval);
+  }, [combatState]);
   
   const defaultWeather = {
     weatherType: 'Ясно',

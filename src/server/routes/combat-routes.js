@@ -60,4 +60,26 @@ router.post('/:combatId/action', validateAuth, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/combat/:combatId/state
+ * @desc    Получить актуальное состояние боя
+ * @access  Private
+ */
+router.get('/:combatId/state', async (req, res) => {
+  try {
+    const { combatId } = req.params;
+
+    const result = await CombatService.getCombatState(combatId);
+    res.json(result);
+
+  } catch (error) {
+    console.error(`[CombatRoutes] Ошибка при получении состояния боя ${req.params.combatId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка на сервере при получении состояния боя',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
