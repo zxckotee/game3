@@ -334,32 +334,37 @@ class CombatService {
     };
 
     // --- 1. Начисление предметов ---
-    const rarityWeights = {
-      common: 100,
-      uncommon: 50,
-      rare: 20,
-      epic: 5,
-      legendary: 1
+    const getWeightedRandomItem = (items) => {
+      const rarityWeights = {
+        common: 100,
+        uncommon: 50,
+        rare: 20,
+        epic: 5,
+        legendary: 1
+      };
+
+      const totalWeight = items.reduce((sum, item) => sum + (rarityWeights[item.rarity] || 0.1), 0);
+      let random = Math.random() * totalWeight;
+
+      for (const item of items) {
+        const weight = rarityWeights[item.rarity] || 0.1;
+        if (random < weight) {
+          return item;
+        }
+        random -= weight;
+      }
+      return null; // На случай, если что-то пойдет не так
     };
 
     const itemQuery = `
       SELECT item_id, name, rarity, type, description
       FROM item_catalog
-      WHERE (type = 'ресурс' OR type = 'артефакт')
-        AND item_id NOT LIKE '%pvp_reward%'
-      ORDER BY RANDOM() *
-        CASE rarity
-          WHEN 'common' THEN ${rarityWeights.common}
-          WHEN 'uncommon' THEN ${rarityWeights.uncommon}
-          WHEN 'rare' THEN ${rarityWeights.rare}
-          WHEN 'epic' THEN ${rarityWeights.epic}
-          WHEN 'legendary' THEN ${rarityWeights.legendary}
-          ELSE 0.1
-        END
-      LIMIT 1;
+      WHERE (type = 'resource' OR type = 'artifact')
+        AND item_id NOT LIKE '%pvp_reward%';
     `;
     
-    const [item] = await sequelize.query(itemQuery, { type: QueryTypes.SELECT });
+    const possibleItems = await sequelize.query(itemQuery, { type: QueryTypes.SELECT });
+    const item = getWeightedRandomItem(possibleItems);
 
     if (item) {
       const quantity = Math.floor(Math.random() * 3) + 1;
@@ -374,7 +379,7 @@ class CombatService {
           itemId: item.item_id,
           name: item.name,
           description: item.description,
-          item_type: item.type,
+          type: item.type,
           rarity: item.rarity,
           quantity: quantity
         });
