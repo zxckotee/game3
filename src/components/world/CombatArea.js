@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useGame } from '../../context/GameContext';
 import { startCombat as startCombatAPI, performCombatAction, getCombatState } from '../../services/combat-api';
+const { getCultivationProgress } = require('../../services/cultivation-api');
+const { getCharacterProfile } = require('../../services/character-profile-service-api');
 import { enemies, getModifiedEnemySpawns } from '../../data/enemies-adapter';
 import PveBattleInterface from '../battle/PveBattleInterface';
 import BattleResult from '../battle/BattleResult';
@@ -408,11 +410,39 @@ function CombatArea({ areaId }) {
         <BattleResult
           result={combatState.winner === 'player' ? 'victory' : 'defeat'}
           rewards={combatState.rewards}
-          onClose={() => {
-            setCombatState(null);
-            setActiveEnemy(null);
-            // Возможно, здесь нужно будет обновить состояние игрока в GameContext
-            // actions.fetchPlayerState();
+          onClose={async () => {
+            try {
+              // 1. Получаем ID пользователя из состояния
+              const userId = state.player.id;
+              if (!userId) {
+                console.error("Не удалось получить ID пользователя для обновления состояния.");
+                return;
+              }
+
+              // 2. Запрашиваем обновленные данные
+              const [cultivationData, profileData] = await Promise.all([
+                getCultivationProgress(userId),
+                getCharacterProfile(userId)
+              ]);
+
+              // 3. Обновляем состояние в GameContext
+              if (cultivationData) {
+                actions.updateCultivation(cultivationData);
+              }
+              if (profileData && profileData.currency) {
+                actions.updateInventoryCurrency(profileData.currency);
+              }
+              
+              actions.addNotification({ message: 'Данные персонажа обновлены.', type: 'success' });
+
+            } catch (error) {
+              console.error("Ошибка при обновлении данных персонажа после боя:", error);
+              actions.addNotification({ message: `Не удалось обновить данные: ${error.message}`, type: 'error' });
+            } finally {
+              // 4. Сбрасываем состояние боя
+              setCombatState(null);
+              setActiveEnemy(null);
+            }
           }}
         />
       );
