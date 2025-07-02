@@ -71,6 +71,7 @@
 \i sql/update_merchant_inventory_templates.sql
 
 \i sql/44_item_images.sql  -- картинки к предметам 
+-- \i sql/45_relationships -- новая таблица отражающая структуру state.player.social.relationships
 
 
 

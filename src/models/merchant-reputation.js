@@ -79,7 +79,7 @@ MerchantReputation.init = async function() {
         model: 'users', // Имя таблицы в lowercase
         key: 'id'
       }
-    },
+    }, 
     // Идентификатор торговца
     merchantId: {
       type: DataTypes.INTEGER,

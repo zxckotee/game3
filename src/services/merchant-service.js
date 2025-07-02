@@ -16,6 +16,7 @@ const { merchantTypes, merchantRarityLevels } = require('../data/merchant-consta
 const { checkItemRequirements } = require('./equipment-service');
 const CharacterProfileService = require('./character-profile-service');
 
+
 // Кэш для хранения данных (для оптимизации)
 let merchantsCache = [];
 let merchantsById = {};
@@ -68,7 +69,7 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
     }, {});
     return formattedMerchants;
   } catch (error) {
-    console.error('Ошибка при получении торговцев:', error);
+    console.error('Ошибка при получении торговцев:', error); 
     // В случае ошибки возвращаем кэшированные данные
     return merchantsCache;
   }
@@ -105,7 +106,7 @@ exports.getMerchantById = async function(id) {
                   'image', 'defaultDiscount', 'createdAt', 'updatedAt']
     });
     
-    if (!merchant) {
+    if (!merchant) { 
       return null;
     }
     
