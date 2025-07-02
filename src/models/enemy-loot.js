@@ -67,15 +67,5 @@ EnemyLoot.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await EnemyLoot.init();
-    console.log('EnemyLoot модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели EnemyLoot:', error);
-    console.error(error.stack);
-  }
-})();
 
 module.exports = EnemyLoot;

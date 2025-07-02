@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useGame } from '../../context/GameContext';
-import CombatManager from '../combat/CombatManager';
+import { startCombat as startCombatAPI, performCombatAction } from '../../services/combat-api';
 import { enemies, getModifiedEnemySpawns } from '../../data/enemies-adapter';
+import PveBattleInterface from '../battle/PveBattleInterface';
 
 const Container = styled.div`
   position: relative;
@@ -201,17 +202,9 @@ const RewardItem = styled.div`
 function CombatArea({ areaId }) {
   const { state, actions } = useGame();
   
-  // Инициализируем selectedEnemy, проверяя наличие врага в глобальном состоянии
-  const [selectedEnemy, setSelectedEnemy] = useState(() => {
-    // Если уже есть активный бой, используем врага из глобального состояния
-    if (state.combat.inCombat && (state.combat.enemy || state.combat.enemyCombatState)) {
-      console.log('CombatArea: Восстановление противника из глобального состояния');
-      return state.combat.enemy || state.combat.enemyCombatState;
-    }
-    return null;
-  });
+  const [combatState, setCombatState] = useState(null);
+  const [activeEnemy, setActiveEnemy] = useState(null); // Хранит полный объект врага во время боя
   
-  // Получаем информацию о погоде и времени суток - вызываем все хуки в начале компонента
   const defaultWeather = {
     weatherType: 'Ясно',
     timeOfDay: 'день',
@@ -227,7 +220,6 @@ function CombatArea({ areaId }) {
     }
   };
   
-  // Безопасно получаем объект weather с проверкой вложенных свойств
   const weather = {
     ...defaultWeather,
     ...(state.weather || {}),
@@ -241,7 +233,6 @@ function CombatArea({ areaId }) {
     }
   };
   
-  // Функции-хелперы
   const getEnemyLevel = (spawn) => {
     return Math.floor(
       spawn.minLevel + 
@@ -249,14 +240,10 @@ function CombatArea({ areaId }) {
     );
   };
   
-  // Проверяем кэш противников и используем его, если доступен
   const spawnEnemy = (spawn) => {
-    // Поиск базового противника
     const baseEnemy = enemies.find(e => e.id === spawn.id);
     if (!baseEnemy) {
-      console.error(`Враг с ID ${spawn.id} не найден в базе данных enemies. Доступные ID:`, enemies.map(e => e.id));
-      
-      // Вместо null создаем базового противника по умолчанию
+      console.error(`Враг с ID ${spawn.id} не найден в базе данных enemies.`);
       return {
         id: spawn.id,
         name: spawn.name || `Враг ${spawn.id}`,
@@ -265,55 +252,28 @@ function CombatArea({ areaId }) {
         level: spawn.minLevel || 1,
         requiredLevel: spawn.minLevel || 1,
         category: spawn.category || 'normal',
-        stats: {
-          health: 100,
-          energy: 50,
-          physicalDefense: 10,
-          spiritualDefense: 10,
-          accuracy: 70,
-          evasion: 20
-        },
-        attacks: [
-          {
-            name: "Базовая атака",
-            damage: 10,
-            damageType: "physical",
-            energyCost: 0
-          }
-        ],
+        stats: { health: 100, energy: 50, physicalDefense: 10, spiritualDefense: 10, accuracy: 70, evasion: 20 },
+        attacks: [{ name: "Базовая атака", damage: 10, damageType: "physical", energyCost: 0 }],
         experience: 50,
-        currency: {
-          min: 5,
-          max: 15
-        },
+        currency: { min: 5, max: 15 },
         loot: []
       };
     }
     
-    // Создаем ключ кэша
     const cacheKey = `${areaId}_${spawn.id}`;
-    
-    // Проверяем, есть ли кэшированный противник
     const cachedEnemy = state.world?.generatedEnemies?.[cacheKey];
     
     if (cachedEnemy) {
-      console.log(`🎮 Используем кэшированного противника: ${cacheKey}`, {
-        level: cachedEnemy.level,
-        requiredLevel: cachedEnemy.requiredLevel
-      });
-      
       return cachedEnemy;
     }
     
-    // Если нет в кэше, генерируем заново
     const level = getEnemyLevel(spawn);
     const levelMultiplier = 1 + (level - baseEnemy.level) * 0.1;
     
-    // Создаем нового противника с корректным requiredLevel
     const newEnemy = {
       ...baseEnemy,
       level,
-      requiredLevel: spawn.minLevel, // Явно устанавливаем requiredLevel из spawn.minLevel
+      requiredLevel: spawn.minLevel,
       stats: {
         ...baseEnemy.stats,
         health: Math.floor(baseEnemy.stats.health * levelMultiplier),
@@ -332,297 +292,217 @@ function CombatArea({ areaId }) {
       }
     };
     
-    // Кэшируем противника
     actions.cacheGeneratedEnemy(areaId, spawn.id, newEnemy);
-    
-    console.log(`🎮 Сгенерирован и кэширован противник: ${cacheKey}`, {
-      level: newEnemy.level,
-      requiredLevel: newEnemy.requiredLevel
-    });
-    
     return newEnemy;
   };
   
-  // Получаем список врагов - перемещаем все вычисления наверх
-  console.log('Доступные враги в enemies:', enemies.map(e => e.id));
-  
-  // Проверяем, что getModifiedEnemySpawns возвращает правильный формат
   const areaEnemies = getModifiedEnemySpawns(
     areaId,
     weather.timeOfDay,
     weather.weatherType
   );
   
-  console.log('Результат getModifiedEnemySpawns:', areaEnemies);
-  
-  // Предварительно объявляем переменную, чтобы она была доступна вне блоков условий
   let availableEnemies = [];
-  
-  // Проверяем, является ли areaEnemies массивом
   if (!Array.isArray(areaEnemies)) {
     console.error('areaEnemies не является массивом:', areaEnemies);
-    // Используем безопасный пустой массив
   } else {
     try {
-      // Если это массив, выполняем обработку
       availableEnemies = areaEnemies.map(spawn => {
-        console.log('Спавн врага:', spawn);
-        
-        // Проверяем, что spawn имеет все необходимые поля
         if (!spawn || typeof spawn !== 'object') {
           console.error('Некорректный объект spawn:', spawn);
           return null;
         }
-        
         const enemy = spawnEnemy(spawn);
-        console.log('Результат спавна:', enemy);
-        
-        // Дополнительная проверка на корректность объекта enemy
         if (!enemy || !enemy.stats) {
           console.error('Некорректный объект enemy:', enemy);
           return null;
         }
-        
         return {
           ...enemy,
           available: state.player.cultivation.level >= spawn.minLevel
         };
-      }).filter(enemy => enemy !== null); // Удаляем null-элементы из массива
+      }).filter(enemy => enemy !== null);
     } catch (error) {
       console.error('Ошибка при обработке врагов:', error);
-      // В случае ошибки используем пустой массив
     }
   }
-  
-  // Добавляем эффект для отслеживания глобального состояния боя
-  // и синхронизации с локальным состоянием
-  useEffect(() => {
-    // Если есть активный бой в глобальном состоянии, но нет в локальном
-    if (state.combat.inCombat &&
-        (state.combat.enemy || state.combat.enemyCombatState) &&
-        (!selectedEnemy || state.combat.isProcessingAction)) {
-      
-      console.log('CombatArea: Синхронизация с глобальным состоянием боя');
-      const globalEnemy = state.combat.enemy || state.combat.enemyCombatState;
-      
-      if (globalEnemy && globalEnemy.id) {
-        setSelectedEnemy(globalEnemy);
+
+  const handleEnemyClick = async (enemy) => {
+    if (!enemy.available) {
+      actions.addNotification({ message: 'Ваш уровень слишком низок для этого противника', type: 'error' });
+      return;
+    }
+    
+    try {
+      const initialState = await startCombatAPI(enemy.id);
+      if (initialState.success) {
+        setCombatState(initialState.combat);
+        setActiveEnemy(enemy);
+        actions.addNotification({ message: `Начался бой с ${enemy.name}!`, type: 'info' });
+      } else {
+        actions.addNotification({ message: `Не удалось начать бой: ${initialState.message}`, type: 'error' });
       }
+    } catch (error) {
+      actions.addNotification({ message: `Ошибка сети: ${error.message}`, type: 'error' });
     }
-    // Если бой завершен в глобальном состоянии, но не в локальном
-    else if (!state.combat.inCombat && selectedEnemy) {
-      console.log('CombatArea: Бой завершен в глобальном состоянии, очищаем локальное');
-      setSelectedEnemy(null);
-    }
-  }, [state.combat, selectedEnemy]);
-
-  // Создаем ref для отслеживания предыдущего значения выбранной вкладки
-  const prevTabRef = useRef(state.ui.selectedTab);
-
-  // Эффект для обработки возвращения на вкладку карты во время боя
-  useEffect(() => {
-    const currentTab = state.ui.selectedTab;
-    const prevTab = prevTabRef.current;
-    
-    // Обновляем ссылку на предыдущую вкладку
-    prevTabRef.current = currentTab;
-    
-    // Если пользователь вернулся на вкладку карты и есть активный бой
-    if (currentTab === 'map' && prevTab !== 'map' && state.combat.inCombat) {
-      console.log('CombatArea: Вернулись на вкладку карты во время боя');
-      
-      // Проверяем, нужно ли восстановить состояние боя
-      if (state.combat.isProcessingAction) {
-        console.log('CombatArea: Обнаружено "зависшее" состояние, перезапускаем ход NPC');
-        // Сигнализируем компоненту CombatManager, что нужно продолжить бой
-        actions.updateCombatState({ isProcessingAction: false, forceNPCTurn: true });
-      }
-    }
-  }, [state.ui.selectedTab, state.combat.inCombat]);
-
-  const handleEnemySelect = (enemy) => {
-    if (!enemy.available) return;
-    
-    // Пропускаем если бой уже идет с этим же противником
-    if (selectedEnemy && selectedEnemy.id === enemy.id && state.combat.inCombat) {
-      console.log('CombatArea: Этот противник уже выбран:', enemy.name);
-      return;
-    }
-    
-    // Если бой уже идет с другим противником, сначала завершаем его
-    if (state.combat.inCombat) {
-      console.log('CombatArea: Завершаем текущий бой перед началом нового');
-      actions.endCombat();
-    }
-    
-    // Проверяем валидность врага перед установкой
-    if (!enemy || typeof enemy !== 'object') {
-      console.error('CombatArea: Попытка выбрать некорректного врага', enemy);
-      return;
-    }
-    
-    if (!enemy.stats) {
-      console.error('CombatArea: У выбранного врага отсутствуют stats', enemy);
-      return;
-    }
-    
-    console.log('CombatArea: Выбран противник для боя:', enemy.name, enemy);
-    
-    // Сначала вызываем startCombat для обновления глобального состояния
-    actions.startCombat(enemy);
-    
-    // Затем устанавливаем локальное состояние
-    setSelectedEnemy(enemy);
   };
   
-  const handleCombatEnd = (result) => {
-    // Проверяем, что бой действительно был активен перед завершением
-    if (state.combat.inCombat) {
-      // Очищаем как локальное, так и глобальное состояние
-      setSelectedEnemy(null);
-      actions.endCombat(); // Вызываем endCombat для очистки глобального состояния
-      
-      // Выводим результаты боя в консоль для отладки
-      console.log('CombatArea: Бой завершен с результатом:', result);
-      
-      // Дополнительная логика после боя может быть добавлена здесь
+  const handleCombatAction = async (actionType) => {
+    if (!combatState) return;
+
+    if (actionType === 'flee') {
+        setCombatState(null);
+        setActiveEnemy(null);
+        actions.addNotification({ message: 'Вы сбежали из боя', type: 'warning' });
+        return;
+    }
+
+    const updatedState = await performCombatAction(combatState.id, { type: actionType });
+    if (updatedState.success) {
+        setCombatState(updatedState.combat);
+        if (updatedState.combat.status === 'completed') {
+            actions.addNotification({ message: `Бой завершен! Победитель: ${updatedState.combat.winner}`, type: 'success' });
+        }
     } else {
-      console.log('CombatArea: Попытка завершить бой, который уже завершен');
+        actions.addNotification({ message: `Ошибка действия: ${updatedState.message}`, type: 'error' });
     }
   };
-  
-  // Вместо условного возврата используем условный рендеринг в одном return statement
+
+  const preparePlayerData = () => {
+      if (!combatState) return null;
+      return {
+          name: state.player.name,
+          level: state.player.cultivation.level,
+          ...combatState.player_state
+      };
+  };
+
+  const prepareEnemyData = () => {
+      if (!combatState || !activeEnemy) return null;
+      return {
+          name: activeEnemy.name,
+          level: activeEnemy.level,
+          ...combatState.enemy_state
+      };
+  };
+
+  if (combatState && activeEnemy) {
+    if (combatState.status === 'completed') {
+        return (
+            <Container>
+                <WorldArea>
+                    <AreaInfo>
+                        <AreaTitle>Бой окончен</AreaTitle>
+                        <AreaDescription>Победитель: {combatState.winner}</AreaDescription>
+                        <button onClick={() => { setCombatState(null); setActiveEnemy(null); }}>Вернуться</button>
+                    </AreaInfo>
+                </WorldArea>
+            </Container>
+        );
+    }
+
+    return <PveBattleInterface
+        player={preparePlayerData()}
+        enemy={prepareEnemyData()}
+        log={combatState.log}
+        onAction={handleCombatAction}
+        isPlayerTurn={combatState.turn === 'player'}
+    />;
+  }
   
   return (
     <Container>
-      {selectedEnemy && state.combat.inCombat ? (
-        <CombatManager
-          enemy={selectedEnemy}
-          onEnd={handleCombatEnd}
-          weatherEffects={weather.weatherEffects}
-          key={`combat-${selectedEnemy.id}-${state.combat.forceNPCTurn ? 'forced' : 'normal'}`}
-        />
-      ) : (
-        <WorldArea>
-          {/* Отображение информации о текущей погоде и времени суток */}
-          <WeatherBanner>
-            <WeatherInfo>
-              <WeatherIcon>
-                {getWeatherIcon(weather.weatherType)}
-                {getTimeIcon(weather.timeOfDay)}
-              </WeatherIcon>
-              <WeatherDetails>
-                <WeatherType>{weather.weatherType}</WeatherType>
-                <TimeOfDay>{weather.formattedTime || '12:00'} ({weather.timeOfDay})</TimeOfDay>
-              </WeatherDetails>
-            </WeatherInfo>
-            
-            <WeatherEffects>
-              {(weather.weatherEffects?.combat?.hitChanceModifier !== undefined && 
-                weather.weatherEffects.combat.hitChanceModifier !== 1.0) && (
-                <div>Шанс попадания: 
-                  <span positive={weather.weatherEffects.combat.hitChanceModifier > 1.0}>
-                    {weather.weatherEffects.combat.hitChanceModifier > 1.0 ? ' +' : ' -'}
-                    {Math.abs(Math.round((weather.weatherEffects.combat.hitChanceModifier - 1) * 100))}%
+      <WorldArea>
+        <WeatherBanner>
+          <WeatherInfo>
+            <WeatherIcon>{getTimeIcon(weather.timeOfDay)}</WeatherIcon>
+            <WeatherDetails>
+              <WeatherType>{weather.weatherType}</WeatherType>
+              <TimeOfDay>{weather.timeOfDay}</TimeOfDay>
+            </WeatherDetails>
+          </WeatherInfo>
+          <WeatherEffects>
+            Влияние погоды...
+          </WeatherEffects>
+        </WeatherBanner>
+        <AreaInfo>
+          <AreaTitle>
+            {areaId === 'starting_area' && 'Тренировочная площадка'}
+            {areaId === 'mountain_path' && 'Горная тропа'}
+            {areaId === 'ancient_ruins' && 'Древние руины'}
+          </AreaTitle>
+          <AreaDescription>
+            {areaId === 'starting_area' && 'Безопасное место для начинающих культиваторов. Здесь обитают слабые духовные звери, идеально подходящие для тренировки.'}
+            {areaId === 'mountain_path' && 'Извилистая тропа, ведущая в горы. Здесь можно встретить более сильных противников и найти редкие ресурсы.'}
+            {areaId === 'ancient_ruins' && 'Загадочные руины древней цивилизации. В этом опасном месте обитают могущественные духи и хранятся древние сокровища.'}
+          </AreaDescription>
+        </AreaInfo>
+        
+        <EnemiesList>
+          {availableEnemies.map(enemy => (
+            <EnemyCard
+              key={enemy.id}
+              available={enemy.available}
+              onClick={() => handleEnemyClick(enemy)}
+            >
+              <EnemyHeader>
+                <EnemyIcon>{enemy.icon}</EnemyIcon>
+                <EnemyInfo>
+                  <EnemyName>{enemy.name}</EnemyName>
+                  <EnemyLevel available={enemy.available}>
+                    {enemy.available
+                      ? `Уровень ${enemy.level}`
+                      : `Требуется уровень ${enemy.requiredLevel}`
+                    }
+                  </EnemyLevel>
+                </EnemyInfo>
+              </EnemyHeader>
+              
+              <EnemyDescription>
+                {enemy.description}
+              </EnemyDescription>
+              
+              <EnemyStats>
+                <StatRow>
+                  <span>Здоровье:</span>
+                  <span>{enemy.stats.health}</span>
+                </StatRow>
+                <StatRow>
+                  <span>Защита:</span>
+                  <span>
+                    {enemy.stats.physicalDefense !== undefined
+                      ? `${enemy.stats.physicalDefense || 0}/${enemy.stats.spiritualDefense || 0}`
+                      : (enemy.stats.defense !== undefined ? enemy.stats.defense : "0")}
                   </span>
-                </div>
-              )}
-              {(weather.weatherEffects?.combat?.critChanceModifier !== undefined && 
-                weather.weatherEffects.combat.critChanceModifier !== 1.0) && (
-                <div>Шанс крита: 
-                  <span positive={weather.weatherEffects.combat.critChanceModifier > 1.0}>
-                    {weather.weatherEffects.combat.critChanceModifier > 1.0 ? ' +' : ' -'}
-                    {Math.abs(Math.round((weather.weatherEffects.combat.critChanceModifier - 1) * 100))}%
-                  </span>
-                </div>
-              )}
-            </WeatherEffects>
-          </WeatherBanner>
-          <AreaInfo>
-            <AreaTitle>
-              {areaId === 'starting_area' && 'Тренировочная площадка'}
-              {areaId === 'mountain_path' && 'Горная тропа'}
-              {areaId === 'ancient_ruins' && 'Древние руины'}
-            </AreaTitle>
-            <AreaDescription>
-              {areaId === 'starting_area' && 
-                'Безопасное место для начинающих культиваторов. Здесь обитают слабые духовные звери, идеально подходящие для тренировки.'
-              }
-              {areaId === 'mountain_path' && 
-                'Извилистая тропа, ведущая в горы. Здесь можно встретить более сильных противников и найти редкие ресурсы.'
-              }
-              {areaId === 'ancient_ruins' && 
-                'Загадочные руины древней цивилизации. В этом опасном месте обитают могущественные духи и хранятся древние сокровища.'
-              }
-            </AreaDescription>
-          </AreaInfo>
-          
-          <EnemiesList>
-            {availableEnemies.map(enemy => (
-              <EnemyCard
-                key={enemy.id}
-                available={enemy.available}
-                onClick={() => handleEnemySelect(enemy)}
-              >
-                <EnemyHeader>
-                  <EnemyIcon>{enemy.icon}</EnemyIcon>
-                  <EnemyInfo>
-                    <EnemyName>{enemy.name}</EnemyName>
-                    <EnemyLevel available={enemy.available}>
-                      {enemy.available 
-                        ? `Уровень ${enemy.level}`
-                        : `Требуется уровень ${enemy.requiredLevel}`
-                      }
-                    </EnemyLevel>
-                  </EnemyInfo>
-                </EnemyHeader>
-                
-                <EnemyDescription>
-                  {enemy.description}
-                </EnemyDescription>
-                
-                <EnemyStats>
-                  <StatRow>
-                    <span>Здоровье:</span>
-                    <span>{enemy.stats.health}</span>
-                  </StatRow>
-                  <StatRow>
-                    <span>Защита:</span>
-                    <span>
-                      {enemy.stats.physicalDefense !== undefined
-                        ? `${enemy.stats.physicalDefense || 0}/${enemy.stats.spiritualDefense || 0}`
-                        : (enemy.stats.defense !== undefined ? enemy.stats.defense : "0")}
-                    </span>
-                  </StatRow>
-                  <StatRow>
-                    <span>Точность:</span>
-                    <span>{enemy.stats.accuracy}</span>
-                  </StatRow>
-                  <StatRow>
-                    <span>Уклонение:</span>
-                    <span>{enemy.stats.evasion}</span>
-                  </StatRow>
-                </EnemyStats>
-                
-                <RewardsList>
-                  <RewardItem>
-                    <span>✨</span> {enemy.experience} опыта
+                </StatRow>
+                <StatRow>
+                  <span>Точность:</span>
+                  <span>{enemy.stats.accuracy}</span>
+                </StatRow>
+                <StatRow>
+                  <span>Уклонение:</span>
+                  <span>{enemy.stats.evasion}</span>
+                </StatRow>
+              </EnemyStats>
+              
+              <RewardsList>
+                <RewardItem>
+                  <span>✨</span> {enemy.experience} опыта
+                </RewardItem>
+                <RewardItem>
+                  <span>💰</span> {enemy.currency.min}-{enemy.currency.max} монет
+                </RewardItem>
+                {enemy.loot.map((item, index) => (
+                  <RewardItem key={index}>
+                    <span>{item.icon || '📦'}</span>
+                    {item.name} ({Math.floor(item.chance)}%)
                   </RewardItem>
-                  <RewardItem>
-                    <span>💰</span> {enemy.currency.min}-{enemy.currency.max} монет
-                  </RewardItem>
-                  {enemy.loot.map((item, index) => (
-                    <RewardItem key={index}>
-                      <span>{item.icon || '📦'}</span>
-                      {item.name} ({Math.floor(item.chance)}%)
-                    </RewardItem>
-                  ))}
-                </RewardsList>
-              </EnemyCard>
-            ))}
-          </EnemiesList>
-        </WorldArea>
-      )}
+                ))}
+              </RewardsList>
+            </EnemyCard>
+          ))}
+        </EnemiesList>
+      </WorldArea>
     </Container>
   );
 }

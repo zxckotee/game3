@@ -11,6 +11,7 @@ const merchantRoutes = require('./merchant-routes');
 const achievementRoutes = require('./achievement-routes');
 const alchemyRoutes = require('./alchemy-routes');
 const pvpRoutes = require('./pvp-routes'); // Маршруты PvP
+const combatRoutes = require('./combat-routes'); // Маршруты для боев с NPC
 const inventoryRoutes = require('./inventory-routes');
 const authRoutes = require('./auth-routes'); // Маршруты аутентификации
 const sectRoutes = require('./sect-routes');
@@ -50,6 +51,9 @@ function registerRoutes(app) {
   // Регистрируем маршруты PvP
   app.use('/api/pvp', pvpRoutes);
   
+  // Регистрируем маршруты для боев
+  app.use('/api/combat', combatRoutes);
+
   // Здесь можно добавлять другие маршруты, например:
   // app.use('/api/users', userRoutes);
   // app.use('/api/quests', questRoutes);

@@ -77,15 +77,5 @@ EnemyAttack.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await EnemyAttack.init();
-    console.log('EnemyAttack модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели EnemyAttack:', error);
-    console.error(error.stack);
-  }
-})();
 
 module.exports = EnemyAttack;

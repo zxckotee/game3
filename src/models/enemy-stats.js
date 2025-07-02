@@ -72,15 +72,5 @@ EnemyStats.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await EnemyStats.init();
-    console.log('EnemyStats модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели EnemyStats:', error);
-    console.error(error.stack);
-  }
-})();
 
 module.exports = EnemyStats;

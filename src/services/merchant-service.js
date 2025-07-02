@@ -41,7 +41,7 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
         {
           model: MerchantInventory,
           as: 'inventory',
-          // Фильтруем инвентарь по userId, если он предоставлен
+          // Фильтруем инвентарь по userId, если он предоставлен 
           where: userId ? { userId: userId } : {},
           required: false // Используем LEFT JOIN, чтобы торговцы без инвентаря для этого юзера все равно отображались
         },

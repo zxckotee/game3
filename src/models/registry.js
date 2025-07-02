@@ -234,6 +234,11 @@ module.exports = {
   getAllModels: () => modelCache
 };
 
+// Явная регистрация ключевых моделей для гарантии доступности
+register('User', require('./user'));
+register('CharacterStats', require('./character-stats'));
+register('Combat', require('./combat'));
+
 // Регистрируем модели PvP
 register('PvPMode', require('./pvp-mode'));
 register('PvPRoom', require('./pvp-room'));
