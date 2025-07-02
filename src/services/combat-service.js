@@ -413,10 +413,11 @@ class CombatService {
     // --- 3. Начисление опыта ---
     const enemy = await Enemy.findByPk(combat.enemy_id);
     if (enemy && enemy.experience > 0) {
-      const user = await modelRegistry.getModel('User').findByPk(userId);
-      if (user) {
-        user.experience += enemy.experience;
-        await user.save();
+      const CultivationProgress = modelRegistry.getModel('CultivationProgress');
+      const progress = await CultivationProgress.findOne({ where: { userId } });
+      if (progress) {
+        progress.experience += enemy.experience;
+        await progress.save();
         rewards.experience = enemy.experience;
         console.log(`[CombatService] Игроку ${userId} начислено ${enemy.experience} опыта.`);
       }
