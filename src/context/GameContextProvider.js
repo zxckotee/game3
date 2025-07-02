@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import apiService from '../services/api';
 import SectService from '../services/sect-api';
 import InventoryServiceAPI from '../services/inventory-api';
@@ -43,6 +43,10 @@ const sectService = SectService;
 export const GameContextProvider = ({ children }) => {
   // Используем useReducer с корневым редуктором и начальным состоянием
   const [state, dispatchBase] = useReducer(rootReducer, initialState);
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
   
   // Инициализируем состояние погоды при первой загрузке
   useEffect(() => {
@@ -103,7 +107,7 @@ export const GameContextProvider = ({ children }) => {
   const middlewareEnhancer = next => action => {
     // ⚠️ КРИТИЧЕСКИ ВАЖНО: Передаем актуальный state при каждом вызове middleware
     const middlewareAPI = {
-      getState: () => state, // Теперь всегда актуальный state, а не замороженный processedState
+      getState: () => stateRef.current, // Теперь всегда актуальный state, а не замороженный processedState
       dispatch: dispatchBase
     };
     
@@ -496,6 +500,9 @@ const actions = {
       });
     },
     
+    updateRelationship: (relationshipData) => {
+      dispatch({ type: ACTION_TYPES.UPDATE_RELATIONSHIP, payload: relationshipData });
+    },
     // Действия для боя
     startCombat: (enemy) => dispatch({ type: ACTION_TYPES.START_COMBAT, payload: enemy }),
     endCombat: () => dispatch({ type: ACTION_TYPES.END_COMBAT }),

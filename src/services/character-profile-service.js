@@ -460,6 +460,72 @@ class CharacterProfileService {
       throw error;
     }
   }
+  /**
+   * Обработка взаимодействия с NPC для изменения отношений
+   * @param {number} userId - ID пользователя
+   * @param {number} characterId - ID персонажа (NPC)
+   * @param {string} interactionType - Тип взаимодействия (chat, gift, etc.)
+   * @returns {Promise<Object>} - Объект с обновленными отношениями и сообщением
+   */
+  static async handleInteraction(userId, characterId, interactionType) {
+    try {
+      const profile = await CharacterProfile.findOne({ where: { user_id: userId } });
+
+      if (!profile) {
+        throw new Error('Профиль персонажа не найден');
+      }
+
+      const relationships = profile.relationships || [];
+      const relationshipIndex = relationships.findIndex(r => r.id === characterId);
+
+      if (relationshipIndex === -1) {
+        throw new Error(`Отношения с ID ${characterId} не найдены`);
+      }
+
+      // Логика изменения отношений, перенесенная с клиента
+      const relationshipChange = {
+        chat: Math.floor(Math.random() * 3) + 1,
+        gift: Math.floor(Math.random() * 5) + 3,
+        train: Math.floor(Math.random() * 7) + 5,
+        quest: Math.floor(Math.random() * 10) + 7
+      }[interactionType];
+
+      if (!relationshipChange) {
+        throw new Error(`Неизвестный тип взаимодействия: ${interactionType}`);
+      }
+
+      const currentLevel = relationships[relationshipIndex].level;
+      const newLevel = Math.min(100, currentLevel + relationshipChange);
+      relationships[relationshipIndex].level = newLevel;
+
+      // Логика добавления события в лог
+      const eventText = {
+        chat: `Вы побеседовали с ${relationships[relationshipIndex].name}`,
+        gift: `Вы подарили подарок ${relationships[relationshipIndex].name}`,
+        train: `Вы тренировались вместе с ${relationships[relationshipIndex].name}`,
+        quest: `Вы выполнили задание для ${relationships[relationshipIndex].name}`
+      }[interactionType];
+
+      if (eventText) {
+        if (!relationships[relationshipIndex].events) {
+          relationships[relationshipIndex].events = [];
+        }
+        relationships[relationshipIndex].events.push(eventText);
+      }
+
+      // Уведомляем Sequelize о том, что поле JSONB было изменено
+      await profile.update({ relationships });
+
+      return {
+        updatedRelationship: relationships[relationshipIndex],
+        changeAmount: relationshipChange,
+        message: `Отношения с ${relationships[relationshipIndex].name} улучшились на ${relationshipChange}`
+      };
+    } catch (error) {
+      console.error('Ошибка при обработке взаимодействия с NPC:', error);
+      throw error;
+    }
+  }
 
   /**
    * Создание начального профиля персонажа при регистрации

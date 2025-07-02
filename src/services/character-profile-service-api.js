@@ -470,6 +470,38 @@ module.exports.updateCharacterProfile = CharacterProfileServiceAPI.updateCharact
 module.exports.isCharacterCreated = CharacterProfileServiceAPI.isCharacterCreated;
 module.exports.updateCurrency = CharacterProfileServiceAPI.updateCurrency;
 module.exports.updateRelationships = CharacterProfileServiceAPI.updateRelationships;
+/**
+ * Обработка взаимодействия с NPC
+ * @param {number} characterId - ID персонажа (NPC)
+ * @param {string} interactionType - Тип взаимодействия
+ * @returns {Promise<Object>} - Ответ сервера
+ */
+module.exports.handleInteraction = async (characterId, interactionType) => {
+  console.log(`[CharacterProfileServiceAPI] Взаимодействие с персонажем ${characterId}, тип: ${interactionType}`);
+  try {
+    const response = await fetch('/api/relationships/interact', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify({ characterId, interactionType })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`[CharacterProfileServiceAPI] Взаимодействие успешно обработано:`, result);
+      return result;
+    } else {
+      const errorData = await response.json();
+      console.error(`[CharacterProfileServiceAPI] API вернул ошибку при взаимодействии: ${response.status}`, errorData);
+      throw new Error(errorData.message || 'Ошибка при взаимодействии с персонажем');
+    }
+  } catch (error) {
+    console.error('[CharacterProfileServiceAPI] Ошибка при взаимодействии с NPC:', error);
+    throw error;
+  }
+};
 
 /**
  * Добавление нового события к отношениям с NPC

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useGame } from '../../context/GameContext';
+import CharacterProfileServiceAPI from '../../services/character-profile-service-api';
 
 const Container = styled.div`
   display: grid;
@@ -247,81 +248,63 @@ function SocialTab() {
     setSelectedCharacter(character);
   };
   
-  const handleInteraction = (type) => {
+  const handleInteraction = async (type) => {
     if (!selectedCharacter) return;
-    
+
     const energyCost = {
       chat: 5,
       gift: 10,
       train: 20,
       quest: 30
     }[type];
-    
+
     if ((cultivation.energy || 0) < energyCost) {
-      if (actions.addNotification) {
+      actions.addNotification({
+        message: 'Недостаточно духовной энергии для взаимодействия',
+        type: 'error'
+      });
+      return;
+    }
+
+    // Оптимистично тратим энергию на клиенте
+    actions.updateCultivation({
+      energy: (cultivation.energy || 0) - energyCost
+    });
+
+    try {
+      const result = await CharacterProfileServiceAPI.handleInteraction(selectedCharacter.id, type);
+
+      if (result.success) {
+        // Обновляем состояние через новый, надежный action
+        actions.updateRelationship(result.updatedRelationship);
+
+        // Обновляем локальное состояние для перерисовки
+        setSelectedCharacter(result.updatedRelationship);
+
         actions.addNotification({
-          message: 'Недостаточно духовной энергии для взаимодействия',
+          message: result.message,
+          type: 'success'
+        });
+      } else {
+        // Если сервер вернул ошибку, откатываем списание энергии
+        actions.updateCultivation({
+          energy: cultivation.energy // Возвращаем исходное значение
+        });
+        actions.addNotification({
+          message: result.message || 'Произошла ошибка взаимодействия',
           type: 'error'
         });
       }
-      return;
-    }
-    
-    // Тратим энергию
-    if (actions.updateCultivation) {
+    } catch (error) {
+      // В случае ошибки сети, также откатываем списание энергии
       actions.updateCultivation({
-        energy: (cultivation.energy || 0) - energyCost
+        energy: cultivation.energy // Возвращаем исходное значение
       });
-    }
-    
-    // Изменяем отношения
-    const relationshipChange = {
-      chat: Math.floor(Math.random() * 3) + 1,
-      gift: Math.floor(Math.random() * 5) + 3,
-      train: Math.floor(Math.random() * 7) + 5,
-      quest: Math.floor(Math.random() * 10) + 7
-    }[type];
-    
-    // Обновляем данные персонажа
-    const updatedCharacter = {
-      ...selectedCharacter,
-      level: Math.min(100, selectedCharacter.level + relationshipChange)
-    };
-    
-    // Добавляем событие в лог
-    const eventText = {
-      chat: `Вы побеседовали с ${selectedCharacter.name}`,
-      gift: `Вы подарили подарок ${selectedCharacter.name}`,
-      train: `Вы тренировались вместе с ${selectedCharacter.name}`,
-      quest: `Вы выполнили задание для ${selectedCharacter.name}`
-    }[type];
-    
-    const updatedEvents = selectedCharacter.events 
-      ? [...selectedCharacter.events, eventText] 
-      : [eventText];
-    
-    // Добавляем событие в обновленный объект персонажа
-    const characterWithEvents = {
-      ...updatedCharacter,
-      events: updatedEvents
-    };
-    
-    // Сохраняем изменения в глобальном состоянии через редуктор
-    if (actions.updateRelationship) {
-      console.log('Вызываем updateRelationship с данными:', characterWithEvents);
-      actions.updateRelationship(characterWithEvents);
-    } else {
-      console.error('Функция updateRelationship не найдена в actions');
-    }
-    
-    // Обновляем локальное состояние компонента
-    setSelectedCharacter(characterWithEvents);
-    
-    if (actions.addNotification) {
       actions.addNotification({
-        message: `Отношения с ${selectedCharacter.name} улучшились на ${relationshipChange}`,
-        type: 'success'
+        message: error.message || 'Ошибка сети при взаимодействии',
+        type: 'error'
       });
+      console.error('Ошибка при взаимодействии:', error);
     }
   };
   

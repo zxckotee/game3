@@ -1803,15 +1803,12 @@ export const playerReducer = (state, action) => {
         return state;
       }
       
-      // Получаем отношения из правильного места (предпочитаем player.relationships)
-      const relationships = state.player.relationships || 
-                          (state.player.social && state.player.social.relationships) || 
+      const socialRelationshipsForSectSync = state.player.relationships ||
+                          (state.player.social && state.player.social.relationships) ||
                           [];
       
-      // Используем утилиту синхронизации для получения нового значения лояльности
-      const newLoyalty = syncSocialToSectRelationship(relationships, state.sect && state.sect.sect);
+      const newLoyalty = syncSocialToSectRelationship(socialRelationshipsForSectSync, state.sect && state.sect.sect);
       
-      // Проверяем, нужно ли обновлять лояльность
       if (newLoyalty === null || newLoyalty === undefined) {
         console.warn('⚠️ Не удалось рассчитать новое значение лояльности секты');
         return state;
@@ -1819,11 +1816,33 @@ export const playerReducer = (state, action) => {
       
       console.log(`✅ Рассчитана лояльность секты (${newLoyalty}) на основе социальных отношений`);
       
-      // Возвращаем обновленное состояние без фактического изменения
-      // Фактическое обновление должно происходить через отдельное действие UPDATE_SECT_LOYALTY
       return {
         ...state,
-        calculatedSectLoyalty: newLoyalty // Временное хранение для последующего обновления
+        calculatedSectLoyalty: newLoyalty
+      };
+    }
+    case ACTION_TYPES.UPDATE_RELATIONSHIP: {
+      console.log('Обновление одного отношения:', action.payload);
+      if (!action.payload || !action.payload.id) {
+        return state;
+      }
+      
+      const newRelationships = state.player.social.relationships.map(rel => {
+        if (rel.id === action.payload.id) {
+          return { ...rel, ...action.payload };
+        }
+        return rel;
+      });
+
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          social: {
+            ...state.player.social,
+            relationships: newRelationships,
+          },
+        },
       };
     }
     
