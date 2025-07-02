@@ -414,12 +414,16 @@ class CombatService {
     const enemy = await Enemy.findByPk(combat.enemy_id);
     if (enemy && enemy.experience > 0) {
       const CultivationProgress = modelRegistry.getModel('CultivationProgress');
-      const progress = await CultivationProgress.findOne({ where: { userId } });
-      if (progress) {
-        progress.experience += enemy.experience;
-        await progress.save();
+      const [affectedRows] = await CultivationProgress.update(
+        { experience: sequelize.literal(`experience + ${enemy.experience}`) },
+        { where: { userId: userId } }
+      );
+
+      if (affectedRows > 0) {
         rewards.experience = enemy.experience;
         console.log(`[CombatService] Игроку ${userId} начислено ${enemy.experience} опыта.`);
+      } else {
+        console.error(`[CombatService] Не удалось обновить опыт для пользователя ${userId}. Запись CultivationProgress не найдена.`);
       }
     }
 
