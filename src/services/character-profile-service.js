@@ -428,6 +428,40 @@ class CharacterProfileService {
   }
 
   /**
+   * Добавление события к отношениям с NPC
+   * @param {number} userId - ID пользователя
+   * @param {number} relationshipId - ID отношений (ID NPC)
+   * @param {string} eventText - Текст события
+   * @returns {Promise<Object>} - Обновленный объект отношений
+   */
+  static async addRelationshipEvent(userId, relationshipId, eventText) {
+    try {
+      const profile = await CharacterProfile.findOne({ where: { user_id: userId } });
+
+      if (!profile) {
+        throw new Error('Профиль персонажа не найден');
+      }
+
+      const relationships = profile.relationships || [];
+      const relationshipIndex = relationships.findIndex(r => r.id === relationshipId);
+
+      if (relationshipIndex === -1) {
+        throw new Error(`Отношения с ID ${relationshipId} не найдены`);
+      }
+
+      relationships[relationshipIndex].events.push(eventText);
+
+      // Уведомляем Sequelize о том, что поле JSONB было изменено
+      await profile.update({ relationships });
+      
+      return relationships[relationshipIndex];
+    } catch (error) {
+      console.error('Ошибка при добавлении события в отношения:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Создание начального профиля персонажа при регистрации
    * @param {number} userId - ID пользователя
    * @param {string} username - Имя пользователя, используется как имя персонажа по умолчанию
@@ -477,3 +511,4 @@ module.exports.isCharacterCreated = CharacterProfileService.isCharacterCreated;
 module.exports.updateCurrency = CharacterProfileService.updateCurrency;
 module.exports.updateRelationships = CharacterProfileService.updateRelationships;
 module.exports.createInitialProfile = CharacterProfileService.createInitialProfile;
+module.exports.addRelationshipEvent = CharacterProfileService.addRelationshipEvent;

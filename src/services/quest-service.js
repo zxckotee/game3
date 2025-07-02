@@ -4,6 +4,7 @@ const User = require('../models/user');
 const QuestObjective = require('../models/quest-objective');
 const QuestReward = require('../models/quest-reward');
 const QuestCategory = require('../models/quest-category');
+const CharacterProfileService = require('./character-profile-service');
 
 /**
  * Сервис для работы с заданиями
@@ -377,8 +378,24 @@ class QuestService {
       questProgress.status = 'completed';
       questProgress.completedAt = new Date();
       await questProgress.save();
+
+      // 5. Обновляем отношения с NPC, если его имя есть в названии квеста
+      try {
+        const profile = await CharacterProfileService.getCharacterProfile(userId);
+        if (profile && profile.relationships) {
+          const relatedNpc = profile.relationships.find(r => quest.title.includes(r.name));
+          if (relatedNpc) {
+            const eventText = `Вы успешно завершили квест "${quest.title}"`;
+            await CharacterProfileService.addRelationshipEvent(userId, relatedNpc.id, eventText);
+            console.log(`Добавлено событие в отношения для NPC ${relatedNpc.name}`);
+          }
+        }
+      } catch (relationshipError) {
+        console.error('Не удалось обновить отношения после завершения квеста:', relationshipError);
+        // Не прерываем основной процесс из-за ошибки в отношениях
+      }
       
-      // 5. Формируем результат
+      // 6. Формируем результат
       return {
         id: quest.id,
         title: quest.title,

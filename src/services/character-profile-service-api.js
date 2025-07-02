@@ -470,3 +470,36 @@ module.exports.updateCharacterProfile = CharacterProfileServiceAPI.updateCharact
 module.exports.isCharacterCreated = CharacterProfileServiceAPI.isCharacterCreated;
 module.exports.updateCurrency = CharacterProfileServiceAPI.updateCurrency;
 module.exports.updateRelationships = CharacterProfileServiceAPI.updateRelationships;
+
+/**
+ * Добавление нового события к отношениям с NPC
+ * @param {number} relationshipId - ID отношений (ID NPC)
+ * @param {string} eventText - Текст события
+ * @returns {Promise<Object>} - Ответ сервера
+ */
+module.exports.addRelationshipEvent = async (relationshipId, eventText) => {
+  console.log(`[CharacterProfileServiceAPI] Добавление события к отношениям ${relationshipId}`);
+  try {
+    const response = await fetch('/api/relationships/event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify({ relationshipId, eventText })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`[CharacterProfileServiceAPI] Событие успешно добавлено:`, result);
+      return result;
+    } else {
+      const errorData = await response.json();
+      console.error(`[CharacterProfileServiceAPI] API вернул ошибку при добавлении события: ${response.status}`, errorData);
+      throw new Error(errorData.message || 'Ошибка при добавлении события');
+    }
+  } catch (error) {
+    console.error('[CharacterProfileServiceAPI] Ошибка при добавлении события в отношения:', error);
+    throw error;
+  }
+};

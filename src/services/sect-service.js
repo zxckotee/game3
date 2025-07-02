@@ -4,6 +4,7 @@ const ResourceService = require('./resource-adapter');
 const { updateRelationshipAndLoyalty } = require('../utils/sectRelationshipSyncer');
 const { Sequelize } = require('sequelize');
 const { getSequelizeInstance } = require('./database-connection-manager');
+const CharacterProfileService = require('./character-profile-service');
 
 /**
  * Сервис для работы с сектами и их членами
@@ -933,7 +934,7 @@ class SectService {
         experience: cultivation.experience 
       });
       
-      return {
+      const result = {
         memberName: member.name,
         memberLevel: member.level,
         memberExperience: member.experience,
@@ -947,10 +948,27 @@ class SectService {
         userLevel: cultivation.level,
         userLevelBefore,
         energySpent: energyCost,
-        message: levelUpResult.leveledUp 
+        message: levelUpResult.leveledUp
           ? `Тренировка успешна! ${member.name} получил ${memberXPGain} опыта и повысил уровень до ${member.level}!`
           : `Тренировка успешна! ${member.name} получил ${memberXPGain} опыта и теперь имеет ${member.experience}/${member.requiredExperience} опыта.`
       };
+
+      // Обновляем отношения с NPC
+      try {
+        const profile = await CharacterProfileService.getCharacterProfile(userId);
+        if (profile && profile.relationships) {
+          const relatedNpc = profile.relationships.find(r => r.name === member.name);
+          if (relatedNpc) {
+            const eventText = `Вы провели тренировку с ${member.name}.`;
+            await CharacterProfileService.addRelationshipEvent(userId, relatedNpc.id, eventText);
+            console.log(`Добавлено событие в отношения для NPC ${relatedNpc.name}`);
+          }
+        }
+      } catch (relationshipError) {
+        console.error('Не удалось обновить отношения после тренировки:', relationshipError);
+      }
+
+      return result;
     } catch (error) {
       console.error('Ошибка при тренировке члена секты:', error);
       throw error;
