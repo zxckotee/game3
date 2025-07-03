@@ -1,5 +1,6 @@
 import React from 'react';
 import './ActionPanel.css';
+import { techniques } from '../../data/combat';
 
 /**
  * Компонент для отображения панели действий в бою
@@ -181,26 +182,28 @@ const ActionPanel = ({
 
       {/* Кнопки техник */}
       {availableTechniques.map(technique => {
-        if (!technique || typeof technique !== 'object') return null;
+        // Если technique - это объект, используем его, иначе ищем в глобальном объекте techniques
+        const techniqueObj = typeof technique === 'object' ? technique : techniques[technique];
+        if (!techniqueObj) return null;
+        
+        const techniqueId = typeof technique === 'object' ? technique.id : technique;
 
-        const onCooldown = isOnCooldown(technique.id);
-        const remainingCooldown = getRemainingCooldown(technique.id);
-        const isSelected = selectedAction === 'technique' && selectedTechniqueId === technique.id;
-        const energyCost = technique.energy_cost || 0;
-        const canUse = isMyTurn && !isActionBlocked && !onCooldown && currentEnergy >= energyCost;
+        const onCooldown = isOnCooldown(techniqueId);
+        const remainingCooldown = getRemainingCooldown(techniqueId);
+        const isSelected = selectedAction === 'technique' && selectedTechniqueId === techniqueId;
 
         return (
           <button
-            key={technique.id}
-            className={`action-button technique ${!canUse ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`}
-            onClick={() => canUse && onAction({ type: 'technique', id: technique.id })}
-            disabled={!canUse}
+            key={techniqueId}
+            className={`action-button technique ${!isMyTurn || isActionBlocked || onCooldown || currentEnergy < (techniqueObj.energyCost || 20) ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`}
+            onClick={() => isMyTurn && !isActionBlocked && !onCooldown && currentEnergy >= (techniqueObj.energyCost || 20) && onAction('technique', techniqueId)}
+            disabled={!isMyTurn || isActionBlocked || onCooldown || currentEnergy < (techniqueObj.energyCost || 20)}
           >
-            <div className="tooltip">{technique.description} (Затраты энергии: {energyCost})</div>
-            <div className="action-icon">{technique.icon || '✨'}</div>
-            <div className="action-name">{technique.name}</div>
-            <div className="energy-cost">{energyCost}</div>
-            {onCooldown && <div className="cooldown-timer">{formatCooldown(remainingCooldown)}</div>}
+            <div className="tooltip">{techniqueObj.description || techniqueObj.name} (Затраты энергии: {techniqueObj.energyCost || 20})</div>
+            <div className="action-icon">{getActionIcon('technique', techniqueId)}</div>
+            <div className="action-name">{techniqueObj.name}</div>
+            
+            <div className="energy-cost">{techniqueObj.energyCost || 20}</div>
           </button>
         );
       })}
