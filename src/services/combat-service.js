@@ -136,8 +136,6 @@ class CombatService {
       throw new Error('Бой не найден');
     }
 
-    // Обновляем длительность эффектов перед каждым действием
-    await this.updateEffectsDuration(combat);
 
     if (combat.user_id !== userId) {
       throw new Error('Вы не можете действовать в чужом бою');
@@ -155,10 +153,18 @@ class CombatService {
     let logEntry = {};
 
     if (action.type === 'attack') {
-      const damage = this._calculateDamage(combat.player_state, combat.enemy_state);
-      combat.enemy_state.currentHp = Math.max(0, combat.enemy_state.currentHp - damage);
-      logEntry = { turn: 'player', action: 'attack', damage, message: `Игрок наносит ${damage} урона.` };
-      console.log(`[CombatService] Игрок нанес ${damage} урона в бою ${combatId}`);
+      const attackResult = this._calculateDamage(combat.player_state, combat.enemy_state);
+      combat.enemy_state.currentHp = Math.max(0, combat.enemy_state.currentHp - attackResult.damage);
+      let message = `Игрок атакует.`;
+      if (attackResult.isDodge) {
+        message += ` Враг уклонился!`;
+      } else if (attackResult.isCrit) {
+        message += ` Критический удар! Нанесено ${attackResult.damage} урона.`;
+      } else {
+        message += ` Нанесено ${attackResult.damage} урона.`;
+      }
+      logEntry = { turn: 'player', action: 'attack', ...attackResult, message };
+      console.log(`[CombatService] Игрок атаковал в бою ${combatId}. Результат:`, attackResult);
     } else if (action.type === 'defense') {
       // Логика защиты, адаптированная из pvp-service
       const defenseEffectData = { // Заглушка, т.к. модели TechniqueEffect еще нет
@@ -195,6 +201,7 @@ class CombatService {
       if (!technique) {
         throw new Error('Игрок не знает такую технику');
       }
+      console.log('[COMBAT_DEBUG] 3. Используется техника:', JSON.stringify(technique, null, 2));
 
       // Расчет стоимости энергии с учетом модификаторов
       const modifiers = this._getEffectModifiers(combat.player_state);
@@ -214,29 +221,42 @@ class CombatService {
       combat.player_state.currentEnergy -= energyCost;
       let message = `Игрок использует технику "${technique.name}".`;
 
-      // Применяем урон
-      if (technique.damage > 0) {
-        const damage = technique.damage; // В будущем можно добавить модификаторы
-        combat.enemy_state.currentHp = Math.max(0, combat.enemy_state.currentHp - damage);
-        message += ` Наносит ${damage} урона.`;
-        console.log(`[CombatService] Игрок нанес ${damage} урона техникой "${technique.name}" в бою ${combatId}`);
-      }
+      // Определяем цель
+      const isAttack = technique.type === 'attack';
+      const targetState = isAttack ? combat.enemy_state : combat.player_state;
+      const targetName = isAttack ? 'врага' : 'себя';
+      console.log(`[COMBAT_DEBUG] 4. Тип техники: ${technique.type}. Цель: ${targetName}`);
 
-      // Применяем исцеление
-      if (technique.healing > 0) {
-        const healing = technique.healing; // В будущем можно добавить модификаторы
-        combat.player_state.currentHp = Math.min(combat.player_state.maxHp, combat.player_state.currentHp + healing);
-        message += ` Восстанавливает ${healing} здоровья.`;
-        console.log(`[CombatService] Игрок восстановил ${healing} здоровья техникой "${technique.name}" в бою ${combatId}`);
-      }
-      
       // Применяем эффекты
       if (technique.effects && technique.effects.length > 0) {
-        // Определяем цель для эффектов в зависимости от типа техники
-        const targetState = technique.type === 'attack' ? combat.enemy_state : combat.player_state;
-        const targetName = technique.type === 'attack' ? 'врага' : 'себя';
+        console.log('[COMBAT_DEBUG] 5. Техника имеет эффекты. Применяем...');
         this._applyTechniqueEffects(technique, targetState);
         message += ` Накладывает эффекты на ${targetName}.`;
+      }
+
+      // Применяем прямой урон (только для атакующих техник)
+      if (isAttack && technique.damage > 0) {
+        console.log(`[COMBAT_DEBUG] 6. Техника имеет прямой урон: ${technique.damage}. Наносим...`);
+        const attackResult = this._calculateDamage(combat.player_state, combat.enemy_state, technique.damage);
+        targetState.currentHp = Math.max(0, targetState.currentHp - attackResult.damage);
+        
+        if (attackResult.isDodge) {
+          message += ` Враг уклонился от техники!`;
+        } else if (attackResult.isCrit) {
+          message += ` Критический удар техникой! Нанесено ${attackResult.damage} урона.`;
+        } else {
+          message += ` Наносит ${attackResult.damage} урона.`;
+        }
+        console.log(`[COMBAT_DEBUG] 6.1. Результат прямого урона:`, attackResult);
+      }
+
+      // Применяем прямое исцеление (только для НЕатакующих техник)
+      if (!isAttack && technique.healing > 0) {
+        console.log(`[COMBAT_DEBUG] 7. Техника имеет прямое исцеление: ${technique.healing}. Применяем...`);
+        const healing = technique.healing; // В будущем можно добавить модификаторы
+        targetState.currentHp = Math.min(targetState.maxHp, targetState.currentHp + healing);
+        message += ` Восстанавливает ${healing} здоровья.`;
+        console.log(`[COMBAT_DEBUG] 7.1. Здоровье игрока после исцеления: ${targetState.currentHp}`);
       }
 
       logEntry = { turn: 'player', action: 'technique', message };
@@ -292,13 +312,37 @@ class CombatService {
       return;
     }
 
-    const newEffects = technique.effects.map(effect => ({
-      ...effect,
-      id: `${effect.id}_${Date.now()}`, // Уникальный ID для каждого экземпляра эффекта
-      startTime: Date.now(),
-      durationMs: (effect.duration || 0) * 1000,
-      sourceTechnique: technique.id,
-    }));
+    const newEffects = technique.effects.map(dbEffect => {
+      console.log('[COMBAT_DEBUG] 1. Исходный эффект из БД:', JSON.stringify(dbEffect, null, 2));
+
+      const newEffect = {
+        ...dbEffect, // Копируем все поля изначального эффекта
+        id: `${dbEffect.id}_${Date.now()}`, // Уникальный ID для каждого экземпляра эффекта
+        startTime: Date.now(),
+        durationMs: (dbEffect.duration || 0) * 1000,
+        sourceTechnique: technique.id,
+        // Трансляция полей для совместимости
+        value: 0,
+        subtype: dbEffect.type, // По умолчанию subtype равен type
+      };
+
+      // Определяем subtype и value на основе типа эффекта
+      if (['burn', 'bleed', 'poison'].includes(dbEffect.type)) {
+        newEffect.subtype = 'dot'; // Damage Over Time
+        newEffect.value = dbEffect.damage || 0;
+      } else if (dbEffect.type === 'regenerate') {
+        newEffect.subtype = 'hot'; // Heal Over Time
+        newEffect.value = dbEffect.healing || 0;
+      } else if (dbEffect.type === 'stun' || dbEffect.type === 'silence' || dbEffect.type === 'root') {
+        newEffect.subtype = dbEffect.type; // Статусные эффекты
+      } else if (dbEffect.type === 'buff' || dbEffect.type === 'debuff') {
+        // Для баффов/дебаффов value может не использоваться, важны modifiers
+        newEffect.subtype = dbEffect.modifiers ? 'modifier' : dbEffect.type;
+      }
+      
+      console.log('[COMBAT_DEBUG] 2. Преобразованный эффект для добавления:', JSON.stringify(newEffect, null, 2));
+      return newEffect;
+    });
 
     targetState.effects = this.mergeEffects(targetState.effects || [], newEffects);
   }
@@ -341,23 +385,73 @@ class CombatService {
    */
   static _getEffectModifiers(entityState) {
     const modifiers = {
-      damageModifier: 0,
-      defenseModifier: 0,
-      energyCostModifier: 0,
-      isFree: false,
+        damageModifier: 0,
+        defenseModifier: 0,
+        critChanceModifier: 0,
+        critDamageModifier: 0,
+        dodgeChanceModifier: 0,
+        accuracyModifier: 0,
+        energyCostModifier: 0,
+        healingModifier: 0,
+        dotModifier: 0,
+        isFree: false,
+        stun: false,
+        silence: false,
+        root: false,
     };
 
     if (!entityState.effects || entityState.effects.length === 0) {
-      return modifiers;
+        return modifiers;
     }
 
-    // NOTE: В будущем здесь будет логика разбора эффектов,
-    // аналогичная pvp-service. Пока это заглушка.
     for (const effect of entityState.effects) {
-      // Пример:
-      // if (effect.name === 'Экономия маны') {
-      //   modifiers.energyCostModifier += 25; // Скидка 25%
-      // }
+        if (!effect.modifiers) continue;
+
+        // Простой парсер для модификаторов вида "damage_increase_10"
+        const parts = effect.modifiers.split('_');
+        if (parts.length < 3) continue;
+
+        const [target, type, valueStr] = parts;
+        const value = parseInt(valueStr, 10);
+
+        if (isNaN(value)) continue;
+
+        switch (target) {
+            case 'damage':
+                if (type === 'increase') modifiers.damageModifier += value;
+                if (type === 'decrease') modifiers.damageModifier -= value;
+                break;
+            case 'defense':
+                if (type === 'increase') modifiers.defenseModifier += value;
+                if (type === 'decrease') modifiers.defenseModifier -= value;
+                break;
+            case 'critchance':
+                if (type === 'increase') modifiers.critChanceModifier += value;
+                break;
+            case 'critdamage':
+                if (type === 'increase') modifiers.critDamageModifier += value;
+                break;
+            case 'dodge':
+                if (type === 'increase') modifiers.dodgeChanceModifier += value;
+                break;
+            case 'accuracy':
+                if (type === 'increase') modifiers.accuracyModifier += value;
+                break;
+            case 'energy':
+                if (type === 'cost_reduction') modifiers.energyCostModifier += value;
+                break;
+            case 'healing':
+                if (type === 'increase') modifiers.healingModifier += value;
+                break;
+            case 'dot': // damage over time
+                if (type === 'increase') modifiers.dotModifier += value;
+                break;
+        }
+
+        // Проверка на статусные эффекты
+        if (effect.subtype === 'stun') modifiers.stun = true;
+        if (effect.subtype === 'silence') modifiers.silence = true;
+        if (effect.subtype === 'root') modifiers.root = true;
     }
 
     return modifiers;
@@ -366,77 +460,158 @@ class CombatService {
   /**
    * @private
    */
-  static _calculateDamage(attackerState, defenderState) {
-    // Упрощенная формула урона для примера
-    const baseDamage = 10;
-    const damage = Math.max(1, baseDamage + Math.floor(Math.random() * 5));
-    return damage;
+  static _calculateDamage(attackerState, defenderState, baseDamage = null) {
+    // Базовые статы, если они не определены
+    const attackerStats = {
+        strength: attackerState.strength || 10,
+        intellect: attackerState.intellect || 10,
+        level: attackerState.level || 1,
+    };
+    const defenderStats = {
+        vitality: defenderState.vitality || 10,
+        level: defenderState.level || 1,
+    };
+
+    const attackerModifiers = this._getEffectModifiers(attackerState);
+    const defenderModifiers = this._getEffectModifiers(defenderState);
+
+    // Если базовый урон не передан (обычная атака), рассчитываем его от силы.
+    // Если передан (атака от техники), используем его.
+    let finalBaseDamage = baseDamage !== null ? baseDamage : (attackerStats.strength || 10) * 2;
+
+    // 1. Модификаторы урона атакующего
+    const damageBonusPercent = attackerModifiers.damageModifier;
+    finalBaseDamage *= (1 + damageBonusPercent / 100);
+
+    // 2. Модификаторы защиты защищающегося
+    const defenseBonusPercent = defenderModifiers.defenseModifier;
+    const defenseReduction = (defenderStats.vitality || 10) * 0.5; // Базовая защита от живучести
+    const totalDefense = defenseReduction * (1 + defenseBonusPercent / 100);
+
+    let finalDamage = Math.max(1, finalBaseDamage - totalDefense);
+
+    // 3. Шанс уклонения
+    const dodgeChance = (defenderModifiers.dodgeChanceModifier || 0) / 100;
+    if (Math.random() < dodgeChance) {
+        console.log('[CombatService] Уклонение!');
+        return { damage: 0, isDodge: true, isCrit: false };
+    }
+
+    // 4. Крит. урон
+    let isCrit = false;
+    const critChance = ((attackerStats.intellect || 10) * 0.01) + (attackerModifiers.critChanceModifier / 100);
+    if (Math.random() < critChance) {
+        isCrit = true;
+        const critDamageBonus = 1.5 + (attackerModifiers.critDamageModifier / 100);
+        finalDamage *= critDamageBonus;
+        console.log(`[CombatService] Критический удар! Множитель: ${critDamageBonus}`);
+    }
+    
+    finalDamage = Math.round(finalDamage);
+
+    console.log(`[CombatService] Расчет урона: База=${finalBaseDamage.toFixed(2)}, Защита=${totalDefense.toFixed(2)}, Итог=${finalDamage}`);
+
+    return { damage: finalDamage, isCrit, isDodge: false };
   }
 
   /**
    * @private
    */
   static _performEnemyTurn(combat) {
-    const damage = this._calculateDamage(combat.enemy_state, combat.player_state);
-    combat.player_state.currentHp = Math.max(0, combat.player_state.currentHp - damage);
-    const logEntry = { turn: 'enemy', action: 'attack', damage, message: `Противник наносит ${damage} урона.` };
-    console.log(`[CombatService] Противник нанес ${damage} урона в бою ${combat.id}`);
+    const attackResult = this._calculateDamage(combat.enemy_state, combat.player_state); // Враг пока использует базовую атаку
+    combat.player_state.currentHp = Math.max(0, combat.player_state.currentHp - attackResult.damage);
+    
+    let message = `Противник атакует.`;
+    if (attackResult.isDodge) {
+      message += ` Игрок уклонился!`;
+    } else if (attackResult.isCrit) {
+      message += ` Критический удар! Вам нанесено ${attackResult.damage} урона.`;
+    } else {
+      message += ` Вам нанесено ${attackResult.damage} урона.`;
+    }
+    
+    const logEntry = { turn: 'enemy', action: 'attack', ...attackResult, message };
+    console.log(`[CombatService] Противник атаковал в бою ${combat.id}. Результат:`, attackResult);
     return logEntry;
   }
 
   /**
-   * Обновление длительности эффектов
-   * @param {Object} combat - Экземпляр боя
+   * Применяет периодические эффекты (урон/лечение со временем), напрямую изменяя состояние.
+   * @param {Object} entityState - Состояние игрока или врага.
+   * @param {number} ticks - Количество прошедших секунд (тиков).
+   * @param {string} entityName - Имя сущности для логов ('Игрок' или 'Враг').
+   * @returns {Array} - Массив записей для лога боя.
+   * @private
    */
-  static async updateEffectsDuration(combat) {
-    const playerState = combat.player_state;
-    const enemyState = combat.enemy_state;
+  static applyPeriodicEffects(entityState, ticks, entityName = 'Сущность') {
+    if (!entityState.effects || entityState.effects.length === 0 || ticks <= 0) {
+      return []; // Возвращаем пустой массив логов, если нет эффектов
+    }
 
-    const now = Date.now();
-    let changed = false;
+    let totalHealthChange = 0;
+    let totalEnergyChange = 0;
+    const battleLogEntries = [];
+    const modifiers = this._getEffectModifiers(entityState);
 
-    // Обновление эффектов игрока
-    if (playerState.effects && playerState.effects.length > 0) {
-      const initialCount = playerState.effects.length;
-      playerState.effects = playerState.effects.filter(effect => {
-        if (effect.permanent) return true;
-        const startTime = effect.startTime || new Date(effect.appliedAt).getTime();
-        const elapsedMs = now - startTime;
-        return elapsedMs < effect.durationMs;
-      });
-      if (playerState.effects.length !== initialCount) {
-        changed = true;
-        console.log(`[CombatService] Эффекты игрока обновлены. Было: ${initialCount}, стало: ${playerState.effects.length}`);
+    for (let i = 0; i < ticks; i++) {
+      if (entityState.currentHp <= 0) break; // Не применяем эффекты, если цель уже повержена
+
+      for (const effect of entityState.effects) {
+        // Эффекты периодического урона (DoT)
+        if (effect.subtype === 'dot' || (effect.modifiers && effect.modifiers.includes('dot'))) {
+          let dotDamage = effect.value || 5;
+          dotDamage *= (1 + modifiers.dotModifier / 100); // Учитываем модификаторы
+          totalHealthChange -= Math.round(dotDamage);
+          battleLogEntries.push({ message: `${entityName} получает ${Math.round(dotDamage)} урона от эффекта "${effect.name}".` });
+        }
+        // Эффекты периодического лечения (HoT)
+        if (effect.subtype === 'hot' || (effect.modifiers && effect.modifiers.includes('healing'))) {
+          let hotHealing = effect.value || 5;
+          hotHealing *= (1 + modifiers.healingModifier / 100); // Учитываем модификаторы
+          totalHealthChange += Math.round(hotHealing);
+          battleLogEntries.push({ message: `${entityName} восстанавливает ${Math.round(hotHealing)} здоровья от эффекта "${effect.name}".` });
+        }
       }
     }
 
-    // Обновление эффектов противника
-    if (enemyState.effects && enemyState.effects.length > 0) {
-      const initialCount = enemyState.effects.length;
-      enemyState.effects = enemyState.effects.filter(effect => {
-        if (effect.permanent) return true;
-        const startTime = effect.startTime || new Date(effect.appliedAt).getTime();
-        const elapsedMs = now - startTime;
-        return elapsedMs < effect.durationMs;
+    if (totalHealthChange !== 0 || totalEnergyChange !== 0) {
+      const oldHp = entityState.currentHp;
+      const oldEnergy = entityState.currentEnergy;
+
+      entityState.currentHp = Math.max(0, Math.min(entityState.maxHp, oldHp + totalHealthChange));
+      entityState.currentEnergy = Math.max(0, Math.min(entityState.maxEnergy, oldEnergy + totalEnergyChange));
+      
+      console.log(`[CombatService] Периодические эффекты для ${entityName}:`, {
+          hpChange: `${oldHp} -> ${entityState.currentHp}`,
+          energyChange: `${oldEnergy} -> ${entityState.currentEnergy}`
       });
-      if (enemyState.effects.length !== initialCount) {
-        changed = true;
-        console.log(`[CombatService] Эффекты противника обновлены. Было: ${initialCount}, стало: ${enemyState.effects.length}`);
-      }
     }
 
-    if (changed) {
-      combat.changed('player_state', true);
-      combat.changed('enemy_state', true);
-    }
+    return battleLogEntries; // Возвращаем только логи для записи в историю боя
   }
 
-  /**
-   * Получение актуального состояния боя
-   * @param {number} combatId - ID боя
-   * @param {number} userId - ID игрока
-   * @returns {Object} - Актуальное состояние боя
-   */
+  static updateEffectsDuration(entityState) {
+    if (!entityState.effects || entityState.effects.length === 0) {
+      return false;
+    }
+    
+    const now = Date.now();
+    const initialCount = entityState.effects.length;
+
+    entityState.effects = entityState.effects.filter(effect => {
+      if (effect.permanent || !effect.durationMs) return true; // Оставляем постоянные и без времени действия
+      const startTime = effect.startTime || new Date(effect.appliedAt).getTime();
+      const elapsedMs = now - startTime;
+      const isExpired = elapsedMs >= effect.durationMs;
+      if (isExpired) {
+        console.log(`[CombatService] Эффект "${effect.name}" истек.`);
+      }
+      return !isExpired;
+    });
+
+    return entityState.effects.length !== initialCount;
+  }
+
   static async getCombatState(combatId) {
     const Combat = modelRegistry.getModel('Combat');
     const combat = await Combat.findByPk(combatId);
@@ -444,13 +619,68 @@ class CombatService {
     if (!combat) {
       throw new Error('Бой не найден');
     }
+    
+    // Если бой уже завершен, просто возвращаем его состояние
+    if (combat.status !== 'active') {
+      const finalState = combat.toJSON();
+      if (combat.rewards) {
+        finalState.rewards = combat.rewards;
+      }
+      return { success: true, combat: finalState };
+    }
 
-    // Обновляем длительность эффектов перед отправкой состояния клиенту
-    await this.updateEffectsDuration(combat);
+    const now = new Date();
+    const lastUpdate = new Date(combat.last_updated_at);
+    const secondsPassed = Math.floor((now - lastUpdate) / 1000);
+    let changed = false;
 
-    await combat.save();
+    if (secondsPassed > 0) {
+      const playerLogs = this.applyPeriodicEffects(combat.player_state, secondsPassed, 'Игрок');
+      const enemyLogs = this.applyPeriodicEffects(combat.enemy_state, secondsPassed, 'Враг');
+      
+      if (playerLogs.length > 0 || enemyLogs.length > 0) {
+        combat.log.push(...playerLogs, ...enemyLogs);
+        changed = true;
+      }
 
-    return { success: true, combat: combat.toJSON() };
+      // Обновляем длительность эффектов
+      const playerEffectsChanged = this.updateEffectsDuration(combat.player_state);
+      const enemyEffectsChanged = this.updateEffectsDuration(combat.enemy_state);
+
+      if (playerEffectsChanged || enemyEffectsChanged) {
+        changed = true;
+      }
+
+      // Проверяем, не закончился ли бой после применения эффектов
+      if (combat.player_state.currentHp <= 0) {
+        combat.status = 'completed';
+        combat.winner = 'enemy';
+        combat.log.push({ message: 'Игрок потерпел поражение от периодических эффектов.' });
+        changed = true;
+      } else if (combat.enemy_state.currentHp <= 0) {
+        combat.status = 'completed';
+        combat.winner = 'player';
+        combat.log.push({ message: 'Противник повержен периодическими эффектами!' });
+        const rewards = await this._processRewards(combat, combat.user_id);
+        combat.rewards = rewards;
+        changed = true;
+      }
+
+      // Обновляем время последнего действия и сохраняем, если были изменения
+      if (changed) {
+        combat.last_updated_at = now;
+        combat.changed('player_state', true);
+        combat.changed('enemy_state', true);
+        combat.changed('log', true);
+        await combat.save();
+      }
+    }
+
+    const finalCombatState = combat.toJSON();
+    if (combat.rewards) {
+      finalCombatState.rewards = combat.rewards;
+    }
+    return { success: true, combat: finalCombatState };
   }
   /**
    * Обработка и начисление наград игроку после победы

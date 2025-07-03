@@ -58,6 +58,10 @@ module.exports = (sequelize) => {
     rewards: {
       type: DataTypes.JSONB,
       allowNull: true
+    },
+    last_updated_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
     }
   }, {
     sequelize,
