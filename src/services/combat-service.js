@@ -196,7 +196,17 @@ class CombatService {
         throw new Error('Игрок не знает такую технику');
       }
 
-      const energyCost = technique.energy_cost || 0;
+      // Расчет стоимости энергии с учетом модификаторов
+      const modifiers = this._getEffectModifiers(combat.player_state);
+      let energyCost = technique.energy_cost || 0;
+
+      if (modifiers.energyCostModifier) {
+        energyCost = Math.floor(energyCost * (1 - modifiers.energyCostModifier / 100));
+      }
+      if (modifiers.isFree) {
+        energyCost = 0;
+      }
+
       if (combat.player_state.currentEnergy < energyCost) {
         throw new Error('Недостаточно энергии для применения техники');
       }
@@ -321,6 +331,36 @@ class CombatService {
     });
 
     return result;
+  }
+
+  /**
+   * Получает модификаторы от активных эффектов.
+   * @param {Object} entityState - Состояние игрока или врага.
+   * @returns {Object} - Объект с модификаторами.
+   * @private
+   */
+  static _getEffectModifiers(entityState) {
+    const modifiers = {
+      damageModifier: 0,
+      defenseModifier: 0,
+      energyCostModifier: 0,
+      isFree: false,
+    };
+
+    if (!entityState.effects || entityState.effects.length === 0) {
+      return modifiers;
+    }
+
+    // NOTE: В будущем здесь будет логика разбора эффектов,
+    // аналогичная pvp-service. Пока это заглушка.
+    for (const effect of entityState.effects) {
+      // Пример:
+      // if (effect.name === 'Экономия маны') {
+      //   modifiers.energyCostModifier += 25; // Скидка 25%
+      // }
+    }
+
+    return modifiers;
   }
 
   /**
