@@ -218,7 +218,7 @@ function CombatArea({ areaId }) {
       if (updatedState.success) {
         setCombatState(updatedState.combat);
       }
-    }, 2000); // Опрос каждые 2 секунды
+    }, 1000); // Опрос каждую секунду
 
     return () => clearInterval(interval);
   }, [combatState]);

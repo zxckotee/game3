@@ -321,24 +321,7 @@ class CombatService {
         startTime: Date.now(),
         durationMs: (dbEffect.duration || 0) * 1000,
         sourceTechnique: technique.id,
-        // Трансляция полей для совместимости
-        value: 0,
-        subtype: dbEffect.type, // По умолчанию subtype равен type
       };
-
-      // Определяем subtype и value на основе типа эффекта
-      if (['burn', 'bleed', 'poison'].includes(dbEffect.type)) {
-        newEffect.subtype = 'dot'; // Damage Over Time
-        newEffect.value = dbEffect.damage || 0;
-      } else if (dbEffect.type === 'regenerate') {
-        newEffect.subtype = 'hot'; // Heal Over Time
-        newEffect.value = dbEffect.healing || 0;
-      } else if (dbEffect.type === 'stun' || dbEffect.type === 'silence' || dbEffect.type === 'root') {
-        newEffect.subtype = dbEffect.type; // Статусные эффекты
-      } else if (dbEffect.type === 'buff' || dbEffect.type === 'debuff') {
-        // Для баффов/дебаффов value может не использоваться, важны modifiers
-        newEffect.subtype = dbEffect.modifiers ? 'modifier' : dbEffect.type;
-      }
       
       console.log('[COMBAT_DEBUG] 2. Преобразованный эффект для добавления:', JSON.stringify(newEffect, null, 2));
       return newEffect;
@@ -545,7 +528,7 @@ class CombatService {
    */
   static applyPeriodicEffects(entityState, ticks, entityName = 'Сущность') {
     if (!entityState.effects || entityState.effects.length === 0 || ticks <= 0) {
-      return []; // Возвращаем пустой массив логов, если нет эффектов
+      return [];
     }
 
     let totalHealthChange = 0;
@@ -554,22 +537,34 @@ class CombatService {
     const modifiers = this._getEffectModifiers(entityState);
 
     for (let i = 0; i < ticks; i++) {
-      if (entityState.currentHp <= 0) break; // Не применяем эффекты, если цель уже повержена
+      if (entityState.currentHp <= 0) break;
 
       for (const effect of entityState.effects) {
-        // Эффекты периодического урона (DoT)
-        if (effect.subtype === 'dot' || (effect.modifiers && effect.modifiers.includes('dot'))) {
-          let dotDamage = effect.value || 5;
-          dotDamage *= (1 + modifiers.dotModifier / 100); // Учитываем модификаторы
-          totalHealthChange -= Math.round(dotDamage);
-          battleLogEntries.push({ message: `${entityName} получает ${Math.round(dotDamage)} урона от эффекта "${effect.name}".` });
-        }
-        // Эффекты периодического лечения (HoT)
-        if (effect.subtype === 'hot' || (effect.modifiers && effect.modifiers.includes('healing'))) {
-          let hotHealing = effect.value || 5;
-          hotHealing *= (1 + modifiers.healingModifier / 100); // Учитываем модификаторы
-          totalHealthChange += Math.round(hotHealing);
-          battleLogEntries.push({ message: `${entityName} восстанавливает ${Math.round(hotHealing)} здоровья от эффекта "${effect.name}".` });
+        let value;
+        switch (effect.type) {
+          case 'burn':
+          case 'bleed':
+          case 'poison':
+            value = Math.round((effect.damage || 0) * (1 + modifiers.dotModifier / 100));
+            totalHealthChange -= value;
+            battleLogEntries.push({ message: `${entityName} получает ${value} урона от эффекта "${effect.name}".` });
+            break;
+
+          case 'regenerate':
+            // Проверяем, это регенерация здоровья или энергии
+            if (effect.name.toLowerCase().includes('энергии')) {
+              // TODO: Заменить хардкод на значение из БД, когда оно там появится.
+              value = Math.round(5 * (1 + modifiers.healingModifier / 100));
+              totalEnergyChange += value;
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".` });
+            } else {
+              value = Math.round((effect.healing || 0) * (1 + modifiers.healingModifier / 100));
+              totalHealthChange += value;
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
+            }
+            break;
+          
+          // Другие периодические эффекты можно добавить сюда
         }
       }
     }
@@ -587,7 +582,7 @@ class CombatService {
       });
     }
 
-    return battleLogEntries; // Возвращаем только логи для записи в историю боя
+    return battleLogEntries;
   }
 
   static updateEffectsDuration(entityState) {
