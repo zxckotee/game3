@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import './BattleInterface.css';
 import BattleEffects from './BattleEffects';
-import ActionPanel from './ActionPanel';
+import PveActionPanel from './PveActionPanel';
 
 /**
  * Основной компонент интерфейса боя для PvE
@@ -103,7 +103,7 @@ const PveBattleInterface = ({
             </div>
         </div>
 
-        <ActionPanel
+        <PveActionPanel
             onAction={onAction}
             isPlayerTurn={isPlayerTurn}
             currentEnergy={player?.currentEnergy}

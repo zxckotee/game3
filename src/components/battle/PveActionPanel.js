@@ -1,5 +1,5 @@
 import React from 'react';
-import './ActionPanel.css';
+import './PveActionPanel.css';
 
 /**
  * Компонент для отображения панели действий в бою
@@ -7,15 +7,15 @@ import './ActionPanel.css';
  * @param {Function} props.onAction - Функция обработки действия
  * @param {Object} props.cooldowns - Объект с информацией о перезарядке техник
  * @param {Array} props.availableTechniques - Массив доступных техник
- * @param {boolean} props.isMyTurn - Флаг, указывающий, ход ли текущего игрока
+ * @param {boolean} props.isPlayerTurn - Флаг, указывающий, ход ли текущего игрока
  * @param {string} props.selectedAction - Текущее выбранное действие
  * @param {string} props.selectedTechniqueId - ID выбранной техники
  */
-const ActionPanel = ({
+const PveActionPanel = ({
   onAction,
   cooldowns = {},
   availableTechniques = [],
-  isMyTurn = true,
+  isPlayerTurn = true,
   selectedAction = null,
   selectedTechniqueId = null,
   currentEnergy = 100,
@@ -44,25 +44,6 @@ const ActionPanel = ({
     const cooldownEndTime = new Date(cooldowns[techniqueId]);
     const remainingMs = Math.max(0, cooldownEndTime - now);
     return Math.ceil(remainingMs / 1000);
-  };
-
-  // Функция для получения иконки действия
-  const getActionIcon = (actionType, techniqueId) => {
-    switch (actionType) {
-      case 'attack':
-        return '⚔️';
-      case 'defense':
-        return '🛡️';
-      case 'technique':
-        // Если technique - это объект, используем его, иначе ищем в глобальном объекте techniques
-        const techniqueObj = availableTechniques.find(t =>
-          (typeof t === 'object' && t.id === techniqueId) || t === techniqueId
-        );
-        const technique = typeof techniqueObj === 'object' ? techniqueObj : techniques[techniqueId];
-        return technique?.icon || '✨';
-      default:
-        return '❓';
-    }
   };
 
   // Функция для форматирования времени перезарядки
@@ -157,26 +138,25 @@ const ActionPanel = ({
 
       {/* Кнопка обычной атаки */}
       <button
-        className={`action-button attack ${selectedAction === 'attack' ? 'selected' : ''} ${!isMyTurn || isActionBlocked ? 'disabled' : ''}`}
-        onClick={() => isMyTurn && !isActionBlocked && onAction('attack')}
-        disabled={!isMyTurn || isActionBlocked}
+        className={`action-button attack ${!isPlayerTurn || isActionBlocked ? 'disabled' : ''}`}
+        onClick={() => isPlayerTurn && !isActionBlocked && onAction({ type: 'attack' })}
+        disabled={!isPlayerTurn || isActionBlocked}
       >
         <div className="tooltip">Базовая атака, наносящая физический урон противнику (0 энергии)</div>
-        <div className="action-icon">{getActionIcon('attack')}</div>
+        <div className="action-icon">⚔️</div>
         <div className="action-name">Обычная атака</div>
         <div className="energy-cost">0</div>
       </button>
 
       {/* Кнопка защиты */}
       <button
-        className={`action-button defense ${selectedAction === 'defense' ? 'selected' : ''} ${!isMyTurn || isActionBlocked ? 'disabled' : ''}`}
-        onClick={() => isMyTurn && !isActionBlocked && onAction('defense')}
-        disabled={!isMyTurn || isActionBlocked}
+        className={`action-button defense ${!isPlayerTurn || isActionBlocked ? 'disabled' : ''}`}
+        onClick={() => isPlayerTurn && !isActionBlocked && onAction({ type: 'defense' })}
+        disabled={!isPlayerTurn || isActionBlocked}
       >
-        <div className="tooltip">Защитная стойка, снижающая получаемый урон на 40% и восстанавливающая 20 единиц энергии</div>
-        <div className="action-icon">{getActionIcon('defense')}</div>
+        <div className="tooltip">Защитная стойка, снижающая получаемый урон и восстанавливающая энергию</div>
+        <div className="action-icon">🛡️</div>
         <div className="action-name">Защита</div>
-        <div className="energy-cost" style={{ color: '#66bb6a' }}>+20</div>
       </button>
 
       {/* Кнопки техник */}
@@ -185,14 +165,13 @@ const ActionPanel = ({
 
         const onCooldown = isOnCooldown(technique.id);
         const remainingCooldown = getRemainingCooldown(technique.id);
-        const isSelected = selectedAction === 'technique' && selectedTechniqueId === technique.id;
         const energyCost = technique.energy_cost || 0;
-        const canUse = isMyTurn && !isActionBlocked && !onCooldown && currentEnergy >= energyCost;
+        const canUse = isPlayerTurn && !isActionBlocked && !onCooldown && currentEnergy >= energyCost;
 
         return (
           <button
             key={technique.id}
-            className={`action-button technique ${!canUse ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`}
+            className={`action-button technique ${!canUse ? 'disabled' : ''}`}
             onClick={() => canUse && onAction({ type: 'technique', id: technique.id })}
             disabled={!canUse}
           >
@@ -208,4 +187,4 @@ const ActionPanel = ({
   );
 };
 
-export default ActionPanel;
+export default PveActionPanel;

@@ -5,6 +5,7 @@ const modelRegistry = require('../models/registry');
 const { Op, QueryTypes } = require('sequelize');
 const { unifiedDatabase, initializeDatabaseConnection } = require('./database-connection-manager');
 const { Sequelize } = require('sequelize');
+const techniqueService = require('./technique-service');
 
 let sequelize;
 // Асинхронная функция для получения экземпляра
@@ -86,12 +87,16 @@ class CombatService {
     const calculatedPlayerStats = this._calculatePlayerStats(player.characterStats);
     const Combat = modelRegistry.getModel('Combat');
 
+    // Получаем изученные техники игрока
+    const learnedTechniques = await techniqueService.getLearnedTechniques(userId);
+
     const playerState = {
       currentHp: calculatedPlayerStats.currentHp,
       maxHp: calculatedPlayerStats.maxHp,
       currentEnergy: calculatedPlayerStats.currentEnergy,
       maxEnergy: calculatedPlayerStats.maxEnergy,
-      effects: []
+      effects: [],
+      techniques: learnedTechniques || [] // Добавляем техники в состояние
     };
 
     const enemyState = {
@@ -185,6 +190,47 @@ class CombatService {
       logEntry = { turn: 'player', action: 'defense', message: 'Игрок уходит в глухую оборону.' };
       console.log(`[CombatService] Игрок применил защиту в бою ${combatId}`);
 
+    } else if (action.type === 'technique') {
+      const technique = combat.player_state.techniques.find(t => t.id === action.id);
+      if (!technique) {
+        throw new Error('Игрок не знает такую технику');
+      }
+
+      const energyCost = technique.energy_cost || 0;
+      if (combat.player_state.currentEnergy < energyCost) {
+        throw new Error('Недостаточно энергии для применения техники');
+      }
+
+      combat.player_state.currentEnergy -= energyCost;
+      let message = `Игрок использует технику "${technique.name}".`;
+
+      // Применяем урон
+      if (technique.damage > 0) {
+        const damage = technique.damage; // В будущем можно добавить модификаторы
+        combat.enemy_state.currentHp = Math.max(0, combat.enemy_state.currentHp - damage);
+        message += ` Наносит ${damage} урона.`;
+        console.log(`[CombatService] Игрок нанес ${damage} урона техникой "${technique.name}" в бою ${combatId}`);
+      }
+
+      // Применяем исцеление
+      if (technique.healing > 0) {
+        const healing = technique.healing; // В будущем можно добавить модификаторы
+        combat.player_state.currentHp = Math.min(combat.player_state.maxHp, combat.player_state.currentHp + healing);
+        message += ` Восстанавливает ${healing} здоровья.`;
+        console.log(`[CombatService] Игрок восстановил ${healing} здоровья техникой "${technique.name}" в бою ${combatId}`);
+      }
+      
+      // Применяем эффекты
+      if (technique.effects && technique.effects.length > 0) {
+        // Определяем цель для эффектов в зависимости от типа техники
+        const targetState = technique.type === 'attack' ? combat.enemy_state : combat.player_state;
+        const targetName = technique.type === 'attack' ? 'врага' : 'себя';
+        this._applyTechniqueEffects(technique, targetState);
+        message += ` Накладывает эффекты на ${targetName}.`;
+      }
+
+      logEntry = { turn: 'player', action: 'technique', message };
+
     } else {
       throw new Error(`Неизвестное действие: ${action.type}`);
     }
@@ -223,6 +269,58 @@ class CombatService {
       finalCombatState.rewards = combat.rewards;
     }
     return { success: true, combat: finalCombatState };
+  }
+
+  /**
+   * Применяет эффекты от техники к цели.
+   * @param {Object} technique - Объект техники, содержащий эффекты.
+   * @param {Object} targetState - Состояние цели (player_state или enemy_state).
+   * @private
+   */
+  static _applyTechniqueEffects(technique, targetState) {
+    if (!technique.effects || technique.effects.length === 0) {
+      return;
+    }
+
+    const newEffects = technique.effects.map(effect => ({
+      ...effect,
+      id: `${effect.id}_${Date.now()}`, // Уникальный ID для каждого экземпляра эффекта
+      startTime: Date.now(),
+      durationMs: (effect.duration || 0) * 1000,
+      sourceTechnique: technique.id,
+    }));
+
+    targetState.effects = this.mergeEffects(targetState.effects || [], newEffects);
+  }
+
+  /**
+   * Объединяет новые эффекты с существующими, обрабатывая стаки.
+   * @param {Array} currentEffects - Текущие эффекты на цели.
+   * @param {Array} newEffects - Новые эффекты для добавления.
+   * @returns {Array} - Обновленный массив эффектов.
+   */
+  static mergeEffects(currentEffects, newEffects) {
+    const result = [...currentEffects];
+
+    newEffects.forEach(newEffect => {
+      const existingEffectIndex = result.findIndex(e => e.name === newEffect.name);
+
+      if (existingEffectIndex !== -1) {
+        const existingEffect = result[existingEffectIndex];
+        // Обновляем существующий эффект (например, обновляем время действия)
+        result[existingEffectIndex] = {
+          ...existingEffect,
+          ...newEffect, // Новый эффект перезаписывает старый, но сохраняет некоторые свойства
+          startTime: newEffect.startTime, // Всегда обновляем время начала
+          durationMs: Math.max(existingEffect.durationMs - (Date.now() - existingEffect.startTime), 0) + newEffect.durationMs,
+        };
+      } else {
+        // Добавляем новый эффект
+        result.push(newEffect);
+      }
+    });
+
+    return result;
   }
 
   /**

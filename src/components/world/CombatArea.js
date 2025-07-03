@@ -365,17 +365,20 @@ function CombatArea({ areaId }) {
     }
   };
   
-  const handleCombatAction = async (actionType) => {
+  const handleCombatAction = async (action) => {
     if (!combatState) return;
 
-    if (actionType === 'flee') {
+    // Обрабатываем как простые строковые действия, так и объекты
+    const actionPayload = typeof action === 'string' ? { type: action } : action;
+
+    if (actionPayload.type === 'flee') {
         setCombatState(null);
         setActiveEnemy(null);
         actions.addNotification({ message: 'Вы сбежали из боя', type: 'warning' });
         return;
     }
 
-    const updatedState = await performCombatAction(combatState.id, { type: actionType });
+    const updatedState = await performCombatAction(combatState.id, actionPayload);
     if (updatedState.success) {
         setCombatState(updatedState.combat);
         if (updatedState.combat.status === 'completed') {
