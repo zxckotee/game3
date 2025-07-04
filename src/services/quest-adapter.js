@@ -7,20 +7,11 @@
 // Определение браузерной среды
 const isBrowserEnvironment = typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
-// Импорт данных о квестах для UI (категории, типы и т.д.)
-const clientQuests = require('../data/client-quests');
-
 // Импортируем API-версию для клиента
 const QuestServiceAPI = require('./quest-api');
 
 // В браузере всегда используем API-версию
 const QuestService = QuestServiceAPI;
-
-// Константы для совместимости с UI-компонентами
-const questCategories = clientQuests.questCategories || [];
-const questTypes = clientQuests.questTypes || {};
-const questDifficulty = clientQuests.questDifficulty || {};
-const quests = clientQuests.quests || [];
 
 // Создаем экземпляр для использования методов экземпляра
 const serviceInstance = new (function() {
@@ -105,12 +96,6 @@ const adapter = {
   updateQuestProgress: QuestService.updateQuestProgress,
   completeQuest: QuestService.completeQuest,
   
-  // Константы для UI
-  questCategories,
-  questTypes,
-  questDifficulty,
-  quests,
-  
   // Экспортируем вспомогательные функции
   normalizeQuestData: serviceInstance.normalizeQuestData,
   
@@ -122,16 +107,3 @@ const adapter = {
 
 // Экспортируем адаптер как основной экспорт
 module.exports = adapter;
-
-// Дополнительно экспортируем именованные константы
-module.exports.questCategories = questCategories;
-module.exports.questTypes = questTypes;
-module.exports.questDifficulty = questDifficulty;
-module.exports.quests = quests;
-
-// Экспортируем методы
-module.exports.getQuests = QuestService.getQuests;
-module.exports.acceptQuest = QuestService.acceptQuest;
-module.exports.updateQuestProgress = QuestService.updateQuestProgress;
-module.exports.completeQuest = QuestService.completeQuest;
-module.exports.normalizeQuestData = serviceInstance.normalizeQuestData;

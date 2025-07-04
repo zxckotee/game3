@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useGame } from '../../context/GameContext';
 // Импортируем константы и сервис из обновленного адаптера services
-import { quests as defaultQuests, questCategories, normalizeQuestData } from '../../services/quest-adapter';
+import questAdapter from '../../services/quest-adapter';
 // Импортируем функцию проверки подзадач по ID
 import { checkQuestObjective } from '../../utils/quest-objective-checker';
-// Импортируем сервис для работы с квестами
-import questService from '../../services/quest-adapter';
 
 const Container = styled.div`
   display: flex;
@@ -170,75 +168,43 @@ const ActionButton = styled.button`
 
 function QuestsTab() {
   const { state, actions } = useGame();
-  const questService = require('../../services/quest-adapter');
   const [selectedCategory, setSelectedCategory] = useState('все');
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [questsData, setQuestsData] = useState({ active: [], completed: [], available: [] });
-  
-  // Получаем данные о квестах как из Redux, так и из QuestManager
+  const [questCategories, setQuestCategories] = useState([]);
+
+  const fetchQuestsData = async () => {
+    if (!state.player?.id) return;
+    try {
+      const data = await questAdapter.getQuests(state.player.id);
+      const normalizedData = {
+        active: data.active.map(questAdapter.normalizeQuestData),
+        completed: data.completed.map(questAdapter.normalizeQuestData),
+        available: data.available.map(questAdapter.normalizeQuestData),
+      };
+      setQuestsData(normalizedData);
+    } catch (error) {
+      console.error('Ошибка при получении данных о квестах:', error);
+      setQuestsData({ active: [], completed: [], available: [] });
+    }
+  };
+
+  const fetchQuestConfig = async () => {
+    try {
+      // Предполагается, что у нас будет такой эндпоинт
+      const response = await fetch('/api/quests/config');
+      const config = await response.json();
+      setQuestCategories(config.categories || []);
+    } catch (error) {
+      console.error('Ошибка при получении конфигурации квестов:', error);
+      setQuestCategories([{id: 'все', name: 'все'}, {id: 'main', name: 'основной сюжет'}]); // fallback
+    }
+  };
+
   useEffect(() => {
-    // Функция для получения данных о квестах
-    const fetchQuestsData = () => {
-      try {
-        // Пытаемся получить данные из QuestManager (новый API-подход)
-        if (window.questManager && window.questManager.getQuestsList) {
-          // Получаем квесты и нормализуем их структуру
-          let quests = window.questManager.getQuestsList() || [];
-          quests = Array.isArray(quests) ? quests.map(quest => normalizeQuestData(quest)) : [];
-          
-          // Разделяем квесты по статусу (используем API-данные для всех категорий)
-          const active = quests.filter(q => q.status === 'active');
-          const completed = quests.filter(q => q.status === 'completed');
-          const available = quests.filter(q => q.status === 'available');
-          
-          setQuestsData({ active, completed, available });
-        } else {
-          // Запасной вариант - пытаемся использовать данные из Redux если они доступны
-          const completed = state.player.progress?.quests?.completed || [];
-          const active = state.player.progress?.quests?.active || [];
-          
-          // Для доступных квестов используем API данные, если они есть в стейте
-          // Иначе показываем все квесты из defaultQuests, которых нет в active и completed
-          let available = [];
-          if (state.player.progress?.quests?.available) {
-            available = state.player.progress.quests.available;
-          } else {
-            available = defaultQuests.filter(q =>
-              !completed.find(cq => cq.id === q.id) &&
-              !active.find(aq => aq.id === q.id)
-            );
-          }
-          
-          setQuestsData({ active, completed, available });
-        }
-      } catch (error) {
-        console.error('Ошибка при получении данных о квестах:', error);
-        // В случае ошибки используем безопасные пустые массивы
-        // В случае ошибки показываем безопасные данные
-        // Пытаемся получить данные из API, если доступны, или используем defaultQuests
-        const available = window.questManager?.getQuestsList?.()?.filter?.(q => q.status === 'available') || defaultQuests;
-        setQuestsData({ active: [], completed: [], available });
-      }
-    };
-    
-    // Получаем данные при монтировании компонента
     fetchQuestsData();
-    
-    // Подписываемся на события обновления квестов
-    const handleQuestsUpdated = () => fetchQuestsData();
-    window.addEventListener('quests-updated', handleQuestsUpdated);
-    window.addEventListener('quest-accepted', handleQuestsUpdated);
-    window.addEventListener('quest-completed', handleQuestsUpdated);
-    window.addEventListener('quest-progress-updated', handleQuestsUpdated);
-    
-    return () => {
-      // Отписываемся от событий при размонтировании
-      window.removeEventListener('quests-updated', handleQuestsUpdated);
-      window.removeEventListener('quest-accepted', handleQuestsUpdated);
-      window.removeEventListener('quest-completed', handleQuestsUpdated);
-      window.removeEventListener('quest-progress-updated', handleQuestsUpdated);
-    };
-  }, [state.player.progress?.quests]);
+    fetchQuestConfig();
+  }, [state.player?.id]);
   
   // Объединяем квесты из всех источников
   const allQuests = [
@@ -255,105 +221,56 @@ function QuestsTab() {
     setSelectedQuest(quest);
   };
   
-  const handleAcceptQuest = () => {
-    if (selectedQuest) {
-      // Проверяем уровень игрока
+  const handleAcceptQuest = async () => {
+    if (selectedQuest && state.player?.id) {
       if (state.player.cultivation.level < selectedQuest.requiredLevel) {
-        // Используем Redux action или окно уведомления
-        if (actions.addNotification) {
-          actions.addNotification({
-            message: `Требуется уровень культивации ${selectedQuest.requiredLevel}`,
-            type: 'error'
-          });
-        } else {
-          console.warn(`Требуется уровень культивации ${selectedQuest.requiredLevel}`);
-        }
+        actions.addNotification({
+          message: `Требуется уровень культивации ${selectedQuest.requiredLevel}`,
+          type: 'error'
+        });
         return;
       }
       
-      // Пытаемся использовать QuestManager (новый API-подход)
-      if (window.questManager && window.questManager.acceptQuest) {
-        window.questManager.acceptQuest(selectedQuest.id)
-          .then(() => {
-            // Показываем уведомление
-            if (actions.addNotification) {
-              actions.addNotification({
-                message: `Вы приняли задание "${selectedQuest.title}"`,
-                type: 'success'
-              });
-            }
-          })
-          .catch(error => {
-            console.error('Ошибка при принятии задания:', error);
-            if (actions.addNotification) {
-              actions.addNotification({
-                message: 'Ошибка при принятии задания',
-                type: 'error'
-              });
-            }
-          });
-      } else {
-        // Запасной вариант - используем Redux action
-        if (actions.acceptQuest) {
-          actions.acceptQuest(selectedQuest.id);
-          if (actions.addNotification) {
-            actions.addNotification({
-              message: `Вы приняли задание "${selectedQuest.title}"`,
-              type: 'success'
-            });
-          }
-        }
+      try {
+        await questAdapter.acceptQuest(state.player.id, selectedQuest.id);
+        actions.addNotification({
+          message: `Вы приняли задание "${selectedQuest.title}"`,
+          type: 'success'
+        });
+        fetchQuestsData(); // Обновляем данные
+      } catch (error) {
+        console.error('Ошибка при принятии задания:', error);
+        actions.addNotification({
+          message: error.message || 'Ошибка при принятии задания',
+          type: 'error'
+        });
       }
     }
   };
   
-  const handleCompleteQuest = () => {
-    if (selectedQuest) {
-      if (!selectedQuest?.objectives?.every?.(obj => obj.completed)) {
-        // Используем Redux action или окно уведомления
-        if (actions.addNotification) {
-          actions.addNotification({
-            message: 'Сначала выполните все цели задания',
-            type: 'error'
-          });
-        } else {
-          console.warn('Сначала выполните все цели задания');
-        }
+  const handleCompleteQuest = async () => {
+    if (selectedQuest && state.player?.id) {
+      if (!canCompleteQuest) {
+        actions.addNotification({
+          message: 'Сначала выполните все цели задания',
+          type: 'error'
+        });
         return;
       }
       
-      // Пытаемся использовать QuestManager (новый API-подход)
-      if (window.questManager && window.questManager.completeQuest) {
-        window.questManager.completeQuest(selectedQuest.id)
-          .then(() => {
-            // Показываем уведомление
-            if (actions.addNotification) {
-              actions.addNotification({
-                message: `Вы завершили задание "${selectedQuest.title}"`,
-                type: 'success'
-              });
-            }
-          })
-          .catch(error => {
-            console.error('Ошибка при завершении задания:', error);
-            if (actions.addNotification) {
-              actions.addNotification({
-                message: 'Ошибка при завершении задания',
-                type: 'error'
-              });
-            }
-          });
-      } else {
-        // Запасной вариант - используем Redux action
-        if (actions.completeQuest) {
-          actions.completeQuest(selectedQuest.id);
-          if (actions.addNotification) {
-            actions.addNotification({
-              message: `Вы завершили задание "${selectedQuest.title}"`,
-              type: 'success'
-            });
-          }
-        }
+      try {
+        await questAdapter.completeQuest(state.player.id, selectedQuest.id);
+        actions.addNotification({
+          message: `Вы завершили задание "${selectedQuest.title}"`,
+          type: 'success'
+        });
+        fetchQuestsData(); // Обновляем данные
+      } catch (error) {
+        console.error('Ошибка при завершении задания:', error);
+        actions.addNotification({
+          message: error.message || 'Ошибка при завершении задания',
+          type: 'error'
+        });
       }
     }
   };
@@ -402,13 +319,16 @@ function QuestsTab() {
       });
       
       // Если есть изменения - отправляем на сервер
-      if (changed && questService && questService.updateQuestProgress) {
-        questService.updateQuestProgress(state.player?.id, selectedQuest.id, updatedProgress)
-          .then(() => console.log("Прогресс подзадач успешно обновлен"))
+      if (changed && state.player?.id) {
+        questAdapter.updateQuestProgress(state.player.id, selectedQuest.id, updatedProgress)
+          .then(() => {
+            console.log("Прогресс подзадач успешно обновлен");
+            fetchQuestsData(); // Обновляем данные
+          })
           .catch(err => console.error("Ошибка при обновлении прогресса:", err));
       }
     }
-  }, [selectedQuest, state]);
+  }, [selectedQuest, state.player?.id]);
 
   const canCompleteQuest = selectedQuest &&
     selectedQuest.status === 'active' &&

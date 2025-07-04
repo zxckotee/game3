@@ -96,36 +96,6 @@ class QuestServiceAPI {
     }
   }
   
-  /**
-   * Обновление прогресса задания
-   * @param {number} userId - ID пользователя
-   * @param {number} questId - ID задания
-   * @param {Object} progress - Прогресс задания
-   * @returns {Promise<Object>} - Обновленное задание
-   */
-  static async updateQuestProgress(userId, questId, progress) {
-    try {
-      const response = await fetch(`${API_URL}/users/${userId}/quests/${questId}/progress`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
-        body: JSON.stringify({ progress }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка при обновлении прогресса задания');
-      }
-
-      const quest = await response.json();
-      return quest;
-    } catch (error) {
-      console.error('Ошибка при обновлении прогресса задания:', error);
-      throw error;
-    }
-  }
   
   /**
    * Завершение задания

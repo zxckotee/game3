@@ -3,6 +3,35 @@ const router = express.Router();
 const QuestService = require('../../services/quest-service');
 const { validateAuth, validateAdmin } = require('../middleware/auth-middleware');
 
+// Новый маршрут для получения конфигурации квестов
+router.get('/api/quests/config', async (req, res) => {
+  try {
+    // В будущем эти данные можно будет загружать из БД
+    const config = {
+      categories: [
+        { id: 'все', name: 'все' },
+        { id: 'main', name: 'основной сюжет' },
+        { id: 'side', name: 'побочные' },
+        { id: 'daily', name: 'ежедневные' }
+      ],
+      types: {
+        MAIN: 'main',
+        SIDE: 'side',
+        DAILY: 'daily'
+      },
+      difficulty: {
+        EASY: 'Легко',
+        MEDIUM: 'Средне',
+        HARD: 'Сложно'
+      }
+    };
+    res.json(config);
+  } catch (error) {
+    console.error('Ошибка при получении конфигурации квестов:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
 // API маршруты для работы с квестами
 router.get('/api/quests', async (req, res) => {
   try {
