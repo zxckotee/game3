@@ -5,7 +5,7 @@ const QuestObjective = require('../models/quest-objective');
 const QuestReward = require('../models/quest-reward');
 const QuestCategory = require('../models/quest-category');
 const CharacterProfileService = require('./character-profile-service');
-
+/* abc */
 /**
  * Сервис для работы с заданиями
  */
@@ -30,7 +30,7 @@ class QuestService {
         id: quest.id,
         title: quest.title,
         description: quest.description,
-        type: quest.type,
+        type: quest.category,
         level: quest.level,
         category: quest.category ? quest.category.name : null,
         rewards: quest.rewards,
@@ -85,25 +85,17 @@ class QuestService {
           attributes: ['id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
         });
         
-        // Получаем категорию квеста, если она есть
-        let categoryName = null;
-        if (questData.category) {
-          const category = await QuestCategory.findByPk(questData.category, {
-            attributes: ['id', 'name']
-          });
-          if (category) {
-            categoryName = category.name;
-          }
-        }
+        // Категорию квеста берем напрямую из данных квеста (ID)
+        const categoryName = questData.category;
         
         // Формируем объект квеста
         const quest = {
           id: questData.id,
           title: questData.title,
           description: questData.description,
-          type: questData.type || 'main',
+          type: questData.category || 'main',
           level: questData.required_level || 1,
-          category: categoryName,
+          category: categoryName, // Теперь здесь будет ID, например 'main'
           rewards: rewards.map(reward => ({
             id: reward.id,
             type: reward.type,
@@ -213,7 +205,7 @@ class QuestService {
         id: quest.id,
         title: quest.title,
         description: quest.description,
-        type: quest.type,
+        type: quest.category,
         level: quest.level,
         rewards: rewards.map(reward => ({
           id: reward.id,
@@ -270,7 +262,7 @@ class QuestService {
       
       // 2. Получаем данные о квесте
       const quest = await Quest.findByPk(questId, {
-        attributes: ['id', 'title', 'description', 'type', 'required_level', 'difficulty', 'status']
+        attributes: ['id', 'title', 'description', 'category', 'required_level', 'difficulty', 'status']
       });
       
       if (!quest) {
@@ -303,7 +295,7 @@ class QuestService {
         id: quest.id,
         title: quest.title,
         description: quest.description,
-        type: quest.type,
+        type: quest.category,
         level: quest.required_level,
         rewards: rewards.map(reward => ({
           id: reward.id,
@@ -359,7 +351,7 @@ class QuestService {
       
       // 2. Получаем данные о квесте
       const quest = await Quest.findByPk(questId, {
-        attributes: ['id', 'title', 'description', 'type', 'required_level', 'difficulty', 'status']
+        attributes: ['id', 'title', 'description', 'category', 'required_level', 'difficulty', 'status']
       });
       
       if (!quest) {
@@ -404,7 +396,7 @@ class QuestService {
         id: quest.id,
         title: quest.title,
         description: quest.description,
-        type: quest.type,
+        type: quest.category,
         level: quest.required_level,
         rewards: rewards.map(reward => ({
           id: reward.id,

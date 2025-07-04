@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import QuestService, { normalizeQuestData } from '../../services/quest-adapter';
+import QuestService from '../../services/quest-adapter';
 import QuestSynchronizer from './QuestSynchronizer';
 
 /**
@@ -41,38 +41,14 @@ const QuestManager = () => {
       
       // Если userQuests - объект с массивами категорий (active, completed, available)
       if (userQuests && typeof userQuests === 'object' && !Array.isArray(userQuests)) {
-        // Нормализуем каждый квест в каждой категории
-        const normalizedQuests = [];
-        
-        // Добавляем активные квесты
-        if (Array.isArray(userQuests.active)) {
-          normalizedQuests.push(...userQuests.active.map(quest => ({
-            ...normalizeQuestData(quest),
-            status: 'active'
-          })));
-        }
-        
-        // Добавляем завершенные квесты
-        if (Array.isArray(userQuests.completed)) {
-          normalizedQuests.push(...userQuests.completed.map(quest => ({
-            ...normalizeQuestData(quest),
-            status: 'completed'
-          })));
-        }
-        
-        // Добавляем доступные квесты
-        if (Array.isArray(userQuests.available)) {
-          normalizedQuests.push(...userQuests.available.map(quest => ({
-            ...normalizeQuestData(quest),
-            status: 'available'
-          })));
-        }
-        
-        userQuests = normalizedQuests;
-      } else if (Array.isArray(userQuests)) {
-        // Если userQuests - просто массив, нормализуем каждый элемент
-        userQuests = userQuests.map(quest => normalizeQuestData(quest));
-      } else {
+        // Просто объединяем все квесты в один массив
+        const allQuests = [
+          ...(userQuests.active || []),
+          ...(userQuests.completed || []),
+          ...(userQuests.available || [])
+        ];
+        userQuests = allQuests;
+      } else if (!Array.isArray(userQuests)) {
         // Если неизвестный формат, используем пустой массив
         console.error('Неизвестный формат данных квестов:', userQuests);
         userQuests = [];
@@ -106,7 +82,6 @@ const QuestManager = () => {
     
     try {
       let quest = await QuestService.acceptQuest(userId, questId);
-      quest = normalizeQuestData(quest);
       
       // Обновляем локальное состояние
       setQuests(currentQuests => {
@@ -151,7 +126,6 @@ const QuestManager = () => {
     
     try {
       let updatedQuest = await QuestService.updateQuestProgress(userId, questId, progress);
-      updatedQuest = normalizeQuestData(updatedQuest);
       
       // Обновляем локальное состояние
       setQuests(currentQuests => {
@@ -193,7 +167,6 @@ const QuestManager = () => {
     
     try {
       let completedQuest = await QuestService.completeQuest(userId, questId);
-      completedQuest = normalizeQuestData(completedQuest);
       
       // Обновляем локальное состояние
       setQuests(currentQuests => {
@@ -244,7 +217,7 @@ const QuestManager = () => {
         getQuestsList: () => quests,
         getQuest: (questId) => {
           const quest = quests.find(q => q.id === questId);
-          return quest ? normalizeQuestData(quest) : null;
+          return quest || null;
         }
       };
       

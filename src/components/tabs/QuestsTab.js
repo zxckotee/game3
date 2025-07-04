@@ -177,12 +177,9 @@ function QuestsTab() {
     if (!state.player?.id) return;
     try {
       const data = await questAdapter.getQuests(state.player.id);
-      const normalizedData = {
-        active: data.active.map(questAdapter.normalizeQuestData),
-        completed: data.completed.map(questAdapter.normalizeQuestData),
-        available: data.available.map(questAdapter.normalizeQuestData),
-      };
-      setQuestsData(normalizedData);
+      if (data) {
+        setQuestsData(data);
+      }
     } catch (error) {
       console.error('Ошибка при получении данных о квестах:', error);
       setQuestsData({ active: [], completed: [], available: [] });
@@ -213,9 +210,15 @@ function QuestsTab() {
     ...questsData.completed
   ];
   
-  const filteredQuests = allQuests.filter(quest => 
-    selectedCategory === 'все' || quest.category === selectedCategory
-  );
+  const filteredQuests = allQuests.filter(quest => {
+    if (selectedCategory === 'все') {
+      return true;
+    }
+    if (selectedCategory === 'side') {
+      return quest.category === 'side' || quest.category === 'sect';
+    }
+    return quest.category === selectedCategory;
+  });
   
   const handleQuestSelect = (quest) => {
     setSelectedQuest(quest);
@@ -223,9 +226,9 @@ function QuestsTab() {
   
   const handleAcceptQuest = async () => {
     if (selectedQuest && state.player?.id) {
-      if (state.player.cultivation.level < selectedQuest.requiredLevel) {
+      if (state.player.cultivation.level < selectedQuest.required_level) {
         actions.addNotification({
-          message: `Требуется уровень культивации ${selectedQuest.requiredLevel}`,
+          message: `Требуется уровень культивации ${selectedQuest.required_level}`,
           type: 'error'
         });
         return;
@@ -326,7 +329,8 @@ function QuestsTab() {
       });
       
       // Если есть изменения - отправляем на сервер
-      if (changed && state.player?.id) {
+      // Если есть изменения и квест активен - отправляем на сервер
+      if (changed && state.player?.id && selectedQuest.status === 'active') {
         questAdapter.updateQuestProgress(state.player.id, selectedQuest.id, updatedProgress)
           .then(() => {
             console.log("Прогресс подзадач успешно обновлен");
@@ -350,8 +354,8 @@ function QuestsTab() {
           {Array.isArray(questCategories) ? questCategories.map(category => (
             <CategoryButton
               key={category.id}
-              active={selectedCategory === category.name}
-              onClick={() => setSelectedCategory(category.name)}
+              active={selectedCategory === category.id}
+              onClick={() => setSelectedCategory(category.id)}
             >
               {category.name.charAt(0).toUpperCase() + category.name.slice(1)}
             </CategoryButton>
@@ -373,7 +377,7 @@ function QuestsTab() {
               <span>
                 {quest.status === 'completed' && 'Завершено'}
                 {quest.status === 'active' && 'В процессе'}
-                {quest.status === 'available' && `Уровень ${quest.required_level || quest.requiredLevel || 1}`}
+                {quest.status === 'available' && `Уровень ${quest.required_level || 1}`}
               </span>
             </QuestInfo>
           </QuestCard>
@@ -445,10 +449,10 @@ function QuestsTab() {
           {selectedQuest.status === 'available' ? (
             <ActionButton 
               onClick={handleAcceptQuest}
-              disabled={state.player.cultivation.level < selectedQuest.requiredLevel}
+              disabled={state.player.cultivation.level < selectedQuest.required_level}
             >
-              {state.player.cultivation.level < selectedQuest.requiredLevel 
-                ? `Требуется уровень ${selectedQuest.requiredLevel}` 
+              {state.player.cultivation.level < selectedQuest.required_level
+                ? `Требуется уровень ${selectedQuest.required_level}`
                 : 'Принять задание'}
             </ActionButton>
           ) : selectedQuest.status === 'active' && (
