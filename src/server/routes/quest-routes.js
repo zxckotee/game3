@@ -72,6 +72,9 @@ router.post('/api/users/:userId/quests/:questId/accept', async (req, res) => {
     
     res.json({ success: true, quest });
   } catch (error) {
+    if (error.message.includes('Задание уже принято или выполнено')) {
+      return res.status(200).json({ success: false, message: error.message });
+    }
     console.error('Ошибка при принятии квеста:', error);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }

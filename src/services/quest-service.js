@@ -157,24 +157,28 @@ class QuestService {
    */
   static async acceptQuest(userId, questId) {
     try {
-      // Проверяем, существует ли задание
-      const quest = await Quest.findByPk(questId, {
-        include: [
-          {
-            model: QuestObjective,
-            as: 'objectives'
-          },
-          {
-            model: QuestReward,
-            as: 'rewards'
-          }
-        ]
+      // Используем сырой запрос, чтобы избежать магии Sequelize
+      const [questResults] = await Quest.sequelize.query('SELECT * FROM quests WHERE id = :questId', {
+        replacements: { questId },
+        type: Quest.sequelize.QueryTypes.SELECT
       });
-      
+
+      const quest = questResults;
+
       if (!quest) {
         throw new Error('Задание не найдено');
       }
-      
+
+      // Получаем цели и награды отдельно
+      const objectives = await QuestObjective.findAll({
+        where: { quest_id: questId },
+        attributes: ['id', 'quest_id', 'text']
+      });
+      const rewards = await QuestReward.findAll({
+        where: { quest_id: questId },
+        attributes: ['id', 'quest_id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
+      });
+
       // Проверяем, не принято ли уже задание
       const existingProgress = await QuestProgress.findOne({
         where: {
@@ -211,7 +215,7 @@ class QuestService {
         description: quest.description,
         type: quest.type,
         level: quest.level,
-        rewards: quest.rewards.map(reward => ({
+        rewards: rewards.map(reward => ({
           id: reward.id,
           type: reward.type,
           name: reward.name,
@@ -221,7 +225,7 @@ class QuestService {
           copper: reward.copper,
           icon: reward.icon
         })),
-        objectives: quest.objectives.map(objective => ({
+        objectives: objectives.map(objective => ({
           id: objective.id,
           text: objective.text,
           completed: false

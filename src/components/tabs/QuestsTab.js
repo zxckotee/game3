@@ -232,12 +232,19 @@ function QuestsTab() {
       }
       
       try {
-        await questAdapter.acceptQuest(state.player.id, selectedQuest.id);
-        actions.addNotification({
-          message: `Вы приняли задание "${selectedQuest.title}"`,
-          type: 'success'
-        });
-        fetchQuestsData(); // Обновляем данные
+        const response = await questAdapter.acceptQuest(state.player.id, selectedQuest.id);
+        if (response.success === false) {
+          actions.addNotification({
+            message: response.message,
+            type: 'info'
+          });
+        } else {
+          actions.addNotification({
+            message: `Вы приняли задание "${selectedQuest.title}"`,
+            type: 'success'
+          });
+          fetchQuestsData(); // Обновляем данные
+        }
       } catch (error) {
         console.error('Ошибка при принятии задания:', error);
         actions.addNotification({

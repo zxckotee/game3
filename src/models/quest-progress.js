@@ -45,8 +45,8 @@ const schema = {
     onDelete: 'CASCADE'
   },
   status: { // Соответствует status в миграции
-    type: DataTypes.ENUM('не начато', 'в процессе', 'выполнено', 'провалено'),
-    defaultValue: 'не начато' // Исправлено defaultValue
+    type: DataTypes.ENUM('available', 'active', 'completed', 'failed'),
+    defaultValue: 'available'
   },
   progress: { // Соответствует progress в миграции
     type: DataTypes.JSONB, // Изменен тип на JSONB для хранения JSON объекта с прогрессом

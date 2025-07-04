@@ -108,7 +108,7 @@ CREATE TABLE quest_progress (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
     quest_id VARCHAR(20) NOT NULL REFERENCES quests(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    status VARCHAR(20) CHECK (status IN ('не начато', 'в процессе', 'выполнено', 'провалено', 'available')) DEFAULT 'не начато',
+    status VARCHAR(20) CHECK (status IN ('available', 'active', 'completed', 'failed')) DEFAULT 'available',
     progress INTEGER DEFAULT 0,
     completed_objectives JSONB DEFAULT '[]'::JSONB,
     started_at TIMESTAMP,
