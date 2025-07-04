@@ -3,8 +3,6 @@ import styled from 'styled-components';
 import { useGame } from '../../context/GameContext';
 // Импортируем константы и сервис из обновленного адаптера services
 import questAdapter from '../../services/quest-adapter';
-// Импортируем функцию проверки подзадач по ID
-import { checkQuestObjective } from '../../utils/quest-objective-checker';
 
 const Container = styled.div`
   display: flex;
@@ -299,47 +297,6 @@ function QuestsTab() {
     return Boolean(value);
   };
 
-  // Эта функция перенесена в модуль quest-objective-checker.js
-
-  // Эта функция перенесена в модуль quest-objective-checker.js
-
-  // Проверка выполнения требования полностью перенесена в модуль quest-objective-checker.js
-
-  // Проверка выполнения подзадач при выборе квеста
-  useEffect(() => {
-    if (selectedQuest?.objectives && Array.isArray(selectedQuest.objectives)) {
-      // Создаем объект для отслеживания изменений
-      const updatedProgress = {};
-      let changed = false;
-      
-      // Проверяем каждую подзадачу
-      selectedQuest.objectives.forEach(objective => {
-        // Проверяем каждую незавершенную подзадачу
-        if (!objective.completed && objective.id) {
-          // Проверяем выполнение по ID подзадачи
-          const isCompleted = checkQuestObjective(objective.id, state);
-          
-          if (isCompleted) {
-            updatedProgress[objective.id] = true;
-            changed = true;
-            objective.completed = true; // Обновляем локальное состояние
-            console.log(`Автоматически отмечена как выполненная цель: ${objective.text}`);
-          }
-        }
-      });
-      
-      // Если есть изменения - отправляем на сервер
-      // Если есть изменения и квест активен - отправляем на сервер
-      if (changed && state.player?.id && selectedQuest.status === 'active') {
-        questAdapter.updateQuestProgress(state.player.id, selectedQuest.id, updatedProgress)
-          .then(() => {
-            console.log("Прогресс подзадач успешно обновлен");
-            fetchQuestsData(); // Обновляем данные
-          })
-          .catch(err => console.error("Ошибка при обновлении прогресса:", err));
-      }
-    }
-  }, [selectedQuest, state.player?.id]);
 
   const canCompleteQuest = selectedQuest &&
     selectedQuest.status === 'active' &&
@@ -384,7 +341,7 @@ function QuestsTab() {
             </QuestInfo>
           </QuestCard>
         )) : <div>Нет доступных заданий</div>}
-      </QuestsList>
+      </QuestsList>   
       
       {selectedQuest && (
         <QuestDetails>
