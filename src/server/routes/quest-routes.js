@@ -25,7 +25,7 @@ router.get('/api/quests/config', async (req, res) => {
         HARD: 'Сложно'
       }
     };
-    console.log(config);
+
     res.json(config);
   } catch (error) {
     console.error('Ошибка при получении конфигурации квестов:', error);

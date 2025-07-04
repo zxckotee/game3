@@ -72,7 +72,7 @@ class QuestService {
         const questData = await Quest.findByPk(progressRecord.questId, {
           attributes: ['id', 'title', 'category', 'difficulty', 'description', 'status', 'required_level', 'repeatable']
         });
-        
+        //console.log (questData);
         if (!questData) continue; // Пропускаем, если квест не найден
         
         // Получаем цели квеста
@@ -96,7 +96,8 @@ class QuestService {
           title: questData.title,
           description: questData.description,
           type: questData.category || 'main',
-          level: questData.required_level || 1,
+          level: questData.dataValues.required_level || 1,
+          required_level: questData.dataValues.required_level || 1, // для совместимости
           category: categoryName, // Теперь здесь будет ID, например 'main'
           rewards: rewards.map(reward => ({
             id: reward.id,
@@ -135,6 +136,7 @@ class QuestService {
         } else if (progressRecord.status === 'completed') {
           quests.completed.push(quest);
         }
+        console.log(quest);
       }
       
       return quests;
