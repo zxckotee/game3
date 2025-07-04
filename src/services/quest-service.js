@@ -5,6 +5,7 @@ const QuestObjective = require('../models/quest-objective');
 const QuestReward = require('../models/quest-reward');
 const QuestCategory = require('../models/quest-category');
 const CharacterProfileService = require('./character-profile-service');
+const { questDifficulty } = require('../data/quests-adapter');
 /* abc */
 /**
  * Сервис для работы с заданиями
@@ -34,7 +35,8 @@ class QuestService {
         level: quest.level,
         category: quest.category ? quest.category.name : null,
         rewards: quest.rewards,
-        objectives: quest.objectives
+        objectives: quest.objectives,
+        difficulty: quest.difficulty
       }));
     } catch (error) {
       console.error('Ошибка при получении всех квестов:', error);
@@ -118,6 +120,7 @@ class QuestService {
               completed: isCompleted
             };
           }),
+          difficulty: questData.difficulty,
           status: progressRecord.status,
           progress: progressRecord.progress,
           startedAt: progressRecord.startedAt,
@@ -170,6 +173,18 @@ class QuestService {
         where: { quest_id: questId },
         attributes: ['id', 'quest_id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
       });
+
+      // Проверяем, есть ли у пользователя уже активное задание
+      const activeQuest = await QuestProgress.findOne({
+        where: {
+          userId,
+          status: 'active'
+        }
+      });
+
+      if (activeQuest) {
+        throw new Error('Вы не можете принять новое задание, пока у вас есть активное.');
+      }
 
       // Проверяем, не принято ли уже задание
       const existingProgress = await QuestProgress.findOne({

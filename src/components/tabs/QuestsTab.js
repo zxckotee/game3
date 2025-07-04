@@ -346,6 +346,8 @@ function QuestsTab() {
     Array.isArray(selectedQuest?.objectives) &&
     selectedQuest.objectives.length > 0 &&
     selectedQuest.objectives.every(obj => toBool(obj.completed));
+
+  const hasActiveQuest = questsData.active && questsData.active.length > 0;
   
   return (
     <Container>
@@ -449,11 +451,13 @@ function QuestsTab() {
           {selectedQuest.status === 'available' ? (
             <ActionButton 
               onClick={handleAcceptQuest}
-              disabled={state.player.cultivation.level < selectedQuest.required_level}
+              disabled={hasActiveQuest || state.player.cultivation.level < selectedQuest.required_level}
             >
-              {state.player.cultivation.level < selectedQuest.required_level
-                ? `Требуется уровень ${selectedQuest.required_level}`
-                : 'Принять задание'}
+              {hasActiveQuest
+                ? 'Завершите текущее задание'
+                : state.player.cultivation.level < selectedQuest.required_level
+                  ? `Требуется уровень ${selectedQuest.required_level}`
+                  : 'Принять задание'}
             </ActionButton>
           ) : selectedQuest.status === 'active' && (
             <ActionButton 
