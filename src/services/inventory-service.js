@@ -56,6 +56,8 @@ const getItemField = (item, field, defaultValue) => {
 /**
  * Сервис для работы с инвентарем
  */
+const QuestService = require('./quest-service');
+
 class InventoryService {
 
     /**
@@ -683,6 +685,9 @@ class InventoryService {
               ...item
             }
           });
+
+          // Проверка квестов
+          QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { item: newItem, amount: itemQuantity });
           
           return {
             id: itemIdentifier, // Используем согласованный идентификатор

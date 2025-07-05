@@ -6,6 +6,7 @@ const { Op, QueryTypes } = require('sequelize');
 const { unifiedDatabase, initializeDatabaseConnection } = require('./database-connection-manager');
 const { Sequelize } = require('sequelize');
 const techniqueService = require('./technique-service');
+const QuestService = require('./quest-service');
 
 let sequelize;
 // Асинхронная функция для получения экземпляра
@@ -685,6 +686,10 @@ class CombatService {
    * @private
    */
   static async _processRewards(combat, userId) {
+    // Проверка квестов на убийство врага
+    QuestService.checkQuestEvent(userId, 'DEFEAT_ENEMY', { enemyId: combat.enemy_id, amount: 1 });
+    QuestService.checkQuestEvent(userId, 'DEFEAT_ANY_ENEMY', { amount: 1 });
+    
     const sequelize = await getSequelizeInstance();
     const CharacterProfile = modelRegistry.getModel('CharacterProfile');
     const InventoryItem = modelRegistry.getModel('InventoryItem');

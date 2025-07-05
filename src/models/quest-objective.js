@@ -33,6 +33,14 @@ const schema = {
     type: DataTypes.INTEGER,
     field: 'required_progress',
     defaultValue: 1
+  },
+  type: {
+    type: DataTypes.STRING(50),
+    field: 'type'
+  },
+  target: {
+    type: DataTypes.STRING(100),
+    field: 'target'
   }
   // Поле completed удалено, т.к. прогресс хранится индивидуально для каждого пользователя
   // в таблице quest_progress

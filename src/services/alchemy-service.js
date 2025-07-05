@@ -16,6 +16,8 @@ let recipesCache = [];
 let recipesByTypeCache = {};
 let recipesByRarityCache = {};
 
+const QuestService = require('./quest-service');
+
 class AlchemyService {
 
   // Вспомогательная функция для создания ActivePlayerEffect
@@ -1042,6 +1044,7 @@ class AlchemyService {
               stats: {} // Добавляем пустые stats, чтобы обеспечить полную совместимость с моделью
             }, { transaction });
             console.log(`Создан новый предмет в инвентаре: ${newItem.name} (тип: ${newItem.type})`);
+            QuestService.checkQuestEvent(userId, 'CRAFT_ITEM', { item: newItem, amount: newItem.quantity });
           }
           
           // Добавляем информацию о созданном предмете в результат

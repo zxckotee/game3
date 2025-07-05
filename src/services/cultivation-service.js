@@ -18,6 +18,8 @@ const STAGE_CONFIG = [
 /**
  * Сервис для работы с данными о культивации
  */
+const QuestService = require('./quest-service');
+
 class CultivationService {
   /**
    * Получение данных о культивации пользователя
@@ -298,6 +300,11 @@ class CultivationService {
         // Обновляем данные
         await cultivation.update(updateData);
         console.log(`[CULTIVATION SERVICE] updateCultivationProgress ${updateData} `);
+
+        // Проверка квестов на достижение уровня
+        if (updateData.level) {
+          QuestService.checkQuestEvent(userId, 'REACH_LEVEL', { level: updateData.level });
+        }
         
         // Получаем обновленные данные
         cultivation = await CultivationProgress.findOne({
