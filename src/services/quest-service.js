@@ -78,7 +78,7 @@ class QuestService {
         // Получаем цели квеста
         const objectives = await QuestObjective.findAll({
           where: { quest_id: questData.id },
-          attributes: ['id', 'text']
+          attributes: ['id', 'text', 'required_progress']
         });
         
         // Получаем награды квеста
@@ -111,14 +111,14 @@ class QuestService {
           })),
           objectives: objectives.map(objective => {
             // Проверяем прогресс для этой цели
-            const isCompleted = progressRecord.progress &&
-                              typeof progressRecord.progress === 'object' &&
-                              progressRecord.progress[objective.id] === true;
-            
+            const isCompleted = Array.isArray(progressRecord.completedObjectives) && progressRecord.completedObjectives.includes(objective.id);
+
             return {
               id: objective.id,
               text: objective.text,
-              completed: isCompleted
+              completed: isCompleted,
+              progress: progressRecord.progress ? (progressRecord.progress[objective.id] || 0) : 0,
+              requiredProgress: objective.dataValues.required_progress
             };
           }),
           difficulty: questData.difficulty,
@@ -169,7 +169,7 @@ class QuestService {
       // Получаем цели и награды отдельно
       const objectives = await QuestObjective.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'quest_id', 'text']
+        attributes: ['id', 'quest_id', 'text', 'required_progress']
       });
       const rewards = await QuestReward.findAll({
         where: { quest_id: questId },
@@ -237,7 +237,9 @@ class QuestService {
         objectives: objectives.map(objective => ({
           id: objective.id,
           text: objective.text,
-          completed: false
+          completed: false,
+          progress: 0,
+          requiredProgress: objective.dataValues.required_progress
         })),
         status: questProgress.status,
         progress: questProgress.progress,
@@ -289,7 +291,7 @@ class QuestService {
       // 3. Получаем цели квеста
       const objectives = await QuestObjective.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'text']
+        attributes: ['id', 'text', 'required_progress']
       });
       
       // 4. Получаем награды квеста
@@ -327,7 +329,9 @@ class QuestService {
         objectives: objectives.map(objective => ({
           id: objective.id,
           text: objective.text,
-          completed: updatedProgress[objective.id] === true
+          completed: updatedProgress[objective.id] >= objective.dataValues.required_progress,
+          progress: updatedProgress[objective.id] || 0,
+          requiredProgress: objective.dataValues.required_progress
         })),
         status: questProgress.status,
         progress: updatedProgress,
@@ -378,7 +382,7 @@ class QuestService {
       // 3. Получаем цели квеста
       const objectives = await QuestObjective.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'text']
+        attributes: ['id', 'text', 'required_progress']
       });
       
       // 4. Получаем награды квеста
@@ -428,7 +432,9 @@ class QuestService {
         objectives: objectives.map(objective => ({
           id: objective.id,
           text: objective.text,
-          completed: questProgress.progress && questProgress.progress[objective.id] === true
+          completed: questProgress.completedObjectives && questProgress.completedObjectives.includes(objective.id),
+          progress: questProgress.progress ? (questProgress.progress[objective.id] || 0) : 0,
+          requiredProgress: objective.dataValues.required_progress
         })),
         status: questProgress.status,
         progress: questProgress.progress,
@@ -437,6 +443,63 @@ class QuestService {
       };
     } catch (error) {
       console.error('Ошибка при завершении задания:', error);
+      throw error;
+    }
+  }
+
+  static async addObjectiveProgress(userId, objectiveId, amount) {
+    try {
+      const objective = await QuestObjective.findByPk(objectiveId);
+      if (!objective) {
+        throw new Error('Цель квеста не найдена');
+      }
+
+      const questId = objective.quest_id;
+
+      const questProgress = await QuestProgress.findOne({
+        where: {
+          userId,
+          questId,
+          status: 'active'
+        }
+      });
+
+      if (!questProgress) {
+        // Квест не активен, прогресс не начисляется
+        return null;
+      }
+
+      const currentProgress = questProgress.progress || {};
+      const currentAmount = currentProgress[objectiveId] || 0;
+      const newAmount = currentAmount + amount;
+
+      currentProgress[objectiveId] = newAmount;
+
+      let completedObjectives = questProgress.completed_objectives || [];
+      if (newAmount >= objective.requiredProgress && !completedObjectives.includes(objectiveId)) {
+        completedObjectives.push(objectiveId);
+      }
+
+      questProgress.progress = currentProgress;
+      questProgress.completed_objectives = completedObjectives;
+
+      // Проверяем, выполнены ли все цели
+      const allObjectives = await QuestObjective.findAll({ where: { quest_id: questId } });
+      const allObjectivesIds = allObjectives.map(o => o.id);
+      
+      const allCompleted = allObjectivesIds.every(id => completedObjectives.includes(id));
+
+      if (allCompleted) {
+        questProgress.status = 'completed';
+        questProgress.completedAt = new Date();
+      }
+
+      await questProgress.save();
+
+      return questProgress;
+
+    } catch (error) {
+      console.error('Ошибка при добавлении прогресса к цели квеста:', error);
       throw error;
     }
   }

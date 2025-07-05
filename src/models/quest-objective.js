@@ -28,6 +28,11 @@ const schema = {
     type: DataTypes.TEXT,
     field: 'objective_text', // Маппинг на поле в БД
     allowNull: false
+  },
+  requiredProgress: {
+    type: DataTypes.INTEGER,
+    field: 'required_progress',
+    defaultValue: 1
   }
   // Поле completed удалено, т.к. прогресс хранится индивидуально для каждого пользователя
   // в таблице quest_progress

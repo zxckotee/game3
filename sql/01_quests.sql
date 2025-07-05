@@ -25,7 +25,8 @@ CREATE TABLE quests (
 CREATE TABLE quest_objectives (
     id VARCHAR(30) PRIMARY KEY,
     quest_id VARCHAR(20) REFERENCES quests(id) ON DELETE CASCADE,
-    objective_text TEXT NOT NULL
+    objective_text TEXT NOT NULL,
+    required_progress INTEGER DEFAULT 1
     -- Поле completed удалено, т.к. прогресс хранится индивидуально для каждого пользователя
 );
 
@@ -54,28 +55,28 @@ INSERT INTO quests (id, title, category, difficulty, description, status, requir
 ('q8', 'Секретная техника', 'sect', 'Сложно', 'Изучите древнюю технику из запретной библиотеки.', 'available', 3, false);
 
 -- Заполнение таблицы целей квестов с критериями автоматической проверки
-INSERT INTO quest_objectives (id, quest_id, objective_text) VALUES
-('q1_obj1', 'q1', 'Достичь 1 уровня культивации'),
-('q1_obj2', 'q1', 'Накопить 100 единиц духовной энергии'),
-('q1_obj3', 'q1', 'Изучить технику "Дыхание Небес"'),
-('q2_obj1', 'q2', 'Найти Багряную траву'),
-('q2_obj2', 'q2', 'Собрать Лунный цветок'),
-('q3_obj1', 'q3', 'Медитировать 30 минут'),
-('q3_obj2', 'q3', 'Накопить 50 единиц духовной энергии'),
-('q4_obj1', 'q4', 'Достичь вершины горы'),
-('q4_obj2', 'q4', 'Найти следы древних духов'),
-('q4_obj3', 'q4', 'Получить благословение духа'),
-('q5_obj1', 'q5', 'Зарегистрироваться на турнир'),
-('q5_obj2', 'q5', 'Победить в отборочном раунде'),
-('q5_obj3', 'q5', 'Дойти до полуфинала'),
-('q5_obj4', 'q5', 'Занять призовое место'),
-('q6_obj1', 'q6', 'Достигните 2 уровня базового дыхания ци'),
-('q6_obj2', 'q6', 'Соберите 5 единиц ци трав' ),
-('q7_obj1', 'q7', 'Соберите 10 единиц духовных трав'),
-('q7_obj2', 'q7', 'Победите 3 духовных зверей'),
-('q8_obj1', 'q8', 'Найдите 3 фрагмента древнего свитка'),
-('q8_obj2', 'q8', 'Достигните 5 уровня понимания Ци'),
-('q8_obj3', 'q8', 'Победите хранителя библиотеки');
+INSERT INTO quest_objectives (id, quest_id, objective_text, required_progress) VALUES
+('q1_obj1', 'q1', 'Достичь 1 уровня культивации', 1),
+('q1_obj2', 'q1', 'Накопить 100 единиц духовной энергии', 100),
+('q1_obj3', 'q1', 'Изучить технику "Дыхание Небес"', 1),
+('q2_obj1', 'q2', 'Найти Багряную траву', 1),
+('q2_obj2', 'q2', 'Собрать Лунный цветок', 1),
+('q3_obj1', 'q3', 'Медитировать 30 минут', 30),
+('q3_obj2', 'q3', 'Накопить 50 единиц духовной энергии', 50),
+('q4_obj1', 'q4', 'Достичь вершины горы', 1),
+('q4_obj2', 'q4', 'Найти следы древних духов', 1),
+('q4_obj3', 'q4', 'Получить благословение духа', 1),
+('q5_obj1', 'q5', 'Зарегистрироваться на турнир', 1),
+('q5_obj2', 'q5', 'Победить в отборочном раунде', 1),
+('q5_obj3', 'q5', 'Дойти до полуфинала', 1),
+('q5_obj4', 'q5', 'Занять призовое место', 1),
+('q6_obj1', 'q6', 'Достигните 2 уровня базового дыхания ци', 2),
+('q6_obj2', 'q6', 'Соберите 5 единиц ци трав' , 5),
+('q7_obj1', 'q7', 'Соберите 10 единиц духовных трав', 10),
+('q7_obj2', 'q7', 'Победите 3 духовных зверей', 3),
+('q8_obj1', 'q8', 'Найдите 3 фрагмента древнего свитка', 3),
+('q8_obj2', 'q8', 'Достигните 5 уровня понимания Ци', 5),
+('q8_obj3', 'q8', 'Победите хранителя библиотеки', 1);
 
 -- Заполнение таблицы наград за квесты
 INSERT INTO quest_rewards (quest_id, type, name, amount, gold, silver, copper, icon) VALUES
@@ -109,7 +110,7 @@ CREATE TABLE quest_progress (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
     quest_id VARCHAR(20) NOT NULL REFERENCES quests(id) ON DELETE CASCADE ON UPDATE CASCADE,
     status VARCHAR(20) CHECK (status IN ('available', 'active', 'completed', 'failed')) DEFAULT 'available',
-    progress INTEGER DEFAULT 0,
+    progress JSONB DEFAULT '{}'::JSONB,
     completed_objectives JSONB DEFAULT '[]'::JSONB,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
@@ -128,7 +129,7 @@ COMMENT ON TABLE quest_progress IS 'Прогресс выполнения кве
 COMMENT ON COLUMN quest_progress.user_id IS 'Идентификатор пользователя';
 COMMENT ON COLUMN quest_progress.quest_id IS 'Идентификатор квеста';
 COMMENT ON COLUMN quest_progress.status IS 'Статус выполнения квеста';
-COMMENT ON COLUMN quest_progress.progress IS 'Процент выполнения квеста (0-100)';
+COMMENT ON COLUMN quest_progress.progress IS 'Прогресс выполнения целей в формате JSON (objective_id: current_progress)';
 COMMENT ON COLUMN quest_progress.completed_objectives IS 'Список выполненных целей квеста';
 COMMENT ON COLUMN quest_progress.started_at IS 'Дата и время начала квеста';
 COMMENT ON COLUMN quest_progress.completed_at IS 'Дата и время завершения квеста';
@@ -143,7 +144,7 @@ BEGIN
         NEW.id,
         q.id,
         'available',
-        0,
+        '{}'::JSONB,
         '[]'::JSONB
     FROM
         quests q;
@@ -165,7 +166,7 @@ SELECT
     u.id,
     q.id,
     'available',
-    0,
+    '{}'::JSONB,
     '[]'::JSONB
 FROM
     quests q

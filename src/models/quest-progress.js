@@ -55,7 +55,7 @@ const schema = {
   completedObjectives: { // Добавлено поле completedObjectives из миграции
     type: DataTypes.JSONB,
     field: 'completed_objectives', // Маппинг на snake_case в базе данных
-    defaultValue: {}
+    defaultValue: []
   },
   startedAt: { // Соответствует startedAt в миграции
     type: DataTypes.DATE,
