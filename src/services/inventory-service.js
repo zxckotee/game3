@@ -687,7 +687,7 @@ class InventoryService {
           });
 
           // Проверка квестов
-          QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { item: newItem, amount: itemQuantity });
+          QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: newItem.itemId, amount: itemQuantity });
           
           return {
             id: itemIdentifier, // Используем согласованный идентификатор

@@ -4,6 +4,7 @@
 const modelRegistry = require('../models/registry');
 const { Op } = require('sequelize');
 const { targetTypes, damageTypes, statusEffects } = require('../data/combat');
+const QuestService = require('./quest-service');
 
 /**
  * Класс для работы с PvP-системой
@@ -3888,6 +3889,28 @@ class PvPService {
           draws: 0,
           league: 'bronze' // Начальная лига
         }, { transaction });
+      }
+      
+      // Проверяем квесты для PvP событий
+      try {
+        if (isWinner) {
+          // Определяем режим PvP для квестов
+          let pvpMode = 'unknown';
+          if (room.mode_id === 1) pvpMode = 'duel_1v1';
+          else if (room.mode_id === 2) pvpMode = 'team_3v3';
+          else if (room.mode_id === 3) pvpMode = 'sect_5v5';
+          else if (room.mode_id === 4) pvpMode = 'tournament';
+          
+          // Проверяем квест на победу в PvP
+          await QuestService.checkQuestEvent(userId, 'PVP_WIN', { mode: pvpMode });
+        }
+        
+        // Проверяем квест на достижение рейтинга
+        const currentRating = userRating ? userRating.rating + ratingChange : (isWinner ? 1015 : 990);
+        await QuestService.checkQuestEvent(userId, 'PVP_RATING', { rating: currentRating });
+      } catch (questError) {
+        console.error(`[PvP] Ошибка при проверке квестов для игрока ${userId}:`, questError);
+        // Не прерываем основной процесс из-за ошибки в квестах
       }
       
       // Определяем список ID союзников (team_ids)

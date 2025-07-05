@@ -138,7 +138,7 @@ class QuestService {
         } else if (progressRecord.status === 'completed') {
           quests.completed.push(quest);
         }
-        console.log(quest);
+        //console.log(quest);
       }
       
       return quests;
@@ -541,7 +541,7 @@ class QuestService {
           switch (eventType) {
             case 'GATHER_ITEM':
             case 'CRAFT_ITEM':
-              if (objective.target === payload.item.itemId) {
+              if (objective.target === payload.itemId) {
                 shouldAddProgress = true;
               }
               break;
@@ -554,13 +554,29 @@ class QuestService {
               shouldAddProgress = true;
               break;
             case 'REACH_LEVEL':
-              if (payload.level >= objective.target) {
+              if (payload.level >= parseInt(objective.target)) {
                 // For level achievements, we set progress to max directly
                 await this.addObjectiveProgress(userId, objective.id, objective.requiredProgress);
               }
               break;
             case 'LEARN_TECHNIQUE':
               if (objective.target === payload.techniqueId) {
+                shouldAddProgress = true;
+              }
+              break;
+            case 'PVP_WIN':
+              if (objective.target === payload.mode) {
+                shouldAddProgress = true;
+              }
+              break;
+            case 'PVP_RATING':
+              if (payload.rating >= parseInt(objective.target)) {
+                // For rating achievements, we set progress to max directly
+                await this.addObjectiveProgress(userId, objective.id, objective.requiredProgress);
+              }
+              break;
+            case 'MEDITATION':
+              if (objective.target === payload.meditationType) {
                 shouldAddProgress = true;
               }
               break;

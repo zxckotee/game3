@@ -1044,7 +1044,7 @@ class AlchemyService {
               stats: {} // Добавляем пустые stats, чтобы обеспечить полную совместимость с моделью
             }, { transaction });
             console.log(`Создан новый предмет в инвентаре: ${newItem.name} (тип: ${newItem.type})`);
-            QuestService.checkQuestEvent(userId, 'CRAFT_ITEM', { item: newItem, amount: newItem.quantity });
+            QuestService.checkQuestEvent(userId, 'CRAFT_ITEM', { itemId: newItem.itemId, amount: newItem.quantity });
           }
           
           // Добавляем информацию о созданном предмете в результат

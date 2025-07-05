@@ -4,6 +4,7 @@ import { useGame } from '../../context/GameContext';
 import ResourceService from '../../services/resource-adapter';
 import CultivationAdapter from '../../services/cultivation-adapter';
 import { getCultivationProgress, completeTribulation as completeTribulationAPI } from '../../services/cultivation-api';
+import QuestService from '../../services/quest-service';
 
 // Компонент для отображения содержимого вкладок
 const TabContent = ({ active, children }) => {
@@ -181,6 +182,19 @@ function CultivationTab() {
       console.warn('Невозможно отправить запрос на сервер: отсутствует userId');
       // Используем традиционный подход, если userId не доступен
       actions.updateCultivation(cultivationUpdates);
+    }
+
+    // Проверяем квесты на завершение медитации
+    if (userId) {
+      try {
+        QuestService.checkQuestEvent(userId, 'MEDITATION', {
+          meditationType: 'daily_meditation',
+          experienceGained: experienceGain,
+          energyGained: energyGain
+        });
+      } catch (error) {
+        console.error('Ошибка при проверке квестов медитации:', error);
+      }
     }
   }, [actions, state.player.cultivation]);
 
