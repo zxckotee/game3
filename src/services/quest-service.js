@@ -7,7 +7,9 @@ const QuestReward = require('../models/quest-reward');
 const QuestCategory = require('../models/quest-category');
 const CharacterProfileService = require('./character-profile-service');
 const InventoryService = require('./inventory-service');
+const InventoryItem = require('../models/inventory-item');
 const CultivationService = require('./cultivation-service');
+const ItemCatalog = require('../models/item-catalog');
 const { questDifficulty } = require('../data/quests-adapter');
 /* abc */
 /**
@@ -451,27 +453,67 @@ class QuestService {
       questProgress.status = 'completed';
       questProgress.completedAt = new Date();
       await questProgress.save();
-      console.log(rewards);
+      console.log(`сompleteQuest: rewards: ${rewards}`);
       // 6. Распределение наград
       for (const reward of rewards) {
         switch (reward.type) {
           case 'experience':
             if (reward.amount) {
-              const cultivationProgress = await CultivationService.getCultivationProgress(userId);
-              const newExperience = cultivationProgress.experience + reward.amount;
-              await CultivationService.updateCultivationProgress(userId, { experience: newExperience });
+              const CultivationProgress = require('../models/cultivation-progress'); // Добавляем импорт
+              let cultivationProgress = await CultivationProgress.findOne({ where: { userId } });
+              if (cultivationProgress) {
+                cultivationProgress.experience += reward.amount;
+                await cultivationProgress.save();
+              } else {
+                cultivationProgress = await CultivationProgress.create({ userId, experience: reward.amount });
+              }
               console.log(`[QuestService] Добавлено ${reward.amount} опыта игроку ${userId}`);
             }
             break;
           case 'currency':
             if (reward.gold || reward.silver || reward.copper) {
-              await CharacterProfileService.addCurrency(userId, reward.gold || 0, reward.silver || 0, reward.copper || 0);
+              await CharacterProfileService.updateCurrency(userId, {
+                gold: reward.gold || 0,
+                silver: reward.silver || 0,
+                copper: reward.copper || 0
+              });
               console.log(`[QuestService] Добавлено ${reward.gold || 0} золота, ${reward.silver || 0} серебра, ${reward.copper || 0} меди игроку ${userId}`);
             }
             break;
           case 'item':
             if (reward.itemId && reward.amount) {
-              await InventoryService.addInventoryItem(userId, { itemId: reward.itemId, quantity: reward.amount });
+              // Проверяем, есть ли уже такой предмет у пользователя
+              let inventoryItem = await InventoryItem.findOne({
+                where: {
+                  userId: userId,
+                  itemId: reward.itemId
+                }
+              });
+
+              if (inventoryItem) {
+                // Если предмет есть, увеличиваем количество
+                inventoryItem.quantity += reward.amount;
+                await inventoryItem.save();
+              } else {
+                // Если предмета нет, создаем новую запись
+                // Получаем информацию о предмете из ItemCatalog
+                const itemInfo = await ItemCatalog.findOne({
+                  where: { item_id: reward.itemId }
+                });
+
+                if (!itemInfo) {
+                  console.warn(`[QuestService] Предмет с itemId ${reward.itemId} не найден в ItemCatalog. Невозможно добавить в инвентарь.`);
+                  continue; // Пропускаем добавление предмета, если его нет в каталоге
+                }
+
+                await InventoryItem.create({
+                  userId: userId,
+                  itemId: reward.itemId,
+                  name: itemInfo.name, // Добавляем name
+                  type: itemInfo.type, // Добавляем type
+                  quantity: reward.amount
+                });
+              }
               console.log(`[QuestService] Добавлен предмет ${reward.itemId} x${reward.amount} игроку ${userId}`);
             }
             break;
@@ -518,9 +560,9 @@ class QuestService {
           text: objective.text,
           completed: questProgress.completedObjectives && questProgress.completedObjectives.includes(objective.id),
           progress: questProgress.progress ? (questProgress.progress[objective.id] || 0) : 0,
-          requiredProgress: objective.dataValues.required_progress,
-          type: objective.dataValues.type,
-          target: objective.dataValues.target
+          requiredProgress: objective.requiredProgress ? objective.required_progress : 0,
+          type: objective.type,
+          target: objective.target
         })),
         status: questProgress.status,
         progress: questProgress.progress,
@@ -761,11 +803,7 @@ class QuestService {
       const allCompleted = objectiveProgresses.length === objectives.length;
 
       if (allCompleted) {
-        questProgress.status = 'completed';
-        questProgress.completedAt = new Date();
-        await questProgress.save();
-
-        console.log(`Квест ${questId} завершен пользователем ${userId}`);
+        await this.completeQuest(userId, questId);
       }
 
       return questProgress;
@@ -885,3 +923,4 @@ class QuestService {
 }
 
 module.exports = QuestService;
+
