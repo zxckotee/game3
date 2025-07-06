@@ -1044,7 +1044,10 @@ class AlchemyService {
               stats: {} // Добавляем пустые stats, чтобы обеспечить полную совместимость с моделью
             }, { transaction });
             console.log(`Создан новый предмет в инвентаре: ${newItem.name} (тип: ${newItem.type})`);
-            QuestService.checkQuestEvent(userId, 'CRAFT_ITEM', { itemId: newItem.id || newItem.itemId, amount: newItem.quantity });
+            const completedCraftQuests = await QuestService.checkQuestEvent(userId, 'CRAFT_ITEM', { itemId: newItem.id || newItem.itemId, amount: newItem.quantity });
+            for (const questId of completedCraftQuests) {
+              await QuestService.completeQuest(userId, questId);
+            }
           }
           
           // Добавляем информацию о созданном предмете в результат

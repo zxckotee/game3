@@ -629,7 +629,10 @@ class InventoryService {
           // Если предмет уже есть и он складируемый, увеличиваем количество
           existingItem.quantity += item.quantity || 1;
           await existingItem.save(options);
-          await QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: existingItem.itemId, amount: item.quantity  });
+          const completedGatherQuests1 = await QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: existingItem.itemId, amount: item.quantity  });
+          for (const questId of completedGatherQuests1) {
+            await QuestService.completeQuest(userId, questId);
+          }
           return {
             id: existingItem.itemId, // Используем itemId вместо id
             item_id: existingItem.itemId, // Добавляем item_id для соответствия формату
@@ -691,7 +694,10 @@ class InventoryService {
 
           // Проверка квестов
 
-          await QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: newItem.itemId, amount: itemQuantity });
+          const completedGatherQuests2 = await QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: newItem.itemId, amount: itemQuantity });
+          for (const questId of completedGatherQuests2) {
+            await QuestService.completeQuest(userId, questId);
+          }
           return {
             id: itemIdentifier, // Используем согласованный идентификатор
             item_id: itemIdentifier, // Явно добавляем item_id для соответствия формату

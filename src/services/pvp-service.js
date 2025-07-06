@@ -3902,12 +3902,18 @@ class PvPService {
           else if (room.mode_id === 4) pvpMode = 'tournament';
           
           // Проверяем квест на победу в PvP
-          await QuestService.checkQuestEvent(userId, 'PVP_WIN', { mode: pvpMode });
+          const completedPvpWinQuests = await QuestService.checkQuestEvent(userId, 'PVP_WIN', { mode: pvpMode });
+          for (const questId of completedPvpWinQuests) {
+            await QuestService.completeQuest(userId, questId);
+          }
         }
         
         // Проверяем квест на достижение рейтинга
         const currentRating = userRating ? userRating.rating + ratingChange : (isWinner ? 1015 : 990);
-        await QuestService.checkQuestEvent(userId, 'PVP_RATING', { rating: currentRating });
+        const completedPvpRatingQuests = await QuestService.checkQuestEvent(userId, 'PVP_RATING', { rating: currentRating });
+        for (const questId of completedPvpRatingQuests) {
+          await QuestService.completeQuest(userId, questId);
+        }
       } catch (questError) {
         console.error(`[PvP] Ошибка при проверке квестов для игрока ${userId}:`, questError);
         // Не прерываем основной процесс из-за ошибки в квестах

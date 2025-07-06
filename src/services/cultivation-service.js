@@ -888,7 +888,10 @@ class CultivationService {
 
       // Проверка квестов на достижение уровня после прорыва
       const QuestService = require('./quest-service');
-      QuestService.checkQuestEvent(userId, 'REACH_LEVEL', { level: newLevel });
+      const completedReachLevelQuests = await QuestService.checkQuestEvent(userId, 'REACH_LEVEL', { level: newLevel });
+      for (const questId of completedReachLevelQuests) {
+        await QuestService.completeQuest(userId, questId);
+      }
 
       const isNewStage = previousStage !== newStage;
       let message = isNewStage

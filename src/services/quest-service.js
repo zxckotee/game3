@@ -803,10 +803,10 @@ class QuestService {
       const allCompleted = objectiveProgresses.length === objectives.length;
 
       if (allCompleted) {
-        await this.completeQuest(userId, questId);
+        return questId; // Возвращаем ID квеста, если он завершен
       }
 
-      return questProgress;
+      return null; // Возвращаем null, если квест не завершен
     } catch (error) {
       console.error('Ошибка при проверке завершения квеста:', error);
       throw error;
@@ -815,6 +815,8 @@ class QuestService {
 
   static async checkQuestEvent(userId, eventType, payload) {
     try {
+      const completedQuestIds = []; // Массив для хранения ID завершенных квестов
+
       // Шаг 1: Получаем активный прогресс квестов без целей
       const activeQuestsProgress = await QuestProgress.findAll({
         where: {
@@ -914,7 +916,7 @@ class QuestService {
           }
         }
       }
-
+      return completedQuestIds; // Возвращаем массив ID завершенных квестов
     } catch (error) {
       console.error(`Ошибка при проверке события квеста (${eventType}):`, error);
       // не бросаем ошибку дальше, чтобы не прерывать основной процесс (например, добавление предмета)

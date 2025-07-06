@@ -106,7 +106,7 @@ class QuestServiceAPI {
   static async completeQuest(userId, questId) {
     try {
       const response = await fetch(`${API_URL}/users/${userId}/quests/${questId}/complete`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -121,7 +121,7 @@ class QuestServiceAPI {
       const quest = await response.json();
       return quest;
     } catch (error) {
-      console.error('Ошибка при завершении задания:', error);
+      console.error('Ошибка при завершении задания:',`${API_URL}/users/${userId}/quests/${questId}/complete` ,error);
       throw error;
     }
   }

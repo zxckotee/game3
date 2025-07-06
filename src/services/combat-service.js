@@ -688,8 +688,14 @@ class CombatService {
    */
   static async _processRewards(combat, userId) {
     // Проверка квестов на убийство врага
-    QuestService.checkQuestEvent(userId, 'DEFEAT_ENEMY', { enemyId: combat.enemy_id, amount: 1 });
-    QuestService.checkQuestEvent(userId, 'DEFEAT_ANY_ENEMY', { amount: 1 });
+    const completedDefeatEnemyQuests = await QuestService.checkQuestEvent(userId, 'DEFEAT_ENEMY', { enemyId: combat.enemy_id, amount: 1 });
+    for (const questId of completedDefeatEnemyQuests) {
+      await QuestService.completeQuest(userId, questId);
+    }
+    const completedDefeatAnyEnemyQuests = await QuestService.checkQuestEvent(userId, 'DEFEAT_ANY_ENEMY', { amount: 1 });
+    for (const questId of completedDefeatAnyEnemyQuests) {
+      await QuestService.completeQuest(userId, questId);
+    }
     
     const sequelize = await getSequelizeInstance();
     const CharacterProfile = modelRegistry.getModel('CharacterProfile');
