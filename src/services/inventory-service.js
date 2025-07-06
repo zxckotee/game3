@@ -539,8 +539,10 @@ class InventoryService {
    * @param {Object} item - Данные о предмете
    * @returns {Promise<Object>} - Добавленный предмет
    */
-  static async addInventoryItem(userId, item) {
+  static async addInventoryItem(userId, item, options = {}) {
     try {
+      const { transaction } = options;
+      
       if (isBrowser) {
         // В браузере используем объект в памяти
         if (!browserInventoryData[userId]) {
@@ -619,14 +621,15 @@ class InventoryService {
               { item_id: itemIdentifier },
               { itemId: itemIdentifier }
             ]
-          }
+          },
+          ...options
         });
         
         if (existingItem && item.stackable !== false) {
           // Если предмет уже есть и он складируемый, увеличиваем количество
           existingItem.quantity += item.quantity || 1;
-          await existingItem.save();
-          
+          await existingItem.save(options);
+          await QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: existingItem.itemId, amount: item.quantity  });
           return {
             id: existingItem.itemId, // Используем itemId вместо id
             item_id: existingItem.itemId, // Добавляем item_id для соответствия формату
@@ -684,11 +687,11 @@ class InventoryService {
               value: item.value,
               ...item
             }
-          });
+          }, options);
 
           // Проверка квестов
-          QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: newItem.itemId, amount: itemQuantity });
-          
+
+          await QuestService.checkQuestEvent(userId, 'GATHER_ITEM', { itemId: newItem.itemId, amount: itemQuantity });
           return {
             id: itemIdentifier, // Используем согласованный идентификатор
             item_id: itemIdentifier, // Явно добавляем item_id для соответствия формату

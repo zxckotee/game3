@@ -9,6 +9,8 @@ const Quest = require('./quest');
 const QuestObjective = require('./quest-objective');
 const QuestReward = require('./quest-reward');
 const QuestProgress = require('./quest-progress');
+const QuestObjectiveProgress = require('./quest-objective-progress');
+const User = require('./user'); // Импортируем модель User
 
 /**
  * Функция для инициализации моделей квестов в правильном порядке
@@ -40,6 +42,12 @@ async function initializeQuestModels() {
     console.log('Инициализация модели QuestProgress...');
     QuestProgress.initialize(sequelize);
     
+    console.log('Инициализация модели QuestObjectiveProgress...');
+    QuestObjectiveProgress.initialize(sequelize);
+    
+    // Убедимся, что модель User инициализирована
+    const initializedUser = await User.getInitializedUserModel();
+
     // Установка ассоциаций между моделями
     console.log('Установка ассоциаций между моделями...');
     const models = {
@@ -48,10 +56,8 @@ async function initializeQuestModels() {
       QuestObjective,
       QuestReward,
       QuestProgress,
-      // Заглушка для User, который может использоваться в ассоциациях
-      User: {
-        prototype: { isPrototypeOf: () => true }
-      }
+      QuestObjectiveProgress,
+      User: initializedUser // Используем инициализированную модель User
     };
     
     QuestCategory.associate(models);
@@ -59,6 +65,7 @@ async function initializeQuestModels() {
     QuestObjective.associate(models);
     QuestReward.associate(models);
     QuestProgress.associate(models);
+    QuestObjectiveProgress.associate(models);
     
     console.log('Все модели квестов успешно инициализированы');
     return true;

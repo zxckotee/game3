@@ -158,3 +158,89 @@ router.post('/api/users/:userId/quests/check-event', async (req, res) => {
 });
 
 module.exports = router;
+// Новые маршруты для работы с прогрессом целей квестов
+
+// Добавление прогресса к цели квеста
+router.post('/api/users/:userId/quest-objectives/:objectiveId/progress', async (req, res) => {
+  try {
+    const { userId, objectiveId } = req.params;
+    const { amount, metadata } = req.body;
+
+    if (!amount || typeof amount !== 'number') {
+      return res.status(400).json({ error: 'Некорректное количество прогресса' });
+    }
+
+    const result = await QuestService.addObjectiveProgress(
+      parseInt(userId), 
+      parseInt(objectiveId), 
+      amount, 
+      metadata || {}
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Ошибка при добавлении прогресса цели:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Получение прогресса конкретной цели квеста
+router.get('/api/users/:userId/quest-objectives/:objectiveId/progress', async (req, res) => {
+  try {
+    const { userId, objectiveId } = req.params;
+
+    const progress = await QuestService.getObjectiveProgress(
+      parseInt(userId), 
+      parseInt(objectiveId)
+    );
+
+    if (!progress) {
+      return res.status(404).json({ error: 'Прогресс цели не найден' });
+    }
+
+    res.json(progress);
+  } catch (error) {
+    console.error('Ошибка при получении прогресса цели:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Получение прогресса всех целей квеста
+router.get('/api/users/:userId/quests/:questId/objectives-progress', async (req, res) => {
+  try {
+    const { userId, questId } = req.params;
+
+    const progress = await QuestService.getQuestObjectivesProgress(
+      parseInt(userId), 
+      parseInt(questId)
+    );
+
+    res.json(progress);
+  } catch (error) {
+    console.error('Ошибка при получении прогресса целей квеста:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Проверка событий квеста для автоматического обновления прогресса
+router.post('/api/users/:userId/quest-events', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { eventType, payload } = req.body;
+
+    if (!eventType || !payload) {
+      return res.status(400).json({ error: 'Некорректные данные события' });
+    }
+
+    const result = await QuestService.checkQuestEvent(
+      parseInt(userId), 
+      eventType, 
+      payload
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Ошибка при проверке событий квеста:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});

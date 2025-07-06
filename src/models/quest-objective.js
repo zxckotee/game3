@@ -4,7 +4,7 @@ class QuestObjective extends Model {
   static associate(models) {
     // Связь с квестом
     QuestObjective.belongsTo(models.Quest, {
-      foreignKey: 'quest_id',
+      foreignKey: 'questId',
       as: 'quest'
     });
   }
@@ -16,9 +16,10 @@ const schema = {
     type: DataTypes.STRING(30),
     primaryKey: true
   },
-  quest_id: { // Соответствует quest_id в SQL
+  questId: { // Используем camelCase для Sequelize
     type: DataTypes.STRING(20),
     allowNull: false,
+    field: 'quest_id', // Маппинг на snake_case в БД
     references: {
       model: 'quests', // Имя таблицы в lowercase
       key: 'id'

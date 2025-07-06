@@ -59,7 +59,7 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
     
     // Преобразуем в нужный формат для клиента
     const formattedMerchants = merchants.map(merchant => formatMerchant(merchant));
-    console.log(formattedMerchants);
+    //console.log(formattedMerchants);
     // Обновляем кэш
     merchantsCache = formattedMerchants;
 
@@ -480,7 +480,7 @@ exports.buyItemFromMerchant = async function(merchantId, itemId, userId, quantit
       
       // Добавляем предмет в инвентарь пользователя
       const inventoryResult = await InventoryService.addInventoryItem(userId, itemForInventory);
-      
+
       // Фиксируем транзакцию
       await transaction.commit();
       
@@ -634,7 +634,7 @@ exports.updateMerchantItemQuantity = async function(merchantId, itemId, userId, 
       throw new Error('Необходимы merchantId, itemId и userId');
     }
     
-    console.log(`updateMerchantItemQuantity: Получены аргументы: merchantId=${merchantId} (${typeof merchantId}), itemId=${itemId} (${typeof itemId}), userId=${userId}, quantity=${quantity}, action=${action}`);
+    //console.log(`updateMerchantItemQuantity: Получены аргументы: merchantId=${merchantId} (${typeof merchantId}), itemId=${itemId} (${typeof itemId}), userId=${userId}, quantity=${quantity}, action=${action}`);
     
     // Инициализируем реестр моделей
     await modelRegistry.initializeRegistry();

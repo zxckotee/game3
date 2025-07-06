@@ -15,12 +15,17 @@ const QuestService = QuestServiceAPI;
 
 // Экспортируем методы напрямую
 const adapter = {
-  // Методы сервиса
+  // Основные методы сервиса
   getQuests: QuestService.getQuests,
   acceptQuest: QuestService.acceptQuest,
   updateQuestProgress: QuestService.updateQuestProgress,
   completeQuest: QuestService.completeQuest,
-  checkQuestEvent: QuestService.checkQuestEvent
+  checkQuestEvent: QuestService.checkQuestEvent,
+  
+  // Новые методы для работы с прогрессом целей
+  addObjectiveProgress: QuestService.addObjectiveProgress,
+  getObjectiveProgress: QuestService.getObjectiveProgress,
+  getQuestObjectivesProgress: QuestService.getQuestObjectivesProgress
 };
 
 // Экспортируем адаптер как основной экспорт

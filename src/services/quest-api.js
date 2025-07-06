@@ -127,6 +127,121 @@ class QuestServiceAPI {
   }
 
   /**
+   * Добавление прогресса к цели квеста
+   * @param {number} userId - ID пользователя
+   * @param {number} objectiveId - ID цели квеста
+   * @param {number} amount - Количество прогресса для добавления
+   * @param {Object} metadata - Дополнительные метаданные
+   * @returns {Promise<Object>} - Обновленный прогресс цели
+   */
+  static async addObjectiveProgress(userId, objectiveId, amount, metadata = {}) {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/quest-objectives/${objectiveId}/progress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({ amount, metadata }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при обновлении прогресса цели');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Ошибка при обновлении прогресса цели:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение прогресса конкретной цели квеста
+   * @param {number} userId - ID пользователя
+   * @param {number} objectiveId - ID цели квеста
+   * @returns {Promise<Object>} - Прогресс цели
+   */
+  static async getObjectiveProgress(userId, objectiveId) {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/quest-objectives/${objectiveId}/progress`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при получении прогресса цели');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Ошибка при получении прогресса цели:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение прогресса всех целей квеста
+   * @param {number} userId - ID пользователя
+   * @param {number} questId - ID квеста
+   * @returns {Promise<Array>} - Массив прогрессов целей
+   */
+  static async getQuestObjectivesProgress(userId, questId) {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/quests/${questId}/objectives-progress`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при получении прогресса целей квеста');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Ошибка при получении прогресса целей квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Проверка событий квеста (для автоматического обновления прогресса)
+   * @param {number} userId - ID пользователя
+   * @param {string} eventType - Тип события
+   * @param {Object} payload - Данные события
+   * @returns {Promise<Array>} - Массив обновленных квестов
+   */
+  static async checkQuestEvent(userId, eventType, payload) {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/quest-events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({ eventType, payload }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при проверке событий квеста');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Ошибка при проверке событий квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Проверка события квеста для автоматического обновления прогресса
    * @param {number} userId - ID пользователя
    * @param {string} eventType - Тип события (GATHER_ITEM, DEFEAT_ENEMY, etc.)

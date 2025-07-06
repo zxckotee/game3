@@ -7,6 +7,7 @@ const { unifiedDatabase, initializeDatabaseConnection } = require('./database-co
 const { Sequelize } = require('sequelize');
 const techniqueService = require('./technique-service');
 const QuestService = require('./quest-service');
+const InventoryService = require('./inventory-service');
 
 let sequelize;
 // Асинхронная функция для получения экземпляра
@@ -692,7 +693,6 @@ class CombatService {
     
     const sequelize = await getSequelizeInstance();
     const CharacterProfile = modelRegistry.getModel('CharacterProfile');
-    const InventoryItem = modelRegistry.getModel('InventoryItem');
     const Enemy = modelRegistry.getModel('Enemy');
 
     const rewards = {
@@ -736,22 +736,15 @@ class CombatService {
 
     if (item) {
       const quantity = Math.floor(Math.random() * 3) + 1;
-      const existingItem = await InventoryItem.findOne({ where: { userId, itemId: item.item_id } });
-
-      if (existingItem) {
-        existingItem.quantity += quantity;
-        await existingItem.save();
-      } else {
-        await InventoryItem.create({
-          userId,
-          itemId: item.item_id,
-          name: item.name,
-          description: item.description,
-          type: item.type,
-          rarity: item.rarity,
-          quantity: quantity
-        });
-      }
+      // Используем InventoryService для добавления предмета
+      await InventoryService.addInventoryItem(userId, {
+        id: item.item_id,
+        name: item.name,
+        description: item.description,
+        type: item.type,
+        rarity: item.rarity,
+        quantity: quantity
+      });
       rewards.items.push({ ...item, quantity, icon: '❓' }); // Иконку пока не берем
       console.log(`[CombatService] Игроку ${userId} выпал предмет: ${item.name} x${quantity}.`);
     }

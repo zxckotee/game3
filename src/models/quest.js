@@ -4,18 +4,18 @@ class Quest extends Model {
   static associate(models) {
     // Связь с целями квеста
     Quest.hasMany(models.QuestObjective, {
-      foreignKey: 'quest_id',
+      foreignKey: 'questId',
       as: 'objectives'
     });
     // Связь с наградами за квест
     Quest.hasMany(models.QuestReward, {
-      foreignKey: 'quest_id',
+      foreignKey: 'questId',
       as: 'rewards'
     });
     // Связь с категориями квестов
     Quest.belongsTo(models.QuestCategory, {
       foreignKey: 'category',
-      as: 'category'
+      as: 'questCategory'
     });
   }
 }

@@ -2,6 +2,7 @@ const QuestProgress = require('../models/quest-progress');
 const Quest = require('../models/quest');
 const User = require('../models/user');
 const QuestObjective = require('../models/quest-objective');
+const QuestObjectiveProgress = require('../models/quest-objective-progress');
 const QuestReward = require('../models/quest-reward');
 const QuestCategory = require('../models/quest-category');
 const CharacterProfileService = require('./character-profile-service');
@@ -20,7 +21,7 @@ class QuestService {
       const quests = await Quest.findAll({
         include: [
           {
-            model: QuestCategory,
+            model: QuestCategory, 
             as: 'category',
             attributes: ['id', 'name']
           }
@@ -109,20 +110,34 @@ class QuestService {
             copper: reward.copper,
             icon: reward.icon
           })),
-          objectives: objectives.map(objective => {
-            // Проверяем прогресс для этой цели
-            const isCompleted = Array.isArray(progressRecord.completedObjectives) && progressRecord.completedObjectives.includes(objective.id);
+          objectives: await Promise.all(objectives.map(async objective => {
+            // Получаем прогресс из новой нормализованной таблицы
+            const objectiveProgress = await QuestObjectiveProgress.findOne({
+              where: {
+                userId: userId,
+                objectiveId: objective.id
+              }
+            });
+
+            // Если записи нет, используем данные из JSONB для обратной совместимости
+            const isCompleted = objectiveProgress
+              ? objectiveProgress.completed
+              : (Array.isArray(progressRecord.completedObjectives) && progressRecord.completedObjectives.includes(objective.id));
+            
+            const currentProgress = objectiveProgress
+              ? objectiveProgress.currentProgress
+              : (progressRecord.progress ? (progressRecord.progress[objective.id] || 0) : 0);
 
             return {
               id: objective.id,
               text: objective.text,
               completed: isCompleted,
-              progress: progressRecord.progress ? (progressRecord.progress[objective.id] || 0) : 0,
+              progress: currentProgress,
               requiredProgress: objective.dataValues.required_progress,
               type: objective.dataValues.type,
               target: objective.dataValues.target
             };
-          }),
+          })),
           difficulty: questData.difficulty,
           status: progressRecord.status,
           progress: progressRecord.progress,
@@ -304,7 +319,18 @@ class QuestService {
         attributes: ['id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
       });
       
-      // Обновляем прогресс задания
+      // Обновляем прогресс через новую систему
+      for (const [objectiveId, progressValue] of Object.entries(progress)) {
+        const objective = objectives.find(obj => obj.id == objectiveId);
+        if (objective) {
+          await this.addObjectiveProgress(userId, parseInt(objectiveId), progressValue, {
+            source: 'legacy_update',
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+      
+      // Обновляем JSONB для обратной совместимости
       const updatedProgress = {
         ...questProgress.progress,
         ...progress
@@ -313,7 +339,34 @@ class QuestService {
       questProgress.progress = updatedProgress;
       await questProgress.save();
       
-      // 5. Формируем результат
+      // 5. Формируем результат с данными из новой таблицы
+      const objectivesWithProgress = await Promise.all(objectives.map(async objective => {
+        const objectiveProgress = await QuestObjectiveProgress.findOne({
+          where: {
+            userId: userId,
+            objectiveId: objective.id
+          }
+        });
+
+        const currentProgress = objectiveProgress
+          ? objectiveProgress.currentProgress
+          : (updatedProgress[objective.id] || 0);
+        
+        const isCompleted = objectiveProgress
+          ? objectiveProgress.completed
+          : (currentProgress >= objective.dataValues.required_progress);
+
+        return {
+          id: objective.id,
+          text: objective.text,
+          completed: isCompleted,
+          progress: currentProgress,
+          requiredProgress: objective.dataValues.required_progress,
+          type: objective.dataValues.type,
+          target: objective.dataValues.target
+        };
+      }));
+
       return {
         id: quest.id,
         title: quest.title,
@@ -330,15 +383,7 @@ class QuestService {
           copper: reward.copper,
           icon: reward.icon
         })),
-        objectives: objectives.map(objective => ({
-          id: objective.id,
-          text: objective.text,
-          completed: updatedProgress[objective.id] >= objective.dataValues.required_progress,
-          progress: updatedProgress[objective.id] || 0,
-          requiredProgress: objective.dataValues.required_progress,
-          type: objective.dataValues.type,
-          target: objective.dataValues.target
-        })),
+        objectives: objectivesWithProgress,
         status: questProgress.status,
         progress: updatedProgress,
         startedAt: questProgress.startedAt
@@ -455,15 +500,19 @@ class QuestService {
     }
   }
 
-  static async addObjectiveProgress(userId, objectiveId, amount) {
+  static async addObjectiveProgress(userId, objectiveId, amount, metadata = {}) {
     try {
-      const objective = await QuestObjective.findByPk(objectiveId);
+      // 1. Получаем информацию о цели
+      const objective = await QuestObjective.findByPk(objectiveId, {
+        attributes: ['id', 'questId', 'text', 'requiredProgress', 'type', 'target']
+      });
       if (!objective) {
         throw new Error('Цель квеста не найдена');
       }
 
       const questId = objective.quest_id;
 
+      // 2. Проверяем, что квест активен
       const questProgress = await QuestProgress.findOne({
         where: {
           userId,
@@ -477,34 +526,51 @@ class QuestService {
         return null;
       }
 
-      const currentProgress = questProgress.progress || {};
-      const currentAmount = currentProgress[objectiveId] || 0;
-      const newAmount = currentAmount + amount;
+      // 3. Получаем или создаем запись прогресса цели
+      const [objectiveProgress, created] = await QuestObjectiveProgress.findOrCreate({
+        where: { userId, objectiveId },
+        defaults: {
+          currentProgress: 0,
+          requiredProgress: objective.requiredProgress,
+          metadata: {
+            ...metadata,
+            createdAt: new Date().toISOString()
+          }
+        }
+      });
 
-      currentProgress[objectiveId] = newAmount;
+      // 4. Обновляем прогресс
+      if (!objectiveProgress.completed) {
+        objectiveProgress.currentProgress = Math.min(
+          objectiveProgress.currentProgress + amount,
+          objectiveProgress.requiredProgress
+        );
+        
+        // Обновляем метаданные
+        objectiveProgress.metadata = {
+          ...objectiveProgress.metadata,
+          ...metadata,
+          lastUpdate: new Date().toISOString(),
+          totalUpdates: (objectiveProgress.metadata.totalUpdates || 0) + 1
+        };
 
-      let completedObjectives = questProgress.completed_objectives || [];
-      if (newAmount >= objective.requiredProgress && !completedObjectives.includes(objectiveId)) {
-        completedObjectives.push(objectiveId);
+        // Проверяем завершение
+        if (objectiveProgress.currentProgress >= objectiveProgress.requiredProgress) {
+          objectiveProgress.completed = true;
+          objectiveProgress.completedAt = new Date();
+        }
+
+        await objectiveProgress.save();
       }
 
-      questProgress.progress = currentProgress;
-      questProgress.completed_objectives = completedObjectives;
 
-      // Проверяем, выполнены ли все цели
-      const allObjectives = await QuestObjective.findAll({ where: { quest_id: questId } });
-      const allObjectivesIds = allObjectives.map(o => o.id);
-      
-      const allCompleted = allObjectivesIds.every(id => completedObjectives.includes(id));
+      // 5. Обновляем общий прогресс квеста (для совместимости)
+      await this.updateQuestProgressFromObjectives(userId, questId);
 
-      if (allCompleted) {
-        questProgress.status = 'completed';
-        questProgress.completedAt = new Date();
-      }
+      // 6. Проверяем завершение всего квеста
+      await this.checkQuestCompletion(userId, questId);
 
-      await questProgress.save();
-
-      return questProgress;
+      return objectiveProgress;
 
     } catch (error) {
       console.error('Ошибка при добавлении прогресса к цели квеста:', error);
@@ -512,8 +578,169 @@ class QuestService {
     }
   }
 
+  /**
+   * Обновляет общий прогресс квеста на основе прогресса отдельных целей
+   * Используется для обратной совместимости с существующим кодом
+   */
+  static async updateQuestProgressFromObjectives(userId, questId) {
+    try {
+      const questProgress = await QuestProgress.findOne({
+        where: { userId, questId }
+      });
+
+      if (!questProgress) {
+        return null;
+      }
+
+      // Получаем все цели квеста
+      const objectives = await QuestObjective.findAll({
+        where: { quest_id: questId }
+      });
+
+      // Получаем прогресс по всем целям
+      const objectiveProgresses = await QuestObjectiveProgress.findAll({
+        where: {
+          userId,
+          objectiveId: objectives.map(obj => obj.id)
+        }
+      });
+
+      // Обновляем JSONB поля для совместимости
+      const progressData = {};
+      const completedObjectives = [];
+
+      for (const objProgress of objectiveProgresses) {
+        progressData[objProgress.objectiveId] = objProgress.currentProgress;
+        if (objProgress.completed) {
+          completedObjectives.push(objProgress.objectiveId);
+        }
+      }
+
+      questProgress.progress = progressData;
+      questProgress.completed_objectives = completedObjectives;
+      await questProgress.save();
+
+      return questProgress;
+    } catch (error) {
+      console.error('Ошибка при обновлении общего прогресса квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получает прогресс конкретной цели квеста
+   * @param {number} userId - ID пользователя
+   * @param {number} objectiveId - ID цели квеста
+   * @returns {Promise<Object|null>} - Прогресс цели или null
+   */
+  static async getObjectiveProgress(userId, objectiveId) {
+    try {
+      const objectiveProgress = await QuestObjectiveProgress.findOne({
+        where: { userId, objectiveId },
+        include: [{
+          model: QuestObjective,
+          as: 'objective',
+          attributes: ['id', 'quest_id', 'type', 'description', 'requiredProgress', 'metadata']
+        }]
+      });
+
+      return objectiveProgress;
+    } catch (error) {
+      console.error('Ошибка при получении прогресса цели квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получает все прогрессы целей для конкретного квеста
+   * @param {number} userId - ID пользователя
+   * @param {number} questId - ID квеста
+   * @returns {Promise<Array>} - Массив прогрессов целей
+   */
+  static async getQuestObjectivesProgress(userId, questId) {
+    try {
+      // Получаем все цели квеста
+      const objectives = await QuestObjective.findAll({
+        where: { quest_id: questId }
+      });
+
+      // Получаем прогресс для каждой цели
+      const objectivesProgress = await Promise.all(
+        objectives.map(async objective => {
+          const progress = await QuestObjectiveProgress.findOne({
+            where: {
+              userId,
+              objectiveId: objective.id
+            }
+          });
+
+          return {
+            objectiveId: objective.id,
+            type: objective.type,
+            description: objective.description,
+            requiredProgress: objective.requiredProgress,
+            currentProgress: progress ? progress.currentProgress : 0,
+            completed: progress ? progress.completed : false,
+            completedAt: progress ? progress.completedAt : null,
+            metadata: progress ? progress.metadata : {}
+          };
+        })
+      );
+
+      return objectivesProgress;
+    } catch (error) {
+      console.error('Ошибка при получении прогресса целей квеста:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Проверяет завершение квеста на основе прогресса целей
+   */
+  static async checkQuestCompletion(userId, questId) {
+    try {
+      const questProgress = await QuestProgress.findOne({
+        where: { userId, questId, status: 'active' }
+      });
+
+      if (!questProgress) {
+        return null;
+      }
+
+      // Получаем все цели квеста
+      const objectives = await QuestObjective.findAll({
+        where: { quest_id: questId }
+      });
+
+      // Проверяем, все ли цели завершены
+      const objectiveProgresses = await QuestObjectiveProgress.findAll({
+        where: {
+          userId,
+          objectiveId: objectives.map(obj => obj.id),
+          completed: true
+        }
+      });
+
+      const allCompleted = objectiveProgresses.length === objectives.length;
+
+      if (allCompleted) {
+        questProgress.status = 'completed';
+        questProgress.completedAt = new Date();
+        await questProgress.save();
+
+        console.log(`Квест ${questId} завершен пользователем ${userId}`);
+      }
+
+      return questProgress;
+    } catch (error) {
+      console.error('Ошибка при проверке завершения квеста:', error);
+      throw error;
+    }
+  }
+
   static async checkQuestEvent(userId, eventType, payload) {
     try {
+      // Шаг 1: Получаем активный прогресс квестов без целей
       const activeQuestsProgress = await QuestProgress.findAll({
         where: {
           userId,
@@ -522,20 +749,34 @@ class QuestService {
         include: {
           model: Quest,
           as: 'quest',
-          include: {
-            model: QuestObjective,
-            as: 'objectives',
-            where: {
-              type: eventType
-            }
-          }
+          attributes: [
+            'id', 'title', 'category', 'difficulty', 'description', 'status',
+            'requiredLevel', 'repeatable'
+          ]
         }
       });
-
+      console.log(`activeQuestsProgress: ${activeQuestsProgress}`);
       for (const progress of activeQuestsProgress) {
-        if (!progress.quest || !progress.quest.objectives) continue;
+        if (!progress.quest) continue;
+        
+        
+        // Шаг 2: Для каждого квеста получаем его цели, отфильтрованные по типу события
+        const objectives = await QuestObjective.findAll({
+          where: {
+            questId: progress.quest.id,
+            type: eventType
+          },
+          attributes: ['id', 'questId', 'text', 'requiredProgress', 'type', 'target']
+        });
 
-        for (const objective of progress.quest.objectives) {
+        for (const objective of objectives) {
+          const objectiveProgress = await QuestObjectiveProgress.findOne({
+            where: {
+              userId: userId,
+              objectiveId: objective.id
+            }
+          });
+
           let shouldAddProgress = false;
           
           switch (eventType) {
@@ -556,7 +797,10 @@ class QuestService {
             case 'REACH_LEVEL':
               if (payload.level >= parseInt(objective.target)) {
                 // For level achievements, we set progress to max directly
-                await this.addObjectiveProgress(userId, objective.id, objective.requiredProgress);
+                // Ensure we don't exceed requiredProgress if objectiveProgress exists
+                const currentProgress = objectiveProgress ? objectiveProgress.currentProgress : 0;
+                const newProgress = Math.min(currentProgress + 1, objective.requiredProgress); // Increment by 1, but cap at requiredProgress
+                await this.addObjectiveProgress(userId, objective.id, newProgress);
               }
               break;
             case 'LEARN_TECHNIQUE':
@@ -572,7 +816,10 @@ class QuestService {
             case 'PVP_RATING':
               if (payload.rating >= parseInt(objective.target)) {
                 // For rating achievements, we set progress to max directly
-                await this.addObjectiveProgress(userId, objective.id, objective.requiredProgress);
+                // Ensure we don't exceed requiredProgress if objectiveProgress exists
+                const currentProgress = objectiveProgress ? objectiveProgress.currentProgress : 0;
+                const newProgress = Math.min(currentProgress + 1, objective.requiredProgress); // Increment by 1, but cap at requiredProgress
+                await this.addObjectiveProgress(userId, objective.id, newProgress);
               }
               break;
             case 'MEDITATION':
@@ -581,12 +828,14 @@ class QuestService {
               }
               break;
           }
+          console.log(shouldAddProgress);
 
           if (shouldAddProgress) {
             await this.addObjectiveProgress(userId, objective.id, payload.amount || 1);
           }
         }
       }
+
     } catch (error) {
       console.error(`Ошибка при проверке события квеста (${eventType}):`, error);
       // не бросаем ошибку дальше, чтобы не прерывать основной процесс (например, добавление предмета)

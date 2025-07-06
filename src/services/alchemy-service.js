@@ -17,6 +17,7 @@ let recipesByTypeCache = {};
 let recipesByRarityCache = {};
 
 const QuestService = require('./quest-service');
+const InventoryService = require('./inventory-service');
 
 class AlchemyService {
 
@@ -1032,10 +1033,9 @@ class AlchemyService {
             existingItem.quantity = existingItem.quantity + resultQuantity;
             console.log(`Обновлен существующий предмет в инвентаре: ${existingItem.name}, новое количество: ${existingItem.quantity + resultQuantity}`);
           } else {
-            // Создаем новый предмет в инвентаре
-            const newItem = await InventoryItem.create({
-              userId,
-              itemId: resultItemId,
+            // Создаем новый предмет в инвентаре через InventoryService
+            const newItem = await InventoryService.addInventoryItem(userId, {
+              id: resultItemId,
               name: itemName,
               description: itemDescription,
               rarity: itemRarity, // Используем русскоязычное значение
@@ -1044,7 +1044,7 @@ class AlchemyService {
               stats: {} // Добавляем пустые stats, чтобы обеспечить полную совместимость с моделью
             }, { transaction });
             console.log(`Создан новый предмет в инвентаре: ${newItem.name} (тип: ${newItem.type})`);
-            QuestService.checkQuestEvent(userId, 'CRAFT_ITEM', { itemId: newItem.itemId, amount: newItem.quantity });
+            QuestService.checkQuestEvent(userId, 'CRAFT_ITEM', { itemId: newItem.id || newItem.itemId, amount: newItem.quantity });
           }
           
           // Добавляем информацию о созданном предмете в результат

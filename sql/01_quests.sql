@@ -2,6 +2,7 @@
 -- Использует PostgreSQL синтаксис
 \encoding UTF8
 -- Удаление существующих таблиц
+DROP TABLE IF EXISTS quest_objective_progress CASCADE;
 DROP TABLE IF EXISTS quest_rewards CASCADE;
 DROP TABLE IF EXISTS quest_objectives CASCADE;
 DROP TABLE IF EXISTS quests CASCADE;
@@ -44,6 +45,30 @@ CREATE TABLE quest_rewards (
     copper INTEGER,
     icon VARCHAR(10)
 );
+
+-- Таблица прогресса по отдельным целям квестов
+CREATE TABLE quest_objective_progress (
+    id BIGSERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    objective_id VARCHAR(30) NOT NULL REFERENCES quest_objectives(id) ON DELETE CASCADE,
+    current_progress INTEGER DEFAULT 0,
+    required_progress INTEGER NOT NULL,
+    completed BOOLEAN DEFAULT FALSE,
+    metadata JSONB DEFAULT '{}',
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Уникальный индекс: один пользователь - одна цель
+    UNIQUE(user_id, objective_id)
+);
+
+-- Индексы для производительности
+CREATE INDEX idx_quest_obj_progress_user ON quest_objective_progress(user_id);
+CREATE INDEX idx_quest_obj_progress_objective ON quest_objective_progress(objective_id);
+CREATE INDEX idx_quest_obj_progress_completed ON quest_objective_progress(completed);
+CREATE INDEX idx_quest_obj_progress_user_completed ON quest_objective_progress(user_id, completed);
 
 -- Заполнение таблицы квестов (из quests.js)
 INSERT INTO quests (id, title, category, difficulty, description, status, required_level, repeatable) VALUES
@@ -231,6 +256,18 @@ BEGIN
     FROM
         quests q;
     
+    -- Добавляем ВСЕ цели квестов в прогресс пользователя
+    INSERT INTO quest_objective_progress (user_id, objective_id, current_progress, required_progress, completed, metadata)
+    SELECT
+        NEW.id,
+        qo.id,
+        0,
+        qo.required_progress,
+        false,
+        '{}'::JSONB
+    FROM
+        quest_objectives qo;
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -257,3 +294,52 @@ CROSS JOIN
 WHERE
     1=1 -- Добавляем все квесты независимо от уровня пользователя
 ON CONFLICT (user_id, quest_id) DO NOTHING;
+
+-- Добавляем прогресс целей квестов для всех существующих пользователей
+INSERT INTO quest_objective_progress (user_id, objective_id, current_progress, required_progress, completed, metadata)
+SELECT
+    u.id,
+    qo.id,
+    0,
+    qo.required_progress,
+    false,
+    '{}'::JSONB
+FROM
+    quest_objectives qo
+CROSS JOIN
+    users u
+WHERE
+    1=1 -- Добавляем все цели квестов независимо от уровня пользователя
+ON CONFLICT (user_id, objective_id) DO NOTHING;
+
+
+-- Функция для автоматического обновления поля updated_at
+CREATE OR REPLACE FUNCTION update_quest_objective_progress_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Триггер для автоматического обновления поля updated_at в quest_objective_progress
+DROP TRIGGER IF EXISTS trigger_update_quest_objective_progress_updated_at ON quest_objective_progress;
+CREATE TRIGGER trigger_update_quest_objective_progress_updated_at
+BEFORE UPDATE ON quest_objective_progress
+FOR EACH ROW
+EXECUTE FUNCTION update_quest_objective_progress_updated_at();
+
+-- Триггер для автоматического обновления поля updated_at в quest_progress (если еще не существует)
+CREATE OR REPLACE FUNCTION update_quest_progress_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_quest_progress_updated_at ON quest_progress;
+CREATE TRIGGER trigger_update_quest_progress_updated_at
+BEFORE UPDATE ON quest_progress
+FOR EACH ROW
+EXECUTE FUNCTION update_quest_progress_updated_at();
