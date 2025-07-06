@@ -372,7 +372,7 @@ function QuestsTab() {
                     key={objective.id || `objective-${index}`}
                     completed={isCompleted}
                   >
-                    {isCompleted ? '✓' : '○'} {objective.text || 'Цель задания'}
+                    {isCompleted ? '✓' : '○'} {objective.text || 'Цель задания'} {objective.progressText && `(${objective.progressText})`}
                   </Objective>
                 );
               })

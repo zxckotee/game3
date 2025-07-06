@@ -135,7 +135,8 @@ class QuestService {
               progress: currentProgress,
               requiredProgress: objective.dataValues.required_progress,
               type: objective.dataValues.type,
-              target: objective.dataValues.target
+              target: objective.dataValues.target,
+              progressText: `${currentProgress}/${objective.dataValues.required_progress}` // Добавляем новое поле
             };
           })),
           difficulty: questData.difficulty,
