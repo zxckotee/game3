@@ -38,7 +38,7 @@ CREATE TABLE quest_rewards (
     id SERIAL PRIMARY KEY,
     quest_id VARCHAR(20) REFERENCES quests(id) ON DELETE CASCADE,
     type VARCHAR(20) NOT NULL,
-    name VARCHAR(100),
+    item_id VARCHAR(50),
     amount INTEGER,
     gold INTEGER,
     silver INTEGER,
@@ -137,74 +137,74 @@ INSERT INTO quest_objectives (id, quest_id, objective_text, required_progress, t
 ('q15_obj1', 'q15', 'Выполнить медитацию 1 раз', 1, 'MEDITATION', 'daily_meditation');
 
 -- Заполнение таблицы наград за квесты
-INSERT INTO quest_rewards (quest_id, type, name, amount, gold, silver, copper, icon) VALUES
+INSERT INTO quest_rewards (quest_id, type, item_id, amount, gold, silver, copper, icon) VALUES
 -- q1: Первые шаги культиватора
 ('q1', 'experience', NULL, 50, NULL, NULL, NULL, '✨'),
 ('q1', 'currency', NULL, NULL, 0, 10, NULL, '🪙'),
 
 -- q2: Основы алхимии
 ('q2', 'experience', NULL, 75, NULL, NULL, NULL, '✨'),
-('q2', 'item', 'Рецепт базового зелья', NULL, NULL, NULL, NULL, '📜'),
+('q2', 'item', 'basic_cultivation_manual', 1, NULL, NULL, NULL, '📜'),
 ('q2', 'currency', NULL, NULL, 0, 15, NULL, '🪙'),
 
 -- q3: Первый бой
 ('q3', 'experience', NULL, 100, NULL, NULL, NULL, '✨'),
-('q3', 'item', 'Деревянный меч', NULL, NULL, NULL, NULL, '🗡️'),
+('q3', 'item', 'bronze_sword', 1, NULL, NULL, NULL, '🗡️'),
 ('q3', 'currency', NULL, NULL, 0, 20, NULL, '🪙'),
 
 -- q4: Путь совершенствования
 ('q4', 'experience', NULL, 200, NULL, NULL, NULL, '✨'),
-('q4', 'item', 'Кольцо культиватора', NULL, NULL, NULL, NULL, '💍'),
+('q4', 'item', 'celestial_perception_ring', 1, NULL, NULL, NULL, '💍'),
 ('q4', 'currency', NULL, NULL, 1, 0, NULL, '🪙'),
 
 -- q5: Охота на духовных зверей
 ('q5', 'experience', NULL, 150, NULL, NULL, NULL, '✨'),
-('q5', 'item', 'Амулет духовной защиты', NULL, NULL, NULL, NULL, '🧿'),
+('q5', 'item', 'protection_talisman', 1, NULL, NULL, NULL, '🧿'),
 ('q5', 'currency', NULL, NULL, 0, 50, NULL, '🪙'),
 
 -- q6: Испытание разбойником
 ('q6', 'experience', NULL, 180, NULL, NULL, NULL, '✨'),
-('q6', 'item', 'Железный клинок', NULL, NULL, NULL, NULL, '⚔️'),
+('q6', 'item', 'iron_sword', 1, NULL, NULL, NULL, '⚔️'),
 ('q6', 'currency', NULL, NULL, 0, 75, NULL, '🪙'),
 
 -- q7: Встреча с призраком
 ('q7', 'experience', NULL, 250, NULL, NULL, NULL, '✨'),
-('q7', 'item', 'Талисман изгнания духов', NULL, NULL, NULL, NULL, '🔮'),
+('q7', 'item', 'spirit_shield_talisman', 1, NULL, NULL, NULL, '🔮'),
 ('q7', 'currency', NULL, NULL, 1, 25, NULL, '🪙'),
 
 -- q8: Сбор минералов
 ('q8', 'experience', NULL, 120, NULL, NULL, NULL, '✨'),
-('q8', 'item', 'Кирка горняка', NULL, NULL, NULL, NULL, '⛏️'),
+('q8', 'item', 'mineral_iron', 1, NULL, NULL, NULL, '⛏️'),
 ('q8', 'currency', NULL, NULL, 0, 40, NULL, '🪙'),
 
 -- q9: Эликсир концентрации
 ('q9', 'experience', NULL, 300, NULL, NULL, NULL, '✨'),
-('q9', 'item', 'Формула эликсира разума', NULL, NULL, NULL, NULL, '📋'),
+('q9', 'item', 'soul_enlightenment_pill', 1, NULL, NULL, NULL, '📋'),
 ('q9', 'currency', NULL, NULL, 1, 50, NULL, '🪙'),
 
 -- q10: Первая дуэль
 ('q10', 'experience', NULL, 200, NULL, NULL, NULL, '✨'),
-('q10', 'item', 'Медаль дуэлянта', NULL, NULL, NULL, NULL, '🏅'),
+('q10', 'item', 'pvp_reward_1', 1, NULL, NULL, NULL, '🏅'),
 ('q10', 'currency', NULL, NULL, 1, 0, NULL, '🪙'),
 
 -- q11: Бронзовая лига
 ('q11', 'experience', NULL, 400, NULL, NULL, NULL, '✨'),
-('q11', 'item', 'Бронзовый значок', NULL, NULL, NULL, NULL, '🥉'),
+('q11', 'item', 'pvp_reward_1', 1, NULL, NULL, NULL, '🥉'),
 ('q11', 'currency', NULL, NULL, 2, 0, NULL, '🪙'),
 
 -- q12: Командная работа
 ('q12', 'experience', NULL, 350, NULL, NULL, NULL, '✨'),
-('q12', 'item', 'Знак командира', NULL, NULL, NULL, NULL, '🎖️'),
+('q12', 'item', 'pvp_reward_5', 1, NULL, NULL, NULL, '🎖️'),
 ('q12', 'currency', NULL, NULL, 1, 75, NULL, '🪙'),
 
 -- q13: Испытание стихий
 ('q13', 'experience', NULL, 500, NULL, NULL, NULL, '✨'),
-('q13', 'item', 'Кольцо стихий', NULL, NULL, NULL, NULL, '💎'),
+('q13', 'item', 'five_element_amulet', 1, NULL, NULL, NULL, '💎'),
 ('q13', 'currency', NULL, NULL, 2, 50, NULL, '🪙'),
 
 -- q14: Древний страж
 ('q14', 'experience', NULL, 800, NULL, NULL, NULL, '✨'),
-('q14', 'item', 'Реликвия древних', NULL, NULL, NULL, NULL, '🏺'),
+('q14', 'item', 'spirit_ancient', 1, NULL, NULL, NULL, '🏺'),
 ('q14', 'currency', NULL, NULL, 5, 0, NULL, '🪙'),
 
 -- q15: Ежедневная медитация

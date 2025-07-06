@@ -30,8 +30,8 @@ const schema = {
     type: DataTypes.STRING(20),
     allowNull: false
   },
-  name: { // Соответствует name в SQL
-    type: DataTypes.STRING(100)
+  itemId: { // Соответствует item_id в SQL
+    type: DataTypes.STRING(50)
   },
   amount: { // Соответствует amount в SQL
     type: DataTypes.INTEGER

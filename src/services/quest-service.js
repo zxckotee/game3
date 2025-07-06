@@ -6,6 +6,8 @@ const QuestObjectiveProgress = require('../models/quest-objective-progress');
 const QuestReward = require('../models/quest-reward');
 const QuestCategory = require('../models/quest-category');
 const CharacterProfileService = require('./character-profile-service');
+const InventoryService = require('./inventory-service');
+const CultivationService = require('./cultivation-service');
 const { questDifficulty } = require('../data/quests-adapter');
 /* abc */
 /**
@@ -85,7 +87,7 @@ class QuestService {
         // Получаем награды квеста
         const rewards = await QuestReward.findAll({
           where: { quest_id: questData.id },
-          attributes: ['id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
+          attributes: ['id', 'type', 'itemId', 'amount', 'gold', 'silver', 'copper', 'icon']
         });
         
         // Категорию квеста берем напрямую из данных квеста (ID)
@@ -103,7 +105,7 @@ class QuestService {
           rewards: rewards.map(reward => ({
             id: reward.id,
             type: reward.type,
-            name: reward.name,
+            itemId: reward.itemId,
             amount: reward.amount,
             gold: reward.gold,
             silver: reward.silver,
@@ -191,7 +193,7 @@ class QuestService {
       });
       const rewards = await QuestReward.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'quest_id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
+        attributes: ['id', 'quest_id', 'type', 'itemId', 'amount', 'gold', 'silver', 'copper', 'icon']
       });
 
       // Проверяем, есть ли у пользователя уже активное задание
@@ -245,7 +247,7 @@ class QuestService {
         rewards: rewards.map(reward => ({
           id: reward.id,
           type: reward.type,
-          name: reward.name,
+          itemId: reward.itemId,
           amount: reward.amount,
           gold: reward.gold,
           silver: reward.silver,
@@ -318,7 +320,7 @@ class QuestService {
       // 4. Получаем награды квеста
       const rewards = await QuestReward.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
+        attributes: ['id', 'type', 'itemId', 'amount', 'gold', 'silver', 'copper', 'icon']
       });
       
       // Обновляем прогресс через новую систему
@@ -378,7 +380,7 @@ class QuestService {
         rewards: rewards.map(reward => ({
           id: reward.id,
           type: reward.type,
-          name: reward.name,
+          itemId: reward.itemId,
           amount: reward.amount,
           gold: reward.gold,
           silver: reward.silver,
@@ -442,13 +444,41 @@ class QuestService {
       // 4. Получаем награды квеста
       const rewards = await QuestReward.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'type', 'name', 'amount', 'gold', 'silver', 'copper', 'icon']
+        attributes: ['id', 'type', 'itemId', 'amount', 'gold', 'silver', 'copper', 'icon']
       });
       
       // Обновляем статус задания
       questProgress.status = 'completed';
       questProgress.completedAt = new Date();
       await questProgress.save();
+      console.log(rewards);
+      // 6. Распределение наград
+      for (const reward of rewards) {
+        switch (reward.type) {
+          case 'experience':
+            if (reward.amount) {
+              const cultivationProgress = await CultivationService.getCultivationProgress(userId);
+              const newExperience = cultivationProgress.experience + reward.amount;
+              await CultivationService.updateCultivationProgress(userId, { experience: newExperience });
+              console.log(`[QuestService] Добавлено ${reward.amount} опыта игроку ${userId}`);
+            }
+            break;
+          case 'currency':
+            if (reward.gold || reward.silver || reward.copper) {
+              await CharacterProfileService.addCurrency(userId, reward.gold || 0, reward.silver || 0, reward.copper || 0);
+              console.log(`[QuestService] Добавлено ${reward.gold || 0} золота, ${reward.silver || 0} серебра, ${reward.copper || 0} меди игроку ${userId}`);
+            }
+            break;
+          case 'item':
+            if (reward.itemId && reward.amount) {
+              await InventoryService.addInventoryItem(userId, { itemId: reward.itemId, quantity: reward.amount });
+              console.log(`[QuestService] Добавлен предмет ${reward.itemId} x${reward.amount} игроку ${userId}`);
+            }
+            break;
+          default:
+            console.warn(`[QuestService] Неизвестный тип награды: ${reward.type}`);
+        }
+      }
 
       // 5. Обновляем отношения с NPC, если его имя есть в названии квеста
       try {
@@ -476,7 +506,7 @@ class QuestService {
         rewards: rewards.map(reward => ({
           id: reward.id,
           type: reward.type,
-          name: reward.name,
+          itemId: reward.itemId,
           amount: reward.amount,
           gold: reward.gold,
           silver: reward.silver,
