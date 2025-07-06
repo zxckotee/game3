@@ -4,7 +4,7 @@ import { useGame } from '../../context/GameContext';
 import ResourceService from '../../services/resource-adapter';
 import CultivationAdapter from '../../services/cultivation-adapter';
 import { getCultivationProgress, completeTribulation as completeTribulationAPI } from '../../services/cultivation-api';
-import QuestService from '../../services/quest-service';
+import QuestService from '../../services/quest-adapter';
 
 // Компонент для отображения содержимого вкладок
 const TabContent = ({ active, children }) => {

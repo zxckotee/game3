@@ -86,6 +86,8 @@ const QuestDifficulty = styled.span`
         return 'background: rgba(255, 152, 0, 0.2); color: #ff9800;';
       case 'Сложно':
         return 'background: rgba(244, 67, 54, 0.2); color: #f44336;';
+      case 'Очень сложно':
+        return 'background: rgba(156, 39, 176, 0.2); color: #9c27b0;';
       default:
         return '';
     }
@@ -216,6 +218,11 @@ function QuestsTab() {
       return quest.category === 'side' || quest.category === 'sect';
     }
     return quest.category === selectedCategory;
+  }).sort((a, b) => {
+    // Сортировка по уровню в порядке возрастания
+    const levelA = a.required_level || 0;
+    const levelB = b.required_level || 0;
+    return levelA - levelB;
   });
   
   const handleQuestSelect = (quest) => {

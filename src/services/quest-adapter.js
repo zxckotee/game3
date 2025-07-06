@@ -19,7 +19,8 @@ const adapter = {
   getQuests: QuestService.getQuests,
   acceptQuest: QuestService.acceptQuest,
   updateQuestProgress: QuestService.updateQuestProgress,
-  completeQuest: QuestService.completeQuest
+  completeQuest: QuestService.completeQuest,
+  checkQuestEvent: QuestService.checkQuestEvent
 };
 
 // Экспортируем адаптер как основной экспорт

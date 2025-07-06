@@ -137,4 +137,24 @@ router.put('/api/users/:userId/quests/:questId/complete', async (req, res) => {
   }
 });
 
+// Новый эндпоинт для проверки событий квестов
+router.post('/api/users/:userId/quests/check-event', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { eventType, eventData } = req.body;
+    
+    if (!eventType || !eventData) {
+      return res.status(400).json({ error: 'Необходимо указать eventType и eventData' });
+    }
+    
+    // Проверяем событие квеста через сервис
+    const result = await QuestService.checkQuestEvent(userId, eventType, eventData);
+    
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Ошибка при проверке события квеста:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
 module.exports = router;

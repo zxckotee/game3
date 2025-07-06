@@ -125,6 +125,40 @@ class QuestServiceAPI {
       throw error;
     }
   }
+
+  /**
+   * Проверка события квеста для автоматического обновления прогресса
+   * @param {number} userId - ID пользователя
+   * @param {string} eventType - Тип события (GATHER_ITEM, DEFEAT_ENEMY, etc.)
+   * @param {Object} eventData - Данные события
+   * @returns {Promise<Object>} - Результат проверки
+   */
+  static async checkQuestEvent(userId, eventType, eventData) {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/quests/check-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          eventType,
+          eventData
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при проверке события квеста');
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Ошибка при проверке события квеста:', error);
+      throw error;
+    }
+  }
 }
  
 // Экспортируем класс через CommonJS
@@ -135,3 +169,4 @@ module.exports.getQuests = QuestServiceAPI.getQuests;
 module.exports.acceptQuest = QuestServiceAPI.acceptQuest;
 module.exports.updateQuestProgress = QuestServiceAPI.updateQuestProgress;
 module.exports.completeQuest = QuestServiceAPI.completeQuest;
+module.exports.checkQuestEvent = QuestServiceAPI.checkQuestEvent;
