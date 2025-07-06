@@ -310,7 +310,8 @@ class QuestService {
       // 3. Получаем цели квеста
       const objectives = await QuestObjective.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'text', 'required_progress', 'type', 'target']
+        attributes: ['id', 'text', 'required_progress', 'type', 'target'],
+        raw: true
       });
       
       // 4. Получаем награды квеста
@@ -433,7 +434,8 @@ class QuestService {
       // 3. Получаем цели квеста
       const objectives = await QuestObjective.findAll({
         where: { quest_id: questId },
-        attributes: ['id', 'text', 'required_progress', 'type', 'target']
+        attributes: ['id', 'text', 'required_progress', 'type', 'target'],
+        raw: true
       });
       
       // 4. Получаем награды квеста
@@ -509,8 +511,8 @@ class QuestService {
       if (!objective) {
         throw new Error('Цель квеста не найдена');
       }
-
-      const questId = objective.quest_id;
+      console.log(JSON.stringify({userId, objectiveId, amount, metadata}));
+      const questId = objective.questId;
 
       // 2. Проверяем, что квест активен
       const questProgress = await QuestProgress.findOne({
@@ -594,7 +596,9 @@ class QuestService {
 
       // Получаем все цели квеста
       const objectives = await QuestObjective.findAll({
-        where: { quest_id: questId }
+        where: { quest_id: questId },
+        attributes: ['id', 'type', 'target', 'required_progress'],
+        raw: true
       });
 
       // Получаем прогресс по всем целям
@@ -709,7 +713,9 @@ class QuestService {
 
       // Получаем все цели квеста
       const objectives = await QuestObjective.findAll({
-        where: { quest_id: questId }
+        where: { quest_id: questId },
+        attributes: ['id', 'type', 'target', 'required_progress'],
+        raw: true
       });
 
       // Проверяем, все ли цели завершены
@@ -757,8 +763,11 @@ class QuestService {
       });
       console.log(`activeQuestsProgress: ${activeQuestsProgress}`);
       for (const progress of activeQuestsProgress) {
-        if (!progress.quest) continue;
-        
+        if (!progress.quest || !progress.quest.id) {
+          console.warn(`Прогресс квеста найден без связанного объекта квеста или ID квеста: ${JSON.stringify(progress)}`);
+          continue;
+        }
+        console.log(`Обработка прогресса для квеста с ID: ${progress.quest.id}`);
         
         // Шаг 2: Для каждого квеста получаем его цели, отфильтрованные по типу события
         const objectives = await QuestObjective.findAll({
@@ -766,7 +775,8 @@ class QuestService {
             questId: progress.quest.id,
             type: eventType
           },
-          attributes: ['id', 'questId', 'text', 'requiredProgress', 'type', 'target']
+          attributes: ['id', 'questId', 'text', 'requiredProgress', 'type', 'target'],
+          raw: true
         });
 
         for (const objective of objectives) {
