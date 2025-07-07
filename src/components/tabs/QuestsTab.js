@@ -182,6 +182,16 @@ function QuestsTab() {
       const data = await questAdapter.getQuests(state.player.id);
       if (data) {
         setQuestsData(data);
+        // Если выбранный квест был завершен, обновим его статус
+        if (selectedQuest) {
+          const updatedSelectedQuest = data.completed.find(q => q.id === selectedQuest.id);
+          if (updatedSelectedQuest) {
+            setSelectedQuest(updatedSelectedQuest);
+          } else {
+            // Если квест не найден в завершенных (например, если он был удален или стал недоступен), сбросим выбор
+            setSelectedQuest(null);
+          }
+        }
       }
     } catch (error) {
       console.error('Ошибка при получении данных о квестах:', error);
