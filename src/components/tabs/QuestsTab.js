@@ -3,6 +3,9 @@ import styled from 'styled-components';
 import { useGame } from '../../context/GameContext';
 // Импортируем константы и сервис из обновленного адаптера services
 import questAdapter from '../../services/quest-adapter';
+import cultivationAdapter from '../../services/cultivation-api';
+import characterProfileAdapter from '../../services/character-profile-service-api';
+import inventoryAdapter from '../../services/inventory-api';
 
 const Container = styled.div`
   display: flex;
@@ -280,6 +283,26 @@ function QuestsTab() {
           type: 'success'
         });
         fetchQuestsData(); // Обновляем данные
+
+        // Обновляем состояние Redux после завершения квеста
+        // 1. Обновление культивации
+        const updatedCultivation = await cultivationAdapter.getCultivationProgress(state.player.id);
+        if (updatedCultivation) {
+            actions.updateCultivation(updatedCultivation);
+        }
+
+        // 2. Обновление профиля (валюты)
+        const updatedProfile = await characterProfileAdapter.getCharacterProfile(state.player.id);
+        if (updatedProfile && updatedProfile.currency) {
+            actions.updateInventoryCurrency(updatedProfile.currency);
+        }
+
+        // 3. Обновление инвентаря
+        const updatedInventory = await inventoryAdapter.getInventoryItems(state.player.id);
+        if (updatedInventory) {
+            actions.updateInventoryItems(updatedInventory);
+        }
+
       } catch (error) {
         console.error('Ошибка при завершении задания:', error);
         actions.addNotification({
