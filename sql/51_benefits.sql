@@ -45,3 +45,31 @@ INSERT INTO benefits (type, modifier, modifier_type, description) VALUES
 ('cultivation_speed', -3, 'percent', 'Уменьшает скорость культивации на 3%'),
 ('physical_defense', -5, 'flat', 'Уменьшает физическую защиту на 5 единиц'),
 ('critical_chance', -1, 'chance', 'Уменьшает шанс критического удара на 1%');
+
+-- Создание таблицы player_benefits для хранения бонусов пользователей
+CREATE TABLE IF NOT EXISTS player_benefits (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    type VARCHAR(255) NOT NULL,
+    modifier INTEGER NOT NULL,
+    modifier_type VARCHAR(50) NOT NULL CHECK (modifier_type IN ('percent', 'flat', 'chance')),
+    source VARCHAR(50) NOT NULL, -- Источник бенефита (sect, equipment, etc.)
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Комментарии к таблице и полям
+COMMENT ON TABLE player_benefits IS 'Бонусы пользователей из различных источников';
+COMMENT ON COLUMN player_benefits.user_id IS 'ID пользователя';
+COMMENT ON COLUMN player_benefits.type IS 'Тип бонуса (cultivation_speed, physical_defense и т.д.)';
+COMMENT ON COLUMN player_benefits.modifier IS 'Значение модификатора (может быть отрицательным)';
+COMMENT ON COLUMN player_benefits.modifier_type IS 'Тип модификатора (процент, абсолютное значение, шанс)';
+COMMENT ON COLUMN player_benefits.source IS 'Источник бенефита (sect, equipment, etc.)';
+COMMENT ON COLUMN player_benefits.description IS 'Описание бонуса';
+
+-- Создание индексов для оптимизации запросов
+CREATE INDEX IF NOT EXISTS idx_player_benefits_user_id ON player_benefits (user_id);
+CREATE INDEX IF NOT EXISTS idx_player_benefits_type ON player_benefits (type);
+CREATE INDEX IF NOT EXISTS idx_player_benefits_source ON player_benefits (source);

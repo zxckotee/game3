@@ -72,6 +72,7 @@
 
 \i sql/44_item_images.sql  -- картинки к предметам 
 \i sql/50_combats.sql
+\i sql/51_benefits.sql
 
 
 

@@ -4,14 +4,18 @@
  */
 const modelRegistry = require('../models/registry');
 const { Op } = require('sequelize');
+const sectService = require('./sect-service');
+const inventoryService = require('./inventory-service');
+const equipmentService = require('./equipment-service');
 
-// Инициализируем переменную для модели
+// Инициализируем переменные для моделей
 let Benefit;
+let PlayerBenefit;
 
 /**
- * Асинхронная функция для инициализации модели
+ * Асинхронная функция для инициализации моделей
  */
-async function initModel() {
+async function initModels() {
   if (!Benefit) {
     // Получаем модель из реестра
     Benefit = modelRegistry.getModel('Benefit');
@@ -20,11 +24,20 @@ async function initModel() {
       throw new Error('Модель Benefit не найдена в реестре');
     }
   }
+  
+  if (!PlayerBenefit) {
+    // Получаем модель пользовательских бонусов из реестра
+    PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
+    
+    if (!PlayerBenefit) {
+      throw new Error('Модель PlayerBenefit не найдена в реестре');
+    }
+  }
 }
 
-// Вызываем инициализацию модели
-initModel().catch(error => {
-  console.error('Ошибка при инициализации модели в benefits-service:', error);
+// Вызываем инициализацию моделей
+initModels().catch(error => {
+  console.error('Ошибка при инициализации моделей в benefits-service:', error);
 });
 
 /**
@@ -32,8 +45,8 @@ initModel().catch(error => {
  * @returns {Promise<Array>} Массив всех бонусов
  */
 async function getAllBenefits() {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     return await Benefit.findAll({
@@ -51,8 +64,8 @@ async function getAllBenefits() {
  * @returns {Promise<Object|null>} Объект бонуса или null, если бонус не найден
  */
 async function getBenefitById(id) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     return await Benefit.findByPk(id);
@@ -68,8 +81,8 @@ async function getBenefitById(id) {
  * @returns {Promise<Array>} Массив бонусов указанного типа
  */
 async function getBenefitsByType(type) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     return await Benefit.findAll({
@@ -88,8 +101,8 @@ async function getBenefitsByType(type) {
  * @returns {Promise<Array>} Массив бонусов с указанным типом модификатора
  */
 async function getBenefitsByModifierType(modifierType) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     return await Benefit.findAll({
@@ -107,8 +120,8 @@ async function getBenefitsByModifierType(modifierType) {
  * @returns {Promise<Array>} Массив положительных бонусов
  */
 async function getPositiveBenefits() {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     return await Benefit.findAll({
@@ -130,8 +143,8 @@ async function getPositiveBenefits() {
  * @returns {Promise<Array>} Массив отрицательных бонусов
  */
 async function getNegativeBenefits() {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     return await Benefit.findAll({
@@ -158,8 +171,8 @@ async function getNegativeBenefits() {
  * @returns {Promise<Object>} Созданный бонус
  */
 async function createBenefit(benefitData) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     return await Benefit.create(benefitData);
@@ -176,8 +189,8 @@ async function createBenefit(benefitData) {
  * @returns {Promise<Object|null>} Обновленный бонус или null, если бонус не найден
  */
 async function updateBenefit(id, benefitData) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     const benefit = await Benefit.findByPk(id);
@@ -198,8 +211,8 @@ async function updateBenefit(id, benefitData) {
  * @returns {Promise<boolean>} true, если бонус успешно удален, иначе false
  */
 async function deleteBenefit(id) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     const benefit = await Benefit.findByPk(id);
@@ -222,8 +235,8 @@ async function deleteBenefit(id) {
  * @returns {Promise<Object>} Обновленные характеристики персонажа
  */
 async function applyBenefitToCharacter(characterStats, benefit) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     // Если передан ID бонуса, получаем объект бонуса
@@ -334,8 +347,8 @@ async function applyBenefitToCharacter(characterStats, benefit) {
  * @returns {Promise<Object>} Обновленные характеристики персонажа
  */
 async function applyBenefitsToCharacter(characterStats, benefits) {
-  // Убеждаемся, что модель инициализирована
-  if (!Benefit) await initModel();
+  // Убеждаемся, что модели инициализированы
+  if (!Benefit) await initModels();
   
   try {
     let updatedStats = { ...characterStats };
@@ -351,7 +364,286 @@ async function applyBenefitsToCharacter(characterStats, benefits) {
   }
 }
 
+/**
+ * Получение всех бонусов пользователя
+ * @param {number} userId - ID пользователя
+ * @param {Object} options - Дополнительные опции запроса
+ * @param {string} [options.source] - Источник бонуса (sect, equipment, achievement, etc.)
+ * @param {string} [options.type] - Тип бонуса
+ * @returns {Promise<Array>} - Массив бонусов пользователя
+ */
+async function getUserBenefits(userId, options = {}) {
+  // Убеждаемся, что модели инициализированы
+  if (!PlayerBenefit) await initModels();
+  
+  try {
+    const whereClause = { user_id: userId };
+    
+    // Добавляем фильтр по источнику, если указан
+    if (options.source) {
+      whereClause.source = options.source;
+    }
+    
+    // Добавляем фильтр по типу, если указан
+    if (options.type) {
+      whereClause.benefit_type = options.type;
+    }
+    
+    return await PlayerBenefit.findAll({
+      where: whereClause,
+      order: [['created_at', 'DESC']]
+    });
+  } catch (error) {
+    console.error(`Ошибка при получении бонусов пользователя ${userId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Добавление бонуса пользователю
+ * @param {number} userId - ID пользователя
+ * @param {Object} benefitData - Данные бонуса
+ * @param {string} benefitData.benefit_type - Тип бонуса
+ * @param {number} benefitData.value - Значение бонуса
+ * @param {string} benefitData.value_type - Тип значения (percent, flat, chance)
+ * @param {string} benefitData.source - Источник бонуса (sect, equipment, achievement, etc.)
+ * @param {string} [benefitData.source_id] - ID источника (например, ID предмета экипировки)
+ * @param {string} [benefitData.description] - Описание бонуса
+ * @param {Date} [benefitData.expires_at] - Дата истечения бонуса (null для постоянных)
+ * @returns {Promise<Object|null>} - Созданный бонус или null в случае ошибки
+ */
+async function addUserBenefit(userId, benefitData) {
+  // Убеждаемся, что модели инициализированы
+  if (!PlayerBenefit) await initModels();
+  
+  try {
+    // Создаем объект данных с user_id
+    const data = {
+      user_id: userId,
+      ...benefitData
+    };
+    
+    // Создаем запись в БД
+    return await PlayerBenefit.create(data);
+  } catch (error) {
+    console.error(`Ошибка при добавлении бонуса пользователю ${userId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Удаление бонуса пользователя
+ * @param {number} benefitId - ID бонуса для удаления
+ * @returns {Promise<boolean>} - true, если бонус успешно удален, иначе false
+ */
+async function removeUserBenefit(benefitId) {
+  // Убеждаемся, что модели инициализированы
+  if (!PlayerBenefit) await initModels();
+  
+  try {
+    const benefit = await PlayerBenefit.findByPk(benefitId);
+    if (!benefit) {
+      return false;
+    }
+    
+    await benefit.destroy();
+    return true;
+  } catch (error) {
+    console.error(`Ошибка при удалении бонуса ${benefitId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Удаление всех бонусов пользователя
+ * @param {number} userId - ID пользователя
+ * @param {Object} options - Дополнительные опции
+ * @param {string} [options.source] - Источник бонуса (sect, equipment, achievement, etc.)
+ * @param {string} [options.type] - Тип бонуса
+ * @returns {Promise<number>} - Количество удаленных бонусов
+ */
+async function removeAllUserBenefits(userId, options = {}) {
+  // Убеждаемся, что модели инициализированы
+  if (!PlayerBenefit) await initModels();
+  
+  try {
+    const whereClause = { user_id: userId };
+    
+    // Добавляем фильтр по источнику, если указан
+    if (options.source) {
+      whereClause.source = options.source;
+    }
+    
+    // Добавляем фильтр по типу, если указан
+    if (options.type) {
+      whereClause.benefit_type = options.type;
+    }
+    
+    const result = await PlayerBenefit.destroy({
+      where: whereClause
+    });
+    
+    return result;
+  } catch (error) {
+    console.error(`Ошибка при удалении всех бонусов пользователя ${userId}:`, error);
+    return 0;
+  }
+}
+
+/**
+ * Собирает все бенефиты пользователя из разных источников (секта, экипировка)
+ * @param {number} userId - ID пользователя
+ * @param {boolean} [saveToDatabase=false] - Сохранять ли собранные бенефиты в БД
+ * @returns {Promise<Array>} - Массив всех бенефитов пользователя
+ */
+async function collectAllBenefits(userId, saveToDatabase = false) {
+  try {
+    // 1. Получаем бенефиты секты
+    const sectBenefits = await sectService.getSectBenefits(userId);
+    
+    // Добавляем информацию о источнике
+    const sectBenefitsWithSource = sectBenefits.map(benefit => ({
+      ...benefit,
+      source: 'sect'
+    }));
+    
+    // 2. Получаем экипированные предметы
+    const inventoryItems = await inventoryService.getInventoryItems(userId);
+    const equippedItems = inventoryItems.filter(item => item.equipped === true);
+    
+    // 3. Извлекаем эффекты из экипировки
+    const equipmentBenefits = [];
+    
+    // Для каждого экипированного предмета получаем эффекты
+    for (const item of equippedItems) {
+      // Получаем эффекты предмета
+      if (item.effects && Array.isArray(item.effects)) {
+        // Если эффекты уже есть в данных предмета
+        for (const effect of item.effects) {
+          // Преобразуем эффект в формат бенефита
+          const benefit = {
+            type: effect.target,
+            modifier: effect.value,
+            modifier_type: effect.operation === 'percent' ? 'percent' : 'flat',
+            source: 'equipment',
+            source_id: item.item_id.toString(),
+            item_name: item.name // Дополнительно сохраняем название предмета
+          };
+          
+          equipmentBenefits.push(benefit);
+        }
+      } else {
+        // Если эффектов нет в данных предмета, используем equipmentService
+        // Создаем пустой объект персонажа для применения эффектов
+        const emptyCharacter = {};
+        
+        // Применяем эффекты предмета к пустому объекту персонажа
+        const characterWithEffects = await equipmentService.applyItemEffectsToCharacter(item.item_id, emptyCharacter);
+        
+        // Извлекаем примененные эффекты и преобразуем их в бенефиты
+        for (const category in characterWithEffects) {
+          if (category === 'stats' || category === 'combat' || category === 'elemental' || category === 'cultivation') {
+            for (const target in characterWithEffects[category]) {
+              const value = characterWithEffects[category][target];
+              
+              // Создаем бенефит
+              const benefit = {
+                type: `${category}_${target}`,
+                modifier: value,
+                modifier_type: 'flat', // По умолчанию используем flat
+                source: 'equipment',
+                source_id: item.item_id.toString(),
+                item_name: item.name
+              };
+              
+              equipmentBenefits.push(benefit);
+            }
+          }
+        }
+      }
+    }
+    
+    // 4. Объединяем бенефиты
+    const allBenefits = [...sectBenefitsWithSource, ...equipmentBenefits];
+    
+    // 5. Агрегируем бенефиты одного типа (суммируем модификаторы)
+    const aggregatedBenefits = {};
+    
+    for (const benefit of allBenefits) {
+      const key = benefit.type;
+      
+      if (!aggregatedBenefits[key]) {
+        aggregatedBenefits[key] = {
+          type: benefit.type,
+          modifier: benefit.modifier,
+          modifier_type: benefit.modifier_type,
+          sources: [benefit.source],
+          source_ids: benefit.source_id ? [benefit.source_id] : []
+        };
+        
+        // Если есть название предмета, добавляем его
+        if (benefit.item_name) {
+          aggregatedBenefits[key].items = [benefit.item_name];
+        }
+      } else {
+        // Суммируем модификаторы
+        aggregatedBenefits[key].modifier += benefit.modifier;
+        
+        // Добавляем источник, если он еще не добавлен
+        if (!aggregatedBenefits[key].sources.includes(benefit.source)) {
+          aggregatedBenefits[key].sources.push(benefit.source);
+        }
+        
+        // Добавляем ID источника, если он есть
+        if (benefit.source_id && !aggregatedBenefits[key].source_ids.includes(benefit.source_id)) {
+          aggregatedBenefits[key].source_ids.push(benefit.source_id);
+        }
+        
+        // Добавляем название предмета, если оно есть
+        if (benefit.item_name && !aggregatedBenefits[key].items) {
+          aggregatedBenefits[key].items = [benefit.item_name];
+        } else if (benefit.item_name) {
+          aggregatedBenefits[key].items.push(benefit.item_name);
+        }
+      }
+    }
+    
+    // Преобразуем объект в массив
+    const resultBenefits = Object.values(aggregatedBenefits);
+    
+    // 6. Если нужно сохранить в БД, сохраняем
+    if (saveToDatabase && PlayerBenefit) {
+      try {
+        // Сначала удаляем все существующие бонусы пользователя
+        await removeAllUserBenefits(userId);
+        
+        // Затем добавляем новые
+        for (const benefit of resultBenefits) {
+          await addUserBenefit(userId, {
+            benefit_type: benefit.type,
+            value: benefit.modifier,
+            value_type: benefit.modifier_type,
+            source: benefit.sources.join(','),
+            source_id: benefit.source_ids.length > 0 ? benefit.source_ids.join(',') : null,
+            description: benefit.items ? `От предметов: ${benefit.items.join(', ')}` : null
+          });
+        }
+        
+        console.log(`Сохранено ${resultBenefits.length} бонусов для пользователя ${userId}`);
+      } catch (error) {
+        console.error(`Ошибка при сохранении бонусов в БД для пользователя ${userId}:`, error);
+      }
+    }
+    
+    return resultBenefits;
+  } catch (error) {
+    console.error('Ошибка при сборе бенефитов:', error);
+    return [];
+  }
+}
+
 module.exports = {
+  // Методы для работы с общими бонусами
   getAllBenefits,
   getBenefitById,
   getBenefitsByType,
@@ -361,13 +653,31 @@ module.exports = {
   createBenefit,
   updateBenefit,
   deleteBenefit,
+  
+  // Методы для применения бонусов
   applyBenefitToCharacter,
   applyBenefitsToCharacter,
+  
+  // Методы для сбора и агрегации бонусов
+  collectAllBenefits,
+  
+  // Методы для работы с пользовательскими бонусами
+  getUserBenefits,
+  addUserBenefit,
+  removeUserBenefit,
+  removeAllUserBenefits,
+  
   // Константы будут доступны после инициализации модели
   get BENEFIT_TYPES() {
     return Benefit ? Benefit.BENEFIT_TYPES : {};
   },
   get MODIFIER_TYPES() {
     return Benefit ? Benefit.MODIFIER_TYPES : {};
+  },
+  get PLAYER_BENEFIT_TYPES() {
+    return PlayerBenefit ? PlayerBenefit.BENEFIT_TYPES : {};
+  },
+  get PLAYER_BENEFIT_SOURCES() {
+    return PlayerBenefit ? PlayerBenefit.BENEFIT_SOURCES : {};
   }
 };

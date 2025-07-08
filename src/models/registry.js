@@ -263,3 +263,6 @@ register('EquipmentItem', require('./equipment-item'));
 
 // Регистрируем модель бонусов
 register('Benefit', require('./benefit'));
+
+// Регистрируем модель пользовательских бонусов
+register('PlayerBenefit', require('./player-benefit'));
