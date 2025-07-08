@@ -105,8 +105,6 @@ const initialState = {
       season: 'spring',
       year: 1,
     },
-    weather: 'clear', // Текущая погода
-    events: [], // Активные события
     generatedEnemies: {}, // Кэш сгенерированных врагов
   },
   

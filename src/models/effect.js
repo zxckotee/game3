@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     source_type: {
-      type: DataTypes.ENUM('technique', 'weather', 'sect', 'equipment', 'pet', 'status'),
+      type: DataTypes.ENUM('technique', 'sect', 'equipment', 'pet', 'status'),
       allowNull: false
     },
     source_id: {

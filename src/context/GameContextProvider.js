@@ -6,9 +6,7 @@ import CharacterProfileServiceAPI from '../services/character-profile-service-ap
 import InventoryService from '../services/inventory-adapter';
 import initialState from './state/initialState';
 import { rootReducer } from './reducers/rootReducer';
-import { initializeWeatherState } from './reducers/worldReducer';
 import ACTION_TYPES from './actions/actionTypes';
-import { weatherMiddleware } from './middleware/weatherMiddleware';
 import relationshipsMiddleware from './middleware/relationshipsMiddleware';
 import { checkAndNormalizeSectData } from '../utils/sectUtils';
 import { normalizePlayerEffects } from '../utils/effectsNormalizer';
@@ -22,12 +20,6 @@ import { initRelationshipSync } from '../utils/sectRelationshipSyncer';
 // Очередь предметов для обогащения и флаг запланированного обогащения - Удалено
 // let itemEnrichmentQueue = [];
 // let isEnrichmentScheduled = false;
-import {
-  updateWeather, 
-  setTimeOfDay, 
-  triggerWeatherEvent,
-  updateGameTime 
-} from './actions/weather-actions';
 
 // Создаем контекст
 export const GameContext = createContext();
@@ -48,16 +40,6 @@ export const GameContextProvider = ({ children }) => {
     stateRef.current = state;
   }, [state]);
   
-  // Инициализируем состояние погоды при первой загрузке
-  useEffect(() => {
-    if (state) {
-      const initialProcessedState = initializeWeatherState(state);
-      // Если state был изменен функцией инициализации погоды, применяем это изменение
-      if (initialProcessedState !== state) {
-        dispatchBase({ type: 'INITIALIZE_WEATHER_STATE', payload: initialProcessedState });
-      }
-    }
-  }, []);
   
   // Экспорт состояния игры в глобальные переменные для доступа из отладочных инструментов
   useEffect(() => {
@@ -112,11 +94,9 @@ export const GameContextProvider = ({ children }) => {
     };
     
     // Создаем цепочку middleware
-    // Сначала обрабатываем погоду
-    const weatherResult = weatherMiddleware(middlewareAPI)(next)(action);
-    
+    // Создаем цепочку middleware
     // В конце обрабатываем отношения, отправляя обновления на сервер
-    const relationshipsResult = relationshipsMiddleware(middlewareAPI)(() => weatherResult)(action);
+    const relationshipsResult = relationshipsMiddleware(middlewareAPI)(next)(action);
     
     return relationshipsResult;
   };
@@ -455,7 +435,6 @@ const actions = {
     // Действия для мира
     updateLocation: (location) => dispatch({ type: ACTION_TYPES.UPDATE_LOCATION, payload: location }),
     updateTime: (time) => dispatch({ type: ACTION_TYPES.UPDATE_TIME, payload: time }),
-    updateWeather: (weather) => dispatch({ type: ACTION_TYPES.UPDATE_WEATHER, payload: weather }),
     addEvent: (event) => dispatch({ type: ACTION_TYPES.ADD_EVENT, payload: event }),
     removeEvent: (eventId) => dispatch({ type: ACTION_TYPES.REMOVE_EVENT, payload: eventId }),
     cacheGeneratedEnemy: (areaId, enemyId, enemy) => 

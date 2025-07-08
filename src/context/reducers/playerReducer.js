@@ -1269,8 +1269,8 @@ export const playerReducer = (state, action) => {
       // Бонусы должны храниться отдельно и применяться только к вторичным характеристикам
       
       // Получаем текущие вторичные характеристики
-      const baseSecondaryStats = CharacterStatsService.calculateSecondaryStats(
-        state.player.stats, 
+      const baseSecondaryStats = CharacterStatsServiceAPI.calculateSecondaryStats(
+        state.player.stats,
         state.player.cultivation
       );
       

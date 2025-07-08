@@ -24,76 +24,7 @@ const WorldArea = styled.div`
   gap: 20px;
 `;
 
-const WeatherBanner = styled.div`
-  background: rgba(30, 30, 30, 0.95);
-  border-radius: 8px;
-  padding: 10px 15px;
-  margin-bottom: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-left: 3px solid #d4af37;
-`;
 
-const WeatherInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 15px;
-`;
-
-const WeatherIcon = styled.div`
-  font-size: 1.8rem;
-`;
-
-const WeatherDetails = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const WeatherType = styled.div`
-  color: #d4af37;
-  font-size: 1.1rem;
-`;
-
-const TimeOfDay = styled.div`
-  color: #aaa;
-  font-size: 0.9rem;
-`;
-
-const WeatherEffects = styled.div`
-  color: #aaa;
-  font-size: 0.8rem;
-  max-width: 50%;
-  
-  span {
-    color: ${props => props.positive ? '#a3be8c' : '#bf616a'};
-  }
-`;
-
-// Функции для получения иконок времени суток и погоды
-const getTimeIcon = (timeOfDay) => {
-  switch(timeOfDay) {
-    case 'рассвет': return '🌅';
-    case 'утро': return '🌄';
-    case 'полдень': return '☀️';
-    case 'день': return '🌞';
-    case 'вечер': return '🌇';
-    case 'ночь': return '🌙';
-    default: return '⏰';
-  }
-};
-
-const getWeatherIcon = (weatherType) => {
-  switch(weatherType) {
-    case 'Ясно': return '☀️';
-    case 'Облачно': return '☁️';
-    case 'Дождь': return '🌧️';
-    case 'Гроза': return '⛈️';
-    case 'Туман': return '🌫️';
-    case 'Снег': return '❄️';
-    default: return '🌈';
-  }
-};
 
 const AreaInfo = styled.div`
   background: rgba(30, 30, 30, 0.95);
@@ -223,33 +154,6 @@ function CombatArea({ areaId }) {
     return () => clearInterval(interval);
   }, [combatState]);
   
-  const defaultWeather = {
-    weatherType: 'Ясно',
-    timeOfDay: 'день',
-    weatherIntensity: 5,
-    weatherEffects: {
-      combat: {
-        damageModifiers: {},
-        hitChanceModifier: 1.0,
-        dodgeChanceModifier: 1.0,
-        critChanceModifier: 1.0,
-        enemySpawnRateModifier: 1.0
-      }
-    }
-  };
-  
-  const weather = {
-    ...defaultWeather,
-    ...(state.weather || {}),
-    weatherEffects: {
-      ...defaultWeather.weatherEffects,
-      ...(state.weather?.weatherEffects || {}),
-      combat: {
-        ...defaultWeather.weatherEffects.combat,
-        ...(state.weather?.weatherEffects?.combat || {})
-      }
-    }
-  };
   
   const getEnemyLevel = (spawn) => {
     return Math.floor(

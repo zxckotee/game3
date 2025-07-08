@@ -74,8 +74,7 @@ const EffectValue = styled.div`
 function ActiveEffectsPanel() {
   const { state } = useGame();
   
-  // Получаем данные о погоде, мире и секте
-  const weather = state.world?.weather || {};
+  // Получаем данные о мире и локации
   const currentLocation = state.world?.currentLocation || {};
   
   // Получаем и обрабатываем активные эффекты

@@ -44,49 +44,8 @@ const effectTypeNames = {
   'crystals': 'Сбор кристаллов',
   'food': 'Сбор пищи',
   
-  // Погодные эффекты грозы
-  'combat_damage (thunderstorm)': 'Урон в бою (гроза)',
-  'gathering_speed (thunderstorm)': 'Скорость сбора (гроза)',
-  'lightning_cultivation (thunderstorm)': 'Культивация молнии (гроза)',
-  'movement_speed (thunderstorm)': 'Скорость передвижения (гроза)',
-  'perception (thunderstorm)': 'Восприятие (гроза)',
-  'resource_bonus (thunderstorm)': 'Бонус ресурсов (гроза)'
 };
 
-/**
- * Создает "чистый" эффект грозы с особым типом
- * @param {string} type - Базовый тип эффекта
- * @param {number} modifier - Значение модификатора
- * @returns {Object} Эффект грозы
- */
-const createThunderstormEffect = (type, modifier) => {
-  // Создаем базовый чистый эффект
-  const effect = {
-    id: `${type}_thunderstorm`,
-    type: `${type}_thunderstorm`, // Добавляем суффикс для особой обработки
-    modifier: modifier,
-    icon: '⚡', // Специальная иконка для эффектов грозы
-    displayValue: `${modifier > 0 ? '+' : ''}${modifier}%`,
-  };
-  
-  // Определяем тип отображения
-  if (modifier > 0) {
-    effect.displayType = 'positive';
-  } else if (modifier < 0) {
-    effect.displayType = 'negative';
-  } else {
-    effect.displayType = 'neutral';
-  }
-  
-  // Задаем название с указанием, что это эффект грозы
-  if (effectTypeNames[`${type} (thunderstorm)`]) {
-    effect.name = effectTypeNames[`${type} (thunderstorm)`];
-  } else {
-    effect.name = `${type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} (гроза)`;
-  }
-  
-  return effect;
-};
 
 /**
  * Собирает все активные эффекты персонажа из разных источников
@@ -95,17 +54,16 @@ const createThunderstormEffect = (type, modifier) => {
  */
 export const collectAllEffects = (state) => {
   // Массивы для хранения обычных эффектов и эффектов грозы отдельно
-  const standardEffects = [];
-  const thunderstormEffects = [];
+  const allEffects = [];
   
   // 1. Добавляем эффекты статуса игрока (если есть)
   if (Array.isArray(state.player.statusEffects)) {
-    standardEffects.push(...state.player.statusEffects);
+    allEffects.push(...state.player.statusEffects);
   }
   
   // 2. Добавляем эффекты от секты (если игрок состоит в секте)
   if (state.player.sect && Array.isArray(state.player.sect.benefits)) {
-    standardEffects.push(...state.player.sect.benefits);
+    allEffects.push(...state.player.sect.benefits);
   }
   
   // 3. Добавляем эффекты от экипировки
@@ -115,14 +73,14 @@ export const collectAllEffects = (state) => {
     // Перебираем все слоты экипировки
     Object.values(equipment).forEach(item => {
       if (item && Array.isArray(item.effects)) {
-        standardEffects.push(...item.effects);
+        allEffects.push(...item.effects);
       }
     });
   }
   
   // 4. Добавляем эффекты от активного духовного питомца
-  if (state.player.spiritPets && 
-      state.player.spiritPets.activePetId && 
+  if (state.player.spiritPets &&
+      state.player.spiritPets.activePetId &&
       state.player.spiritPets.pets) {
     
     const activePet = state.player.spiritPets.pets.find(
@@ -130,58 +88,34 @@ export const collectAllEffects = (state) => {
     );
     
     if (activePet && Array.isArray(activePet.effects)) {
-      standardEffects.push(...activePet.effects);
+      allEffects.push(...activePet.effects);
     }
   }
   
-  // 5. Добавляем эффекты от погоды и окружения
-  if (state.world && state.world.weather) {
-    // Проверка разных путей к эффектам погоды
-    const weatherEffectsArray = Array.isArray(state.world.weather.effects) ? state.world.weather.effects :
-                            Array.isArray(state.world.weather.weatherEffects) ? state.world.weather.weatherEffects : [];
-    
-    //console.log('🌤️ collectAllEffects: Найдены эффекты погоды:', weatherEffectsArray);
-    
-    if (weatherEffectsArray.length > 0) {
-      if (state.world.weather.currentWeather === 'thunderstorm') {
-        // Для грозы создаем специальные эффекты с отдельным типом
-        weatherEffectsArray.forEach(effect => {
-          thunderstormEffects.push(
-            createThunderstormEffect(effect.type, effect.modifier || effect.value || 0)
-          );
-        });
-      } else {
-        // Обычные погодные эффекты
-        standardEffects.push(...weatherEffectsArray);
-      }
-    }
-  }
-  
-  // 6. Добавляем эффекты от локации
+  // 5. Добавляем эффекты от локации
   if (state.world && state.world.currentLocation && Array.isArray(state.world.currentLocation.effects)) {
-    standardEffects.push(...state.world.currentLocation.effects);
+    allEffects.push(...state.world.currentLocation.effects);
   }
   
-  // 7. Временные боевые эффекты (если в бою)
-  if (state.gameState && 
-      state.gameState.combat && 
-      state.gameState.combat.active && 
+  // 6. Временные боевые эффекты (если в бою)
+  if (state.gameState &&
+      state.gameState.combat &&
+      state.gameState.combat.active &&
       Array.isArray(state.gameState.combat.temporaryEffects)) {
     
-    standardEffects.push(...state.gameState.combat.temporaryEffects);
+    allEffects.push(...state.gameState.combat.temporaryEffects);
   }
   
   // Фильтруем недействительные эффекты
-  const validStandardEffects = standardEffects.filter(effect => effect !== null && effect !== undefined);
+  const validEffects = allEffects.filter(effect => effect !== null && effect !== undefined);
   
   // Импортируем функцию mergeEffects из effectsNormalizer.js
   const { mergeEffects } = require('./effectsNormalizer');
   
-  // Нормализуем и объединяем стандартные эффекты
-  const mergedStandardEffects = mergeEffects(validStandardEffects);
+  // Нормализуем и объединяем эффекты
+  const mergedEffects = mergeEffects(validEffects);
   
-  // Объединяем оба массива эффектов (стандартные и грозы)
-  return [...mergedStandardEffects, ...thunderstormEffects];
+  return mergedEffects;
 };
 
 /**

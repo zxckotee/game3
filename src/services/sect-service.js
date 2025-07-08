@@ -196,9 +196,7 @@ class SectService {
       benefits: [
         {type: 'cultivation_speed', modifier: 5},
         {type: 'resource_gathering', modifier: 3},
-        {type: 'energy_regen', modifier: 1},
         {type: 'technique_discount', modifier: 2},
-        {type: 'max_energy', modifier: 10}
       ],
       members: [
         { id: 1, name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },

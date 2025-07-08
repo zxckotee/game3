@@ -3,7 +3,6 @@
  * Содержит функции для доступа к важной игровой информации через консоль браузера
  */
 
-import WeatherService from '../services/weather-service-adapter';
 import './directConsoleCommands'; // Импортируем прямые консольные команды
 import { initInventoryDebugTools } from './inventoryDebugTools'; // Импортируем инструменты отладки инвентаря
 import { initCultivationDebugTools } from './cultivationDebugTools'; // Импортируем инструменты отладки культивации
@@ -75,68 +74,9 @@ export function initDebugTools(store) {
     window.gameDebug = window.gameDebug || {};
     
     // Создаем WeatherService для использования в функциях отладки
-    const weatherService = new WeatherService();
     
-    // Регистрируем глобальную функцию для получения времени
-    window.getGameTime = (customState = null) => {
-      // Используем переданное состояние, или сохраненную ссылку, или пытаемся найти глобальное состояние
-      const state = customState || gameStateRef || window.gameState || window.gameContext?.state;
-      
-      if (!state) {
-        console.warn('Не удалось получить состояние игры. Возможно, страница еще не полностью загружена.');
-        console.info('Попробуйте снова через несколько секунд или передайте состояние явно: getGameTime(yourStateObject)');
-        return null;
-      }
-      
-      // Извлекаем данные о времени из различных возможных мест в состоянии
-      const weatherState = state.weather || {};
-      const worldTime = state.world?.time || {};
-      
-      // Комбинируем данные из разных частей состояния
-      const timeData = {
-        hour: weatherState.hour || worldTime.hour || 12,
-        minute: weatherState.minute || worldTime.minute || 0,
-        dayCount: weatherState.dayCount || worldTime.day || 1,
-        currentSeason: weatherState.currentSeason || worldTime.season || 'spring',
-        seasonDay: weatherState.seasonDay || 1,
-        isDayTime: weatherState.isDayTime !== undefined ? weatherState.isDayTime : true,
-        nextWeatherChange: weatherState.nextWeatherChange,
-        currentWeather: weatherState.currentWeather || 'clear'
-      };
-      
-      // Вычисляем период суток, если его нет в состоянии
-      if (!timeData.daytimePeriod) {
-        timeData.daytimePeriod = weatherService._getDaytimePeriod(timeData.hour);
-      }
-      
-      // Получаем имя периода суток
-      timeData.daytimeName = weatherService.daytimeEffects?.[
-        timeData.daytimePeriod
-      ]?.name || 'Неизвестно';
-      
-      // Форматируем время
-      timeData.formattedTime = `${timeData.hour.toString().padStart(2, '0')}:${timeData.minute.toString().padStart(2, '0')}`;
-      
-      // Выводим информацию в консоль
-     /* console.group('🕒 Информация об игровом времени:');
-      console.log(`Текущее время: ${timeData.formattedTime} (${timeData.daytimeName})`);
-      console.log(`День: ${timeData.dayCount}, Сезон: ${timeData.currentSeason} (день ${timeData.seasonDay})`);
-      console.log(`Период суток: ${timeData.daytimeName} (${timeData.daytimePeriod || '-'})`);
-      console.log(`Световой день: ${timeData.isDayTime ? 'Да' : 'Нет'}`);
-      
-      if (timeData.activeEvent) {
-        console.log(`Активное событие: ${timeData.activeEvent}, осталось ${timeData.eventRemainingTime} мин. игрового времени`);
-      }
-      
-      console.log(`Следующая смена погоды через: ${timeData.nextWeatherChange} мин. игрового времени (${timeData.nextWeatherChange ? Math.ceil(timeData.nextWeatherChange / WeatherService.TIME_MULTIPLIER) : '-'} мин. реального времени)`);
-      console.log(`Множитель времени: 1:${WeatherService.TIME_MULTIPLIER} (1 мин. реального времени = ${WeatherService.TIME_MULTIPLIER} мин. игрового времени)`);
-      console.groupEnd();
-      */
-      return timeData;
-    };
     
     // Алиас для getGameTime для совместимости
-    window.gameDebug.getTime = window.getGameTime;
     
     /**
      * Функция для запуска периодического вывода состояния игры в консоль
@@ -276,7 +216,6 @@ export function initDebugTools(store) {
           // Вывод данных погоды и мира
           console.group('🌍 Игровой мир:');
           console.log('Локация:', state.world?.currentLocation?.name || 'Нет данных');
-          console.log('Погода:', state.weather?.currentWeather || 'Нет данных');
           
           // Форматированное время с поддержкой разных источников данных
           const hour = state.weather?.hour || state.world?.time?.hour || 0;
@@ -288,28 +227,6 @@ export function initDebugTools(store) {
           const season = state.weather?.currentSeason || state.world?.time?.season || 'spring';
           console.log('День:', `${day} (сезон: ${season})`);
           
-          // Детальная информация о погодных эффектах
-          if (state.weather?.weatherEffects) {
-            console.group('Погодные эффекты:');
-            if (Array.isArray(state.weather.weatherEffects)) {
-              if (state.weather.weatherEffects.length > 0) {
-                state.weather.weatherEffects.forEach((effect, index) => {
-                  console.log(`- Эффект ${index + 1}:`, effect);
-                });
-              } else {
-                console.log('Нет активных погодных эффектов');
-              }
-            } else if (typeof state.weather.weatherEffects === 'object') {
-              Object.entries(state.weather.weatherEffects).forEach(([key, value]) => {
-                console.log(`- ${key}:`, value);
-              });
-            } else {
-              console.log(state.weather.weatherEffects);
-            }
-            console.groupEnd();
-          } else {
-            console.log('Погодные эффекты: Нет данных');
-          }
           console.groupEnd();
           
           // Полное состояние для отладки с возможностью фильтрации
@@ -339,15 +256,6 @@ export function initDebugTools(store) {
           }
           console.groupEnd();
           
-          // Состояние погоды
-          console.group('Погода (state.weather):');
-          if (state.weather) {
-            Object.keys(state.weather).forEach(key => {
-              console.log(`- ${key}:`, state.weather[key]);
-            });
-          } else {
-            console.log('Нет данных');
-          }
           console.groupEnd();
           
           console.log('Полное состояние:', state);
@@ -443,8 +351,6 @@ export function initDebugTools(store) {
     
     // Сообщаем пользователю о доступных функциях отладки
     console.info('🛠️ Инструменты отладки инициализированы. Доступные функции:');
-    console.info('• window.getGameTime() - получить информацию об игровом времени');
-    console.info('• window.gameDebug.getTime() - альтернативный способ получения информации о времени');
     console.info('• window.add1000ToEverything() - добавить 1000 единиц каждой валюты');
     console.info('• window.добавить1000Всего() - то же самое на русском');
     console.info('• window.add1000Currency() - альтернативный способ добавления валюты');

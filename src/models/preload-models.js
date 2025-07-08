@@ -13,8 +13,6 @@ const { initializeStubs } = require('./initialize-stubs');
 // Импорт моделей, которые нужно загрузить заранее
 const Enemy = require('./enemy');
 const Technique = require('./technique');
-const EnemyTimeModifier = require('./enemy-time-modifier');
-const EnemyWeatherModifier = require('./enemy-weather-modifier');
 const Merchant = require('./merchant');
 const Achievement = require('./achievement');
 const ItemCatalog = require('./item-catalog');
@@ -105,8 +103,6 @@ async function preloadModels() {
     const modelsToLoad = [
       { class: Enemy, name: 'Enemy' },
       { class: Technique, name: 'Technique' },
-      { class: EnemyTimeModifier, name: 'EnemyTimeModifier' },
-      { class: EnemyWeatherModifier, name: 'EnemyWeatherModifier' },
       { class: Merchant, name: 'Merchant' },
       { class: Achievement, name: 'Achievement' },
       { class: ItemCatalog, name: 'ItemCatalog' }

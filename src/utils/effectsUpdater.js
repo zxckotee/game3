@@ -74,11 +74,6 @@ export const effectsUpdaterMiddleware = store => next => action => {
     handleTimeBasedEffectsUpdate(state, store.dispatch);
   }
   
-  // Also recalculate effects when weather changes
-  if (action.type === ACTION_TYPES.UPDATE_WEATHER) {
-    const state = store.getState();
-    handleTimeBasedEffectsUpdate(state, store.dispatch);
-  }
   
   // Also recalculate effects when equipment changes
   if (
@@ -135,22 +130,9 @@ export const effectsUpdaterMiddleware = store => next => action => {
   return result;
 };
 
-/**
- * Listener for GameTimeUpdater component
- * This can be attached to the time update event
- * 
- * @param {Object} event - The custom event
- * @param {Object} state - Current game state
- * @param {Function} dispatch - Redux dispatch function
- */
-export const timeUpdateListener = (event, state, dispatch) => {
-  // Recalculate effects when time updates
-  handleTimeBasedEffectsUpdate(state, dispatch);
-};
 
 export default {
   handleTimeBasedEffectsUpdate,
   recalculatePlayerEffectsReducer,
   effectsUpdaterMiddleware,
-  timeUpdateListener
 };

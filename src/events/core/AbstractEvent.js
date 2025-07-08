@@ -43,32 +43,8 @@ export class AbstractEvent {
       return false;
     }
     
-    // Проверка модификаторов сезона
-    if (this.conditions.seasonModifiers) {
-      const currentSeason = context.world.season;
-      const seasonModifier = this.conditions.seasonModifiers[currentSeason] || 1.0;
-      if (Math.random() > seasonModifier * this.getBaseChance()) {
-        return false;
-      }
-    }
     
-    // Проверка модификаторов времени суток
-    if (this.conditions.timeModifiers) {
-      const currentTime = this.getDayPeriod(context.world.time.hour);
-      const timeModifier = this.conditions.timeModifiers[currentTime] || 1.0;
-      if (Math.random() > timeModifier * this.getBaseChance()) {
-        return false;
-      }
-    }
     
-    // Проверка модификаторов погоды
-    if (this.conditions.weatherModifiers) {
-      const currentWeather = context.world.weather.type;
-      const weatherModifier = this.conditions.weatherModifiers[currentWeather] || 1.0;
-      if (Math.random() > weatherModifier * this.getBaseChance()) {
-        return false;
-      }
-    }
     
     // Проверка модификаторов локации
     if (this.conditions.locationModifiers) {
@@ -107,20 +83,6 @@ export class AbstractEvent {
     }
   }
   
-  /**
-   * Определяет период дня по часу
-   * @param {number} hour - Час (0-23)
-   * @returns {string} Период дня (dawn, morning, noon...)
-   */
-  getDayPeriod(hour) {
-    if (hour >= 5 && hour < 8) return 'dawn';
-    if (hour >= 8 && hour < 12) return 'morning';
-    if (hour >= 12 && hour < 14) return 'noon';
-    if (hour >= 14 && hour < 18) return 'afternoon';
-    if (hour >= 18 && hour < 21) return 'evening';
-    if (hour >= 21 || hour < 1) return 'night';
-    return 'deepNight';
-  }
   
   /**
    * Активирует событие
@@ -301,47 +263,13 @@ export class AbstractEvent {
    * @param {number} durationMinutes - Длительность в минутах
    * @returns {Object} Время окончания события
    */
-  calculateEndTime(startTime, durationMinutes) {
-    const endTime = { ...startTime };
-    endTime.minute += durationMinutes;
-    
-    while (endTime.minute >= 60) {
-      endTime.minute -= 60;
-      endTime.hour += 1;
-    }
-    
-    while (endTime.hour >= 24) {
-      endTime.hour -= 24;
-      // В реальной реализации увеличивать день/месяц/год
-    }
-    
-    return endTime;
-  }
   
   /**
    * Проверяет, закончилось ли событие
    * @param {Object} currentTime - Текущее игровое время
    * @returns {boolean} true, если событие истекло
    */
-  isExpired(currentTime) {
-    if (!this._isActive || !this._endTime) return false;
-    
-    // Проверка, наступило ли время окончания события
-    return this.isTimeAfter(currentTime, this._endTime);
-  }
   
-  /**
-   * Проверяет, наступило ли второе время после первого
-   * @param {Object} time1 - Первое время
-   * @param {Object} time2 - Второе время
-   * @returns {boolean} true, если time1 после time2
-   */
-  isTimeAfter(time1, time2) {
-    // Упрощенная проверка, только часы и минуты
-    if (time1.hour > time2.hour) return true;
-    if (time1.hour === time2.hour && time1.minute >= time2.minute) return true;
-    return false;
-  }
   
   /**
    * Завершает событие

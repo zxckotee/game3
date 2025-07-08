@@ -20,7 +20,7 @@ module.exports = {
         onDelete: 'CASCADE'
       },
       sourceType: {
-        type: Sequelize.ENUM('technique', 'weather', 'sect', 'equipment', 'pet', 'status'),
+        type: Sequelize.ENUM('technique', 'sect', 'equipment', 'pet', 'status'),
         allowNull: false,
         field: 'source_type'
       },

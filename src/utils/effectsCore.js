@@ -356,7 +356,6 @@ export function dumpEffectsState(state) {
   
   const result = {
     playerEffects: state.player?.statusEffects || {},
-    weatherEffects: state.world?.weather?.weatherEffects || [],
     locationEffects: state.world?.currentLocation?.effects || [],
     sectEffects: state.player?.sect?.benefits || {},
     spiritPetEffects: (() => {
@@ -370,7 +369,6 @@ export function dumpEffectsState(state) {
     })(),
     effectsCount: {
       player: Object.keys(state.player?.statusEffects || {}).length,
-      weather: (state.world?.weather?.weatherEffects || []).length,
       location: (state.world?.currentLocation?.effects || []).length,
       spiritPet: (() => {
         if (!state.player?.spiritPets?.activePetId || !state.player?.spiritPets?.pets) {

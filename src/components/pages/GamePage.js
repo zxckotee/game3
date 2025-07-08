@@ -4,12 +4,8 @@ import { useGame } from '../../context/GameContext';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
 
-// Импортируем компоненты времени и погоды
-import WorldTimeWidget from '../ui/WorldTimeWidget';
-import ForecastWidget from '../world/ForecastWidget';
+// Импортируем компоненты UI
 import ActiveEffectsPanel from '../ui/ActiveEffectsPanel';
-import VisualEffectsLayer from '../effects/VisualEffectsLayer';
-import WeatherDetailScreen from '../screens/WeatherDetailScreen';
 
 // Импортируем компоненты вкладок
 import CultivationTab from '../tabs/CultivationTab';
@@ -197,7 +193,7 @@ function GamePage() {
   const [activeTab, setActiveTab] = useState('cultivation');
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
-  const [showWeatherDetail, setShowWeatherDetail] = useState(false);
+  // Состояние для модальных окон
 
   // Проверка наличия данных авторизации при загрузке страницы
   useEffect(() => {
@@ -236,10 +232,12 @@ function GamePage() {
   // Имитация игрового времени
   useEffect(() => {
     const timer = setInterval(() => {
-      // Получаем текущие значения
-      const currentHour = state.world.time.hour;
-      const currentMinute = state.world.time.minute;
-      const currentDay = state.world.time.day;
+      // Получаем текущие значения с проверкой на существование объектов
+      const worldTime = state?.world?.time || {};
+      const currentHour = worldTime.hour || 12;
+      const currentMinute = worldTime.minute || 0;
+      const currentDay = worldTime.day || 1;
+      const currentSeason = worldTime.season || 'spring';
       
       // Вычисляем новые значения
       const newMinute = (currentMinute + 10) % 60;
@@ -263,7 +261,7 @@ function GamePage() {
         hour: newHour,
         day: newDay, // Явно задаем день
         // Сохраняем текущий сезон
-        season: state.world.time.season
+        season: currentSeason
       });
     }, 1000); // Каждую секунду = 10 игровых минут
     
@@ -638,26 +636,6 @@ function GamePage() {
   
   return (
     <GameContainer>
-      {/* Слой визуальных эффектов для погоды и времени суток */}
-      <VisualEffectsLayer />
-      
-      {/* Модальное окно с детальной информацией о погоде */}
-      {showWeatherDetail && (
-        <div style={{ 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          width: '100%', 
-          height: '100%', 
-          background: 'rgba(0,0,0,0.7)', 
-          zIndex: 1000, 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center' 
-        }}>
-          <WeatherDetailScreen onClose={() => setShowWeatherDetail(false)} />
-        </div>
-      )}
       <TopBar>
         <PlayerInfo>
           <Avatar>
@@ -780,12 +758,7 @@ function GamePage() {
         </MainContent>
         
         <RightPanel>
-          {/* Виджет времени и погоды */}
-          <div style={{ cursor: 'pointer' }} onClick={() => setShowWeatherDetail(true)}>
-            <WorldTimeWidget />
-          </div>
-          
-          {/* Панель активных эффектов от погоды, времени суток и локации */}
+          {/* Панель активных эффектов */}
           <ActiveEffectsPanel />
           
           <div>

@@ -20,7 +20,6 @@ class Location {
     this.type = data.type || 'default';
     
     // Модификаторы погоды (увеличивают или уменьшают вероятность определенной погоды)
-    this.weatherModifiers = data.weatherModifiers || {};
     
     // Особые эффекты локации
     this.effects = data.effects || [];
@@ -41,7 +40,6 @@ class Location {
   /**
    * Возвращает модификаторы для игрока в данной локации
    * @param {Object} player - Объект игрока
-   * @param {Object} weather - Текущая погода
    * @returns {Object} - Модификаторы для игрока
    */
   getPlayerModifiers(player, weather) {
@@ -89,170 +87,7 @@ class Location {
       }
     }
     
-    // Учитываем взаимодействие погоды и локации для особых эффектов
-    if (weather && weather.currentWeather) {
-      const weatherType = weather.currentWeather;
-      const seasonType = weather.currentSeason;
       
-      // Проверяем особые комбинации погоды и локации
-      const weatherLocationCombos = {
-        // Дождь в лесу
-        'rain_spirit_forest': {
-          description: 'Дождь в Духовном Лесу',
-          effects: [
-            { type: 'cultivation_bonus', modifier: 15 },
-            { type: 'resource_bonus', target: 'herbs', modifier: 30 }
-          ]
-        },
-        // Гроза в горах
-        'thunderstorm_fire_mountain': {
-          description: 'Гроза на Огненной Горе',
-          effects: [
-            { type: 'element_cultivation', element: 'lightning', modifier: 35 },
-            { type: 'special_encounter', chance: 0.1, encounter: 'lightning_phoenix' }
-          ]
-        },
-        // Ясная погода на равнинах
-        'clear_wind_plains': {
-          description: 'Ясный день на Равнинах Ветров',
-          effects: [
-            { type: 'movement_speed', modifier: 25 },
-            { type: 'perception', modifier: 20 }
-          ]
-        },
-        // Снег в ледяных пиках
-        'snow_frozen_peaks': {
-          description: 'Снегопад на Ледяных Пиках',
-          effects: [
-            { type: 'element_cultivation', element: 'water', modifier: 50 },
-            { type: 'special_resource', resource: 'frost_essence' }
-          ]
-        },
-        // Туман у озера
-        'fog_lake_of_reflections': {
-          description: 'Туман на Озере Отражений',
-          effects: [
-            { type: 'stealth', modifier: 40 },
-            { type: 'cultivation_insight', chance: 0.15 }
-          ]
-        }
-      };
-      
-      // Ключ для проверки особой комбинации
-      const comboKey = `${weatherType}_${this.id}`;
-      
-      // Если есть особая комбинация, применяем её эффекты
-      if (weatherLocationCombos[comboKey]) {
-        const combo = weatherLocationCombos[comboKey];
-        for (const effect of combo.effects) {
-          switch (effect.type) {
-            case 'cultivation_bonus':
-              modifiers.cultivation *= (1 + effect.modifier / 100);
-              break;
-            case 'resource_bonus':
-              modifiers.resourceGathering[effect.target] = (modifiers.resourceGathering[effect.target] || 1.0) * (1 + effect.modifier / 100);
-              break;
-            case 'movement_speed':
-              modifiers.movement *= (1 + effect.modifier / 100);
-              break;
-            case 'perception':
-              modifiers.perception *= (1 + effect.modifier / 100);
-              break;
-            case 'element_cultivation':
-              if (effect.element && effect.modifier) {
-                modifiers.elementalCultivation[effect.element] = (modifiers.elementalCultivation[effect.element] || 1.0) * (1 + effect.modifier / 100);
-              }
-              break;
-            case 'special_resource':
-              modifiers.specialResources = modifiers.specialResources || [];
-              modifiers.specialResources.push(effect.resource);
-              break;
-            case 'stealth':
-              modifiers.stealth = (modifiers.stealth || 1.0) * (1 + effect.modifier / 100);
-              break;
-            case 'cultivation_insight':
-              modifiers.cultivationInsight = (modifiers.cultivationInsight || 0) + effect.chance;
-              break;
-          }
-        }
-        
-        // Сохраняем информацию о текущей особой комбинации
-        modifiers.specialCombination = {
-          id: comboKey,
-          description: combo.description
-        };
-      }
-      
-      // Проверяем комбинации сезона и локации
-      const seasonLocationCombos = {
-        // Весна в лесу
-        'spring_spirit_forest': {
-          description: 'Весна в Духовном Лесу',
-          effects: [
-            { type: 'resource_bonus', target: 'herbs', modifier: 50 },
-            { type: 'special_resource', resource: 'spirit_blossom' }
-          ]
-        },
-        // Лето в горах
-        'summer_fire_mountain': {
-          description: 'Лето на Огненной Горе',
-          effects: [
-            { type: 'element_cultivation', element: 'fire', modifier: 50 },
-            { type: 'movement_penalty', modifier: -15 } // Жарко, сложнее двигаться
-          ]
-        },
-        // Осень на равнинах
-        'autumn_wind_plains': {
-          description: 'Осень на Равнинах Ветров',
-          effects: [
-            { type: 'element_cultivation', element: 'wind', modifier: 30 },
-            { type: 'movement_speed', modifier: 20 }
-          ]
-        },
-        // Зима в ледяных пиках
-        'winter_frozen_peaks': {
-          description: 'Зима на Ледяных Пиках',
-          effects: [
-            { type: 'element_cultivation', element: 'water', modifier: 60 },
-            { type: 'movement_penalty', modifier: -30 },
-            { type: 'special_resource', resource: 'eternal_ice' }
-          ]
-        }
-      };
-      
-      // Ключ для проверки комбинации сезона и локации
-      const seasonComboKey = `${seasonType}_${this.id}`;
-      
-      // Если есть особая комбинация сезона и локации, применяем её эффекты
-      if (seasonLocationCombos[seasonComboKey]) {
-        const combo = seasonLocationCombos[seasonComboKey];
-        for (const effect of combo.effects) {
-          switch (effect.type) {
-            case 'resource_bonus':
-              modifiers.resourceGathering[effect.target] = (modifiers.resourceGathering[effect.target] || 1.0) * (1 + effect.modifier / 100);
-              break;
-            case 'element_cultivation':
-              if (effect.element && effect.modifier) {
-                modifiers.elementalCultivation[effect.element] = (modifiers.elementalCultivation[effect.element] || 1.0) * (1 + effect.modifier / 100);
-              }
-              break;
-            case 'movement_speed':
-            case 'movement_penalty':
-              modifiers.movement *= (1 + effect.modifier / 100);
-              break;
-            case 'special_resource':
-              modifiers.specialResources = modifiers.specialResources || [];
-              modifiers.specialResources.push(effect.resource);
-              break;
-          }
-        }
-        
-        // Сохраняем информацию о текущей особой комбинации сезона
-        modifiers.specialSeasonCombination = {
-          id: seasonComboKey,
-          description: combo.description
-        };
-      }
     }
     
     return modifiers;
@@ -260,7 +95,6 @@ class Location {
   
   /**
    * Получение визуальных эффектов для локации
-   * @param {Object} weather - Текущая погода
    * @returns {Object} - Визуальные эффекты (фильтры, анимации и т.д.)
    */
   getVisualEffects(weather) {
@@ -309,40 +143,6 @@ class Location {
       }
     }
     
-    // Если есть погода, проверяем особые комбинации локации и погоды
-    if (weather && weather.currentWeather) {
-      const comboKey = `${weather.currentWeather}_${this.id}`;
-      
-      // Особые визуальные эффекты для комбинаций погоды и локации
-      const specialVisualEffects = {
-        'rain_spirit_forest': {
-          filter: 'saturate(1.3) brightness(0.85) contrast(1.1)',
-          overlay: 'misty_rain',
-          animations: ['gentle_leaf_movement']
-        },
-        'thunderstorm_fire_mountain': {
-          filter: 'contrast(1.4) brightness(0.7) saturate(1.2)',
-          animations: ['lightning_flash', 'smoke_rise']
-        },
-        'fog_lake_of_reflections': {
-          filter: 'brightness(0.9) contrast(0.9) saturate(0.7)',
-          overlay: 'thick_mist',
-          animations: ['water_ripple']
-        },
-        'snow_frozen_peaks': {
-          filter: 'brightness(1.4) contrast(1.2) saturate(0.7)',
-          overlay: 'snow_particles',
-          animations: ['blizzard']
-        }
-      };
-      
-      if (specialVisualEffects[comboKey]) {
-        const special = specialVisualEffects[comboKey];
-        if (special.filter) effects.filter = special.filter;
-        if (special.overlay) effects.overlay = special.overlay;
-        if (special.animations) effects.animations = [...effects.animations, ...special.animations];
-      }
-    }
     
     return effects;
   }

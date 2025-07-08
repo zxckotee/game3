@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { useGame } from '../../context/GameContext';
-import useTimeWeather from '../../hooks/useTimeWeather';
 
 // Анимации
 const fadeIn = keyframes`
@@ -104,63 +103,6 @@ const DayPeriod = styled.span`
   transition: all 0.3s ease;
 `;
 
-// Секция погоды
-const WeatherSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-// Иконка погоды
-const WeatherIcon = styled.div`
-  font-size: 1.2rem;
-  animation: ${float} 3s infinite ease-in-out;
-  
-  /* Особая анимация для разных типов погоды */
-  ${props => props.type === 'thunderstorm' && css`
-    animation: ${pulse} 1.5s infinite ease-in-out;
-  `}
-  
-  ${props => props.type === 'rain' && css`
-    animation: ${float} 2s infinite ease-in-out;
-  `}
-`;
-
-// Текст погоды
-const WeatherText = styled.div`
-  font-size: 1rem;
-  position: relative;
-  
-  ${props => props.updating && css`
-    animation: ${pulse} 0.5s ease-in-out;
-  `}
-  
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(
-      to right, 
-      transparent, 
-      ${props => {
-        switch (props.type) {
-          case 'clear': return '#FFD700';
-          case 'cloudy': return '#B0C4DE';
-          case 'rain': return '#4682B4';
-          case 'thunderstorm': return '#483D8B';
-          case 'fog': return '#D3D3D3';
-          case 'snow': return '#F0F8FF';
-          default: return '#FFD700';
-        }
-      }}, 
-      transparent
-    );
-  }
-`;
-
 // Текст дня
 const DayText = styled.div`
   font-size: 0.8rem;
@@ -187,34 +129,6 @@ const DayText = styled.div`
   }
 `;
 
-// Интенсивность погоды
-const WeatherIntensity = styled.span`
-  display: inline-block;
-  font-size: 0.8rem;
-  opacity: 0.8;
-  margin-left: 4px;
-  
-  /* Прогресс-бар интенсивности */
-  &::after {
-    content: '';
-    display: block;
-    width: 100%;
-    height: 2px;
-    margin-top: 1px;
-    background: linear-gradient(to right, #444, ${props => {
-      switch (props.type) {
-        case 'clear': return '#FFD700';
-        case 'cloudy': return '#B0C4DE';
-        case 'rain': return '#4682B4';
-        case 'thunderstorm': return '#483D8B';
-        case 'fog': return '#D3D3D3';
-        case 'snow': return '#F0F8FF';
-        default: return '#FFD700';
-      }
-    }});
-  }
-`;
-
 // Иконки для времени суток
 const daytimeIcons = {
   dawn: '🌅',
@@ -224,16 +138,6 @@ const daytimeIcons = {
   evening: '🌇',
   night: '🌙',
   deepNight: '🌚'
-};
-
-// Иконки для погоды
-const weatherIcons = {
-  clear: '☀️',
-  cloudy: '☁️',
-  rain: '🌧️',
-  thunderstorm: '⛈️',
-  fog: '🌫️',
-  snow: '❄️'
 };
 
 // Русские названия времен суток
@@ -247,65 +151,50 @@ const daytimeNames = {
   deepNight: 'глубокая ночь'
 };
 
-// Русские названия погоды
-const weatherNames = {
-  clear: 'Ясно',
-  cloudy: 'Облачно',
-  rain: 'Дождь',
-  thunderstorm: 'Гроза',
-  fog: 'Туман',
-  snow: 'Снег'
-};
-
 /**
- * Компонент верхней панели с информацией о времени и погоде
+ * Компонент верхней панели с информацией о времени
  */
-function TopTimeWeatherBar() {
-  // Используем хук useTimeWeather для получения синхронизированных данных о времени и погоде
-  const timeWeather = useTimeWeather();
-  
+function TopTimeBar() {
+  const { state: gameState = {} } = useGame() || {};
+  const { world = {} } = gameState || {};
+  const { time = {} } = world || {};
+
+  const {
+    hour = 12,
+    minute = 0,
+    daytimePeriod = 'afternoon',
+    isDayTime = true,
+    dayCount = 1
+  } = time || {};
+
+  const formattedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
   // Используем useReducer для принудительного перерисовывания компонента
   const [_, forceUpdate] = useReducer(x => x + 1, 0);
   
   // Состояние для анимации обновления
   const [updating, setUpdating] = useState(false);
   const [lastTime, setLastTime] = useState(null);
-  const [lastWeather, setLastWeather] = useState(null);
   
-  // Используем данные из хука useTimeWeather
-  const { 
-    hour, 
-    minute, 
-    formattedTime, 
-    isDayTime, 
-    daytimePeriod,
-    currentWeather,
-    weatherIntensity,
-    dayCount,
-    forceUpdateCounter
-  } = timeWeather;
-  
-  // Отслеживаем изменения времени и погоды для анимации
+  // Отслеживаем изменения времени для анимации
   useEffect(() => {
-    if (lastTime && (lastTime !== formattedTime || lastWeather !== currentWeather)) {
+    if (lastTime && (lastTime !== formattedTime)) {
       setUpdating(true);
       setTimeout(() => setUpdating(false), 500);
     }
     
     setLastTime(formattedTime);
-    setLastWeather(currentWeather);
-  }, [formattedTime, currentWeather, lastTime, lastWeather]);
+  }, [formattedTime, lastTime]);
   
   // Принудительное обновление компонента при изменении счетчика в хуке
   useEffect(() => {
     // Обновить компонент при любом изменении данных в хуке
     forceUpdate();
-    console.log('🔄 TopTimeWeatherBar: Принудительное обновление', {
-      forceUpdateCounter,
+    console.log('🔄 TopTimeBar: Принудительное обновление', {
       time: formattedTime,
       day: dayCount
     });
-  }, [forceUpdateCounter, formattedTime, dayCount]);
+  }, [formattedTime, dayCount]);
   
   return (
     <TopBar>
@@ -320,20 +209,9 @@ function TopTimeWeatherBar() {
         </TimeText>
       </TimeSection>
       
-      <WeatherSection>
-        <DayText>День {dayCount}</DayText>
-        <WeatherIcon type={currentWeather}>
-          {weatherIcons[currentWeather]}
-        </WeatherIcon>
-        <WeatherText updating={updating} type={currentWeather}>
-          {weatherNames[currentWeather]}
-          <WeatherIntensity type={currentWeather}>
-            ({Math.round(weatherIntensity * 10)}/10)
-          </WeatherIntensity>
-        </WeatherText>
-      </WeatherSection>
+      <DayText>День {dayCount}</DayText>
     </TopBar>
   );
 }
 
-export default TopTimeWeatherBar;
+export default TopTimeBar;
