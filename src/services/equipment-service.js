@@ -6,35 +6,6 @@ const modelRegistry = require('../models/registry');
 const { Op } = require('sequelize');
 const connectionProvider = require('../utils/connection-provider');
 
-// Инициализируем переменные для моделей и sequelize
-let EquipmentItem, EquipmentItemEffect, EquipmentItemRequirement, EquipmentItemSpecialEffect;
-let sequelize;
-
-// Асинхронная функция для инициализации моделей
-async function initModels() {
-  if (!EquipmentItem) {
-    // Получаем экземпляр Sequelize
-    const { db } = await connectionProvider.getSequelizeInstance();
-    sequelize = db;
-    
-    // Получаем модели из реестра
-    const equipmentModels = modelRegistry.getModel('EquipmentItem');
-    
-    if (!equipmentModels) {
-      throw new Error('Модели EquipmentItem не найдены в реестре');
-    }
-    
-    EquipmentItem = equipmentModels.EquipmentItem;
-    EquipmentItemEffect = equipmentModels.EquipmentItemEffect;
-    EquipmentItemRequirement = equipmentModels.EquipmentItemRequirement;
-    EquipmentItemSpecialEffect = equipmentModels.EquipmentItemSpecialEffect;
-  }
-}
-
-// Вызываем инициализацию моделей
-initModels().catch(error => {
-  console.error('Ошибка при инициализации моделей в equipment-service:', error);
-});
 
 /**
  * Получение всех предметов экипировки
@@ -46,10 +17,16 @@ initModels().catch(error => {
  * @returns {Promise<Array>} Массив предметов экипировки
  */
 async function getAllEquipmentItems(options = {}) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модели через реестр
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+    
     const { limit, offset, orderBy = 'name', orderDirection = 'ASC' } = options;
     
     return await EquipmentItem.findAll({
@@ -74,9 +51,9 @@ async function getAllEquipmentItems(options = {}) {
  * @returns {Promise<Object|null>} Предмет экипировки или null, если предмет не найден
  */
 async function getEquipmentItemById(id) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
+
+  await modelRegistry.initializeRegistry();
+  const EquipmentItem = modelRegistry.getModel('EquipmentItem');
   try {
     return await EquipmentItem.findByPk(id, {
       include: [
@@ -97,10 +74,15 @@ async function getEquipmentItemById(id) {
  * @returns {Promise<Object|null>} Предмет экипировки или null, если предмет не найден
  */
 async function getEquipmentItemByItemId(itemId) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    // Получаем модели через реестр
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+    
     return await EquipmentItem.findOne({
       where: { item_id: itemId },
       include: [
@@ -121,10 +103,13 @@ async function getEquipmentItemByItemId(itemId) {
  * @returns {Promise<Array>} Массив предметов экипировки указанного типа
  */
 async function getEquipmentItemsByType(type) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
     return await EquipmentItem.findAll({
       where: { type },
       include: [
@@ -146,10 +131,13 @@ async function getEquipmentItemsByType(type) {
  * @returns {Promise<Array>} Массив предметов экипировки указанной редкости
  */
 async function getEquipmentItemsByRarity(rarity) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
     return await EquipmentItem.findAll({
       where: { rarity },
       include: [
@@ -171,10 +159,13 @@ async function getEquipmentItemsByRarity(rarity) {
  * @returns {Promise<Array>} Массив предметов экипировки из указанного набора
  */
 async function getEquipmentItemsBySet(setId) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
     return await EquipmentItem.findAll({
       where: { set_id: setId },
       include: [
@@ -199,12 +190,16 @@ async function getEquipmentItemsBySet(setId) {
  * @returns {Promise<Object>} Созданный предмет экипировки
  */
 async function createEquipmentItem(itemData, effectsData = [], requirementsData = [], specialEffectsData = []) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
-  const transaction = await sequelize.transaction();
+  const { db } = await connectionProvider.getSequelizeInstance();
+  const transaction = await db.transaction();
   
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
     // Создаем предмет
     const item = await EquipmentItem.create(itemData, { transaction });
     
@@ -253,10 +248,10 @@ async function createEquipmentItem(itemData, effectsData = [], requirementsData 
  * @returns {Promise<Object|null>} Обновленный предмет экипировки или null, если предмет не найден
  */
 async function updateEquipmentItem(itemId, itemData) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+
     const item = await EquipmentItem.findOne({ where: { item_id: itemId } });
     if (!item) {
       return null;
@@ -277,13 +272,17 @@ async function updateEquipmentItem(itemId, itemData) {
  * @returns {Promise<boolean>} true, если предмет успешно удален, иначе false
  */
 async function deleteEquipmentItem(itemId) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
-  const transaction = await sequelize.transaction();
+  const { db } = await connectionProvider.getSequelizeInstance();
+  const transaction = await db.transaction();
   
   try {
-    const item = await EquipmentItem.findOne({ 
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
+    const item = await EquipmentItem.findOne({
       where: { item_id: itemId },
       transaction
     });
@@ -294,17 +293,17 @@ async function deleteEquipmentItem(itemId) {
     }
     
     // Удаляем связанные данные
-    await EquipmentItemEffect.destroy({ 
+    await EquipmentItemEffect.destroy({
       where: { item_id: itemId },
       transaction
     });
     
-    await EquipmentItemRequirement.destroy({ 
+    await EquipmentItemRequirement.destroy({
       where: { item_id: itemId },
       transaction
     });
     
-    await EquipmentItemSpecialEffect.destroy({ 
+    await EquipmentItemSpecialEffect.destroy({
       where: { item_id: itemId },
       transaction
     });
@@ -328,10 +327,11 @@ async function deleteEquipmentItem(itemId) {
  * @returns {Promise<Object|null>} Созданный эффект или null, если предмет не найден
  */
 async function addEffectToEquipmentItem(itemId, effectData) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+
     const item = await EquipmentItem.findOne({ where: { item_id: itemId } });
     if (!item) {
       return null;
@@ -355,10 +355,10 @@ async function addEffectToEquipmentItem(itemId, effectData) {
  * @returns {Promise<boolean>} true, если эффект успешно удален, иначе false
  */
 async function removeEffectFromEquipmentItem(effectId) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+
     const effect = await EquipmentItemEffect.findByPk(effectId);
     if (!effect) {
       return false;
@@ -379,10 +379,11 @@ async function removeEffectFromEquipmentItem(effectId) {
  * @returns {Promise<Object|null>} Созданное требование или null, если предмет не найден
  */
 async function addRequirementToEquipmentItem(itemId, requirementData) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+
     const item = await EquipmentItem.findOne({ where: { item_id: itemId } });
     if (!item) {
       return null;
@@ -406,10 +407,10 @@ async function addRequirementToEquipmentItem(itemId, requirementData) {
  * @returns {Promise<boolean>} true, если требование успешно удалено, иначе false
  */
 async function removeRequirementFromEquipmentItem(requirementId) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+
     const requirement = await EquipmentItemRequirement.findByPk(requirementId);
     if (!requirement) {
       return false;
@@ -430,10 +431,11 @@ async function removeRequirementFromEquipmentItem(requirementId) {
  * @returns {Promise<Object|null>} Созданный специальный эффект или null, если предмет не найден
  */
 async function addSpecialEffectToEquipmentItem(itemId, specialEffectData) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
     const item = await EquipmentItem.findOne({ where: { item_id: itemId } });
     if (!item) {
       return null;
@@ -457,10 +459,10 @@ async function addSpecialEffectToEquipmentItem(itemId, specialEffectData) {
  * @returns {Promise<boolean>} true, если специальный эффект успешно удален, иначе false
  */
 async function removeSpecialEffectFromEquipmentItem(specialEffectId) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
     const specialEffect = await EquipmentItemSpecialEffect.findByPk(specialEffectId);
     if (!specialEffect) {
       return false;
@@ -481,10 +483,8 @@ async function removeSpecialEffectFromEquipmentItem(specialEffectId) {
  * @returns {Promise<Object>} Результат проверки { meetsRequirements: boolean, failedRequirements: Array }
  */
 async function checkCharacterMeetsItemRequirements(itemId, character) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
     const item = await getEquipmentItemByItemId(itemId);
     if (!item) {
       throw new Error(`Предмет с item_id ${itemId} не найден`);
@@ -504,10 +504,8 @@ async function checkCharacterMeetsItemRequirements(itemId, character) {
  * @returns {Promise<Object>} Обновленный объект персонажа с примененными эффектами
  */
 async function applyItemEffectsToCharacter(itemId, character) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
     const item = await getEquipmentItemByItemId(itemId);
     if (!item) {
       throw new Error(`Предмет с item_id ${itemId} не найден`);
@@ -526,10 +524,13 @@ async function applyItemEffectsToCharacter(itemId, character) {
  * @returns {Promise<Array>} Массив найденных предметов экипировки
  */
 async function searchEquipmentItems(searchTerm) {
-  // Убеждаемся, что модели инициализированы
-  if (!EquipmentItem) await initModels();
-  
   try {
+    await modelRegistry.initializeRegistry();
+    const EquipmentItem = modelRegistry.getModel('EquipmentItem');
+    const EquipmentItemEffect = modelRegistry.getModel('EquipmentItemEffect');
+    const EquipmentItemRequirement = modelRegistry.getModel('EquipmentItemRequirement');
+    const EquipmentItemSpecialEffect = modelRegistry.getModel('EquipmentItemSpecialEffect');
+
     return await EquipmentItem.findAll({
       where: {
         [Op.or]: [

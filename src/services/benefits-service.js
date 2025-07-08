@@ -4,51 +4,24 @@
  */
 const modelRegistry = require('../models/registry');
 const { Op } = require('sequelize');
-const sectService = require('./sect-service');
+const SectService = require('./sect-service');
 const inventoryService = require('./inventory-service');
 const equipmentService = require('./equipment-service');
 
-// Инициализируем переменные для моделей
-let Benefit;
-let PlayerBenefit;
-
-/**
- * Асинхронная функция для инициализации моделей
- */
-async function initModels() {
-  if (!Benefit) {
-    // Получаем модель из реестра
-    Benefit = modelRegistry.getModel('Benefit');
-    
-    if (!Benefit) {
-      throw new Error('Модель Benefit не найдена в реестре');
-    }
-  }
-  
-  if (!PlayerBenefit) {
-    // Получаем модель пользовательских бонусов из реестра
-    PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
-    
-    if (!PlayerBenefit) {
-      throw new Error('Модель PlayerBenefit не найдена в реестре');
-    }
-  }
-}
-
-// Вызываем инициализацию моделей
-initModels().catch(error => {
-  console.error('Ошибка при инициализации моделей в benefits-service:', error);
-});
+// Импортируем необходимые модули
 
 /**
  * Получение всех бонусов
  * @returns {Promise<Array>} Массив всех бонусов
  */
 async function getAllBenefits() {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     return await Benefit.findAll({
       order: [['type', 'ASC'], ['modifier_type', 'ASC']]
     });
@@ -64,10 +37,13 @@ async function getAllBenefits() {
  * @returns {Promise<Object|null>} Объект бонуса или null, если бонус не найден
  */
 async function getBenefitById(id) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     return await Benefit.findByPk(id);
   } catch (error) {
     console.error(`Ошибка при получении бонуса с ID ${id}:`, error);
@@ -81,10 +57,13 @@ async function getBenefitById(id) {
  * @returns {Promise<Array>} Массив бонусов указанного типа
  */
 async function getBenefitsByType(type) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     return await Benefit.findAll({
       where: { type },
       order: [['modifier_type', 'ASC'], ['modifier', 'DESC']]
@@ -101,10 +80,13 @@ async function getBenefitsByType(type) {
  * @returns {Promise<Array>} Массив бонусов с указанным типом модификатора
  */
 async function getBenefitsByModifierType(modifierType) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     return await Benefit.findAll({
       where: { modifier_type: modifierType },
       order: [['type', 'ASC'], ['modifier', 'DESC']]
@@ -120,10 +102,13 @@ async function getBenefitsByModifierType(modifierType) {
  * @returns {Promise<Array>} Массив положительных бонусов
  */
 async function getPositiveBenefits() {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     return await Benefit.findAll({
       where: {
         modifier: {
@@ -143,10 +128,13 @@ async function getPositiveBenefits() {
  * @returns {Promise<Array>} Массив отрицательных бонусов
  */
 async function getNegativeBenefits() {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     return await Benefit.findAll({
       where: {
         modifier: {
@@ -171,10 +159,13 @@ async function getNegativeBenefits() {
  * @returns {Promise<Object>} Созданный бонус
  */
 async function createBenefit(benefitData) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     return await Benefit.create(benefitData);
   } catch (error) {
     console.error('Ошибка при создании нового бонуса:', error);
@@ -189,10 +180,13 @@ async function createBenefit(benefitData) {
  * @returns {Promise<Object|null>} Обновленный бонус или null, если бонус не найден
  */
 async function updateBenefit(id, benefitData) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     const benefit = await Benefit.findByPk(id);
     if (!benefit) {
       return null;
@@ -211,10 +205,13 @@ async function updateBenefit(id, benefitData) {
  * @returns {Promise<boolean>} true, если бонус успешно удален, иначе false
  */
 async function deleteBenefit(id) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     const benefit = await Benefit.findByPk(id);
     if (!benefit) {
       return false;
@@ -235,10 +232,11 @@ async function deleteBenefit(id) {
  * @returns {Promise<Object>} Обновленные характеристики персонажа
  */
 async function applyBenefitToCharacter(characterStats, benefit) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    const Benefit = modelRegistry.getModel('Benefit');
+    
     // Если передан ID бонуса, получаем объект бонуса
     if (typeof benefit === 'number') {
       benefit = await getBenefitById(benefit);
@@ -347,10 +345,10 @@ async function applyBenefitToCharacter(characterStats, benefit) {
  * @returns {Promise<Object>} Обновленные характеристики персонажа
  */
 async function applyBenefitsToCharacter(characterStats, benefits) {
-  // Убеждаемся, что модели инициализированы
-  if (!Benefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
     let updatedStats = { ...characterStats };
     
     for (const benefit of benefits) {
@@ -373,10 +371,13 @@ async function applyBenefitsToCharacter(characterStats, benefits) {
  * @returns {Promise<Array>} - Массив бонусов пользователя
  */
 async function getUserBenefits(userId, options = {}) {
-  // Убеждаемся, что модели инициализированы
-  if (!PlayerBenefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
+    
     const whereClause = { user_id: userId };
     
     // Добавляем фильтр по источнику, если указан
@@ -413,10 +414,13 @@ async function getUserBenefits(userId, options = {}) {
  * @returns {Promise<Object|null>} - Созданный бонус или null в случае ошибки
  */
 async function addUserBenefit(userId, benefitData) {
-  // Убеждаемся, что модели инициализированы
-  if (!PlayerBenefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
+    
     // Создаем объект данных с user_id
     const data = {
       user_id: userId,
@@ -437,10 +441,13 @@ async function addUserBenefit(userId, benefitData) {
  * @returns {Promise<boolean>} - true, если бонус успешно удален, иначе false
  */
 async function removeUserBenefit(benefitId) {
-  // Убеждаемся, что модели инициализированы
-  if (!PlayerBenefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
+    
     const benefit = await PlayerBenefit.findByPk(benefitId);
     if (!benefit) {
       return false;
@@ -463,10 +470,13 @@ async function removeUserBenefit(benefitId) {
  * @returns {Promise<number>} - Количество удаленных бонусов
  */
 async function removeAllUserBenefits(userId, options = {}) {
-  // Убеждаемся, что модели инициализированы
-  if (!PlayerBenefit) await initModels();
-  
   try {
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
+    
+    // Получаем модель через реестр
+    const PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
+    
     const whereClause = { user_id: userId };
     
     // Добавляем фильтр по источнику, если указан
@@ -498,12 +508,27 @@ async function removeAllUserBenefits(userId, options = {}) {
  */
 async function collectAllBenefits(userId, saveToDatabase = false) {
   try {
-    // 1. Получаем бенефиты секты
-    const sectBenefits = await sectService.getSectBenefits(userId);
+    // Инициализируем реестр моделей перед получением моделей
+    await modelRegistry.initializeRegistry();
     
-    // Добавляем информацию о источнике
+    // Получаем модели через реестр
+    const Benefit = modelRegistry.getModel('Benefit');
+    const PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
+    
+    // Создаем экземпляр SectService
+    const sectServiceInstance = new SectService({
+      Sect: modelRegistry.getModel('Sect'),
+      SectMember: modelRegistry.getModel('SectMember')
+    });
+    
+    // 1. Получаем бенефиты секты
+    const sectBenefits = await sectServiceInstance.getSectBenefits(userId);
+    
+    // Добавляем информацию о источнике и приводим к единой структуре
     const sectBenefitsWithSource = sectBenefits.map(benefit => ({
-      ...benefit,
+      type: benefit.type,
+      modifier: benefit.modifier,
+      modifier_type: 'flat', // У бонусов секты по умолчанию тип 'flat'
       source: 'sect'
     }));
     
@@ -620,9 +645,9 @@ async function collectAllBenefits(userId, saveToDatabase = false) {
         // Затем добавляем новые
         for (const benefit of resultBenefits) {
           await addUserBenefit(userId, {
-            benefit_type: benefit.type,
-            value: benefit.modifier,
-            value_type: benefit.modifier_type,
+            type: benefit.type,
+            modifier: Math.round(benefit.modifier),
+            modifier_type: benefit.modifier_type,
             source: benefit.sources.join(','),
             source_id: benefit.source_ids.length > 0 ? benefit.source_ids.join(',') : null,
             description: benefit.items ? `От предметов: ${benefit.items.join(', ')}` : null
@@ -667,17 +692,21 @@ module.exports = {
   removeUserBenefit,
   removeAllUserBenefits,
   
-  // Константы будут доступны после инициализации модели
+  // Константы будут доступны через реестр моделей
   get BENEFIT_TYPES() {
+    const Benefit = modelRegistry.getModel('Benefit');
     return Benefit ? Benefit.BENEFIT_TYPES : {};
   },
   get MODIFIER_TYPES() {
+    const Benefit = modelRegistry.getModel('Benefit');
     return Benefit ? Benefit.MODIFIER_TYPES : {};
   },
   get PLAYER_BENEFIT_TYPES() {
+    const PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
     return PlayerBenefit ? PlayerBenefit.BENEFIT_TYPES : {};
   },
   get PLAYER_BENEFIT_SOURCES() {
+    const PlayerBenefit = modelRegistry.getModel('PlayerBenefit');
     return PlayerBenefit ? PlayerBenefit.BENEFIT_SOURCES : {};
   }
 };

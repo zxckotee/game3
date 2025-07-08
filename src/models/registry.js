@@ -258,8 +258,12 @@ register('SpiritPetCatalog', spiritPetModels.SpiritPetCatalog);
 register('UserSpiritPet', spiritPetModels.UserSpiritPet);
 register('SpiritPetFood', spiritPetModels.SpiritPetFood);
 
-// Регистрируем модель предметов экипировки
-register('EquipmentItem', require('./equipment-item'));
+// Регистрируем модели предметов экипировки
+const equipmentItemModels = require('./equipment-item');
+register('EquipmentItem', equipmentItemModels);
+register('EquipmentItemEffect', require('./equipment-item-effect'));
+register('EquipmentItemRequirement', require('./equipment-item-requirement'));
+register('EquipmentItemSpecialEffect', require('./equipment-item-special-effect'));
 
 // Регистрируем модель бонусов
 register('Benefit', require('./benefit'));

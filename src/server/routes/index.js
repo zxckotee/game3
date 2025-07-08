@@ -23,6 +23,7 @@ const statsRoutes = require('./stats-routes');
 const profileRoutes = require('./profile-routes');
 const effectsRoutes = require('./effects-routes');
 const relationshipsRoutes = require('./relationships-routes');
+const benefitsRoutes = require('./benefits-routes');
 
 
 /**
@@ -88,6 +89,9 @@ function registerRoutes(app) {
 
   // Регистрируем маршруты для отношений
   app.use('/api/relationships', relationshipsRoutes);
+  
+  // Регистрируем маршруты для бонусов
+  app.use(benefitsRoutes);
 
   console.log('Маршруты API успешно зарегистрированы');
 }

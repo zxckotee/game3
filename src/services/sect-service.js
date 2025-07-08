@@ -3,8 +3,20 @@ const CultivationService = require('./cultivation-service');
 const ResourceService = require('./resource-adapter');
 const { updateRelationshipAndLoyalty } = require('../utils/sectRelationshipSyncer');
 const { Sequelize } = require('sequelize');
-const { getSequelizeInstance } = require('./database-connection-manager');
+const { initializeDatabaseConnection } = require('./database-connection-manager');
 const CharacterProfileService = require('./character-profile-service');
+const modelRegistry = require('../models/registry');
+let sequelize;
+
+// Асинхронная функция для получения экземпляра
+async function getSequelizeInstance() {
+  if (!sequelize) {
+    const { db } = await initializeDatabaseConnection();
+    sequelize = db;
+  }
+  return sequelize;
+}
+
 
 /**
  * Сервис для работы с сектами и их членами
@@ -16,7 +28,7 @@ class SectService {
     this.resourceService = ResourceService; // Используем экземпляр напрямую
   }
 
-  /**
+  /** 
    * Получает информацию о секте по ID
    * @param {number} sectId ID секты
    * @returns {Promise<Sect>} Информация о секте
