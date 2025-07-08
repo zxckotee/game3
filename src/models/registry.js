@@ -257,3 +257,9 @@ const spiritPetModels = require('./init-spirit-pet-models');
 register('SpiritPetCatalog', spiritPetModels.SpiritPetCatalog);
 register('UserSpiritPet', spiritPetModels.UserSpiritPet);
 register('SpiritPetFood', spiritPetModels.SpiritPetFood);
+
+// Регистрируем модель предметов экипировки
+register('EquipmentItem', require('./equipment-item'));
+
+// Регистрируем модель бонусов
+register('Benefit', require('./benefit'));

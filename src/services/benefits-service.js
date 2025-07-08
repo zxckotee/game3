@@ -2,14 +2,39 @@
  * Сервис для работы с бонусами (benefits)
  * Предоставляет методы для получения, добавления, обновления и применения бонусов
  */
-const Benefit = require('../models/benefit');
+const modelRegistry = require('../models/registry');
 const { Op } = require('sequelize');
+
+// Инициализируем переменную для модели
+let Benefit;
+
+/**
+ * Асинхронная функция для инициализации модели
+ */
+async function initModel() {
+  if (!Benefit) {
+    // Получаем модель из реестра
+    Benefit = modelRegistry.getModel('Benefit');
+    
+    if (!Benefit) {
+      throw new Error('Модель Benefit не найдена в реестре');
+    }
+  }
+}
+
+// Вызываем инициализацию модели
+initModel().catch(error => {
+  console.error('Ошибка при инициализации модели в benefits-service:', error);
+});
 
 /**
  * Получение всех бонусов
  * @returns {Promise<Array>} Массив всех бонусов
  */
 async function getAllBenefits() {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     return await Benefit.findAll({
       order: [['type', 'ASC'], ['modifier_type', 'ASC']]
@@ -26,6 +51,9 @@ async function getAllBenefits() {
  * @returns {Promise<Object|null>} Объект бонуса или null, если бонус не найден
  */
 async function getBenefitById(id) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     return await Benefit.findByPk(id);
   } catch (error) {
@@ -40,6 +68,9 @@ async function getBenefitById(id) {
  * @returns {Promise<Array>} Массив бонусов указанного типа
  */
 async function getBenefitsByType(type) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     return await Benefit.findAll({
       where: { type },
@@ -57,6 +88,9 @@ async function getBenefitsByType(type) {
  * @returns {Promise<Array>} Массив бонусов с указанным типом модификатора
  */
 async function getBenefitsByModifierType(modifierType) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     return await Benefit.findAll({
       where: { modifier_type: modifierType },
@@ -73,6 +107,9 @@ async function getBenefitsByModifierType(modifierType) {
  * @returns {Promise<Array>} Массив положительных бонусов
  */
 async function getPositiveBenefits() {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     return await Benefit.findAll({
       where: {
@@ -93,6 +130,9 @@ async function getPositiveBenefits() {
  * @returns {Promise<Array>} Массив отрицательных бонусов
  */
 async function getNegativeBenefits() {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     return await Benefit.findAll({
       where: {
@@ -118,6 +158,9 @@ async function getNegativeBenefits() {
  * @returns {Promise<Object>} Созданный бонус
  */
 async function createBenefit(benefitData) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     return await Benefit.create(benefitData);
   } catch (error) {
@@ -133,6 +176,9 @@ async function createBenefit(benefitData) {
  * @returns {Promise<Object|null>} Обновленный бонус или null, если бонус не найден
  */
 async function updateBenefit(id, benefitData) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     const benefit = await Benefit.findByPk(id);
     if (!benefit) {
@@ -152,6 +198,9 @@ async function updateBenefit(id, benefitData) {
  * @returns {Promise<boolean>} true, если бонус успешно удален, иначе false
  */
 async function deleteBenefit(id) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     const benefit = await Benefit.findByPk(id);
     if (!benefit) {
@@ -173,6 +222,9 @@ async function deleteBenefit(id) {
  * @returns {Promise<Object>} Обновленные характеристики персонажа
  */
 async function applyBenefitToCharacter(characterStats, benefit) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     // Если передан ID бонуса, получаем объект бонуса
     if (typeof benefit === 'number') {
@@ -282,6 +334,9 @@ async function applyBenefitToCharacter(characterStats, benefit) {
  * @returns {Promise<Object>} Обновленные характеристики персонажа
  */
 async function applyBenefitsToCharacter(characterStats, benefits) {
+  // Убеждаемся, что модель инициализирована
+  if (!Benefit) await initModel();
+  
   try {
     let updatedStats = { ...characterStats };
     
@@ -308,6 +363,11 @@ module.exports = {
   deleteBenefit,
   applyBenefitToCharacter,
   applyBenefitsToCharacter,
-  BENEFIT_TYPES: Benefit.BENEFIT_TYPES,
-  MODIFIER_TYPES: Benefit.MODIFIER_TYPES
+  // Константы будут доступны после инициализации модели
+  get BENEFIT_TYPES() {
+    return Benefit ? Benefit.BENEFIT_TYPES : {};
+  },
+  get MODIFIER_TYPES() {
+    return Benefit ? Benefit.MODIFIER_TYPES : {};
+  }
 };
