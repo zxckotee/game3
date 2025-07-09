@@ -91,7 +91,7 @@ function registerRoutes(app) {
   app.use('/api/relationships', relationshipsRoutes);
   
   // Регистрируем маршруты для бонусов
-  app.use(benefitsRoutes);
+  app.use('/api/benefits', benefitsRoutes);
 
   console.log('Маршруты API успешно зарегистрированы');
 }

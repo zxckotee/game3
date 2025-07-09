@@ -162,7 +162,8 @@ const ACTION_TYPES = {
   ENRICH_ITEM_FAILURE: 'ENRICH_ITEM_FAILURE',
   
   // Действие для полного сброса состояния (для решения проблемы с валютой при новой регистрации)
-  RESET_STATE: 'RESET_STATE'
+  RESET_STATE: 'RESET_STATE',
+  UPDATE_PLAYER_BENEFITS: 'UPDATE_PLAYER_BENEFITS'
 };
 
 export default ACTION_TYPES;

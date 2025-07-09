@@ -255,8 +255,9 @@ function InventoryTab() {
         // или если нужно обновить данные пользователя.
         const userId = await InventoryAuthManager.ensureUserAuthorized(state, actions, navigate, !state.auth?.user?.id); 
         if (userId) {
-          console.log('[InventoryTab] Авторизация подтверждена, загружаем инвентарь.');
+          console.log('[InventoryTab] Авторизация подтверждена, загружаем инвентарь и бонусы.');
           await fetchAndEnrichInventory();
+          actions.refreshBenefits();
         } else {
           console.log('[InventoryTab] Авторизация не пройдена, инвентарь не будет загружен.');
           if (actions.updateInventoryItems) actions.updateInventoryItems([]);
@@ -313,7 +314,8 @@ function InventoryTab() {
         message: `${selectedItem.name} ${newEquippedState ? 'экипирован' : 'снят'}.`,
         type: 'success'
       });
-      await fetchAndEnrichInventory(); 
+      await fetchAndEnrichInventory();
+      actions.refreshBenefits();
     } catch (error) {
       console.error('[InventoryTab] Ошибка при экипировке/снятии предмета:', error);
       actions.addNotification({ message: `Ошибка экипировки: ${error.message || 'Неизвестная ошибка'}`, type: 'error' });

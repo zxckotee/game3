@@ -352,9 +352,7 @@ router.get('/api/users/:userId/sect', async (req, res) => {
           benefits: [
             {type: 'cultivation_speed', modifier: 5},
             {type: 'resource_gathering', modifier: 3},
-            {type: 'energy_regen', modifier: 1},
-            {type: 'technique_discount', modifier: 2},
-            {type: 'max_energy', modifier: 10}
+            {type: 'technique_discount', modifier: 2}
           ],
           members: [
             { id: 1, name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
@@ -513,9 +511,7 @@ router.post('/api/sects', async (req, res) => {
       const defaultBenefits = [
         { type: 'cultivation_speed', modifier: 5 },
         { type: 'resource_gathering', modifier: 3 },
-        { type: 'energy_regen', modifier: 1 },
-        { type: 'technique_discount', modifier: 2 },
-        { type: 'max_energy', modifier: 10 }
+        { type: 'technique_discount', modifier: 2 }
       ];
       
       for (const benefit of defaultBenefits) {
@@ -855,9 +851,7 @@ router.post('/api/sects/:sectId/contribute', async (req, res) => {
       const newBenefits = [
         { type: 'cultivation_speed', modifier: Math.round((0.05 + (newLevel * 0.01)) * 100) },
         { type: 'resource_gathering', modifier: Math.round((0.03 + (newLevel * 0.01)) * 100) },
-        { type: 'energy_regen', modifier: 1 + Math.floor(newLevel / 2) },
-        { type: 'technique_discount', modifier: Math.round((0.02 + (newLevel * 0.005)) * 100) },
-        { type: 'max_energy', modifier: 10 + (newLevel * 5) }
+        { type: 'technique_discount', modifier: Math.round((0.02 + (newLevel * 0.005)) * 100) }
       ];
       
       // Удаляем существующие бонусы и добавляем новые
@@ -1144,9 +1138,7 @@ router.get('/api/users/:userId/sect/benefits', async (req, res) => {
         const demoBenefits = [
           {type: 'cultivation_speed', modifier: 5},
           {type: 'resource_gathering', modifier: 3},
-          {type: 'energy_regen', modifier: 1},
-          {type: 'technique_discount', modifier: 2},
-          {type: 'max_energy', modifier: 10}
+          {type: 'technique_discount', modifier: 2}
         ];
         return res.json(demoBenefits);
       }

@@ -24,9 +24,7 @@ class Sect extends Model {
     this.benefits = [
       {type: 'cultivation_speed', modifier: Math.round(0.05 * this.level * 100)},
       {type: 'resource_gathering', modifier: Math.round(0.03 * this.level * 100)},
-      {type: 'energy_regen', modifier: 1 * this.level},
-      {type: 'technique_discount', modifier: Math.round(Math.min(0.5, 0.02 * this.level) * 100)},
-      {type: 'max_energy', modifier: 10 * this.level}
+      {type: 'technique_discount', modifier: Math.round(Math.min(0.5, 0.02 * this.level) * 100)}
     ];
   }
 
@@ -130,9 +128,7 @@ Sect.init = async function() {
       defaultValue: [
         {type: 'cultivation_speed', modifier: 5},
         {type: 'resource_gathering', modifier: 3},
-        {type: 'energy_regen', modifier: 1},
-        {type: 'technique_discount', modifier: 2},
-        {type: 'max_energy', modifier: 10}
+        {type: 'technique_discount', modifier: 2}
       ]
     }
     // createdAt и updatedAt будут добавлены автоматически

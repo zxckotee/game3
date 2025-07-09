@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useGame } from '../../../context/GameContext';
 import styled from 'styled-components';
 import { SECT_RANKS } from '../../../utils/sectRanks';
 import SectHeader from './SectHeader';
@@ -51,7 +52,12 @@ const EmptySelectedMemberMessage = styled.div`
  * @param {Function} showNotification - Функция для отображения уведомлений
  */
 function SectMainView({ sect, user, onRefresh, showNotification }) {
+  const { actions } = useGame();
   const [selectedMember, setSelectedMember] = useState(null);
+
+  useEffect(() => {
+    actions.refreshBenefits();
+  }, []);
   
   // Определяем, является ли пользователь лидером секты
   const isLeader = sect.members && sect.members.some(member =>

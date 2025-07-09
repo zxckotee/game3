@@ -53,9 +53,7 @@ const NoBenefitsMessage = styled.div`
 const benefitTypes = {
   'cultivation_speed': 'Скорость культивации',
   'resource_gathering': 'Сбор ресурсов',
-  'energy_regen': 'Регенерация энергии',
   'technique_discount': 'Скидка на техники',
-  'max_energy': 'Макс. энергия',
   'experience_gain': 'Получение опыта',
   'item_drop': 'Шанс находки предметов',
   'reputation_gain': 'Получение репутации',
@@ -82,12 +80,9 @@ const formatBenefitValue = (type, value) => {
     case 'merchant_discount':
       return `+${value}%`;
       
-    case 'energy_regen':
     case 'health_regen':
       return `+${value} ед/час`;
       
-    case 'max_energy':
-      return `+${value} ед`;
       
     case 'experience_gain':
       return `+${value}%`;

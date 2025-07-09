@@ -66,14 +66,8 @@ export const sectBenefitsToEffects = (sectBenefits) => {
       case 'resource_gathering':
         effectType = 'resource_bonus';
         break;
-      case 'energy_regen':
-        effectType = 'energy_regen';
-        break;
       case 'technique_discount':
         effectType = 'technique_discount';
-        break;
-      case 'max_energy':
-        effectType = 'max_energy';
         break;
       default:
         effectType = benefit.type;
@@ -141,9 +135,7 @@ export const normalizeSectBenefits = (rawBenefits) => {
     return [
       { type: 'cultivation_speed', modifier: Math.round((rawBenefits.cultivationSpeedBonus || 0) * 100) },
       { type: 'resource_gathering', modifier: Math.round((rawBenefits.resourceGatheringBonus || 0) * 100) },
-      { type: 'energy_regen', modifier: rawBenefits.energyRegenBonus || 0 },
-      { type: 'technique_discount', modifier: Math.round((rawBenefits.techniqueDiscountPercent || 0) * 100) },
-      { type: 'max_energy', modifier: rawBenefits.maxEnergyBonus || 0 }
+      { type: 'technique_discount', modifier: Math.round((rawBenefits.techniqueDiscountPercent || 0) * 100) }
     ];
   }
   

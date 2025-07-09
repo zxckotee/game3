@@ -232,9 +232,7 @@ class SectService {
         this.benefits = [
           {type: 'cultivation_speed', modifier: Math.round((0.05 + (this.level * 0.01)) * 100)},
           {type: 'resource_gathering', modifier: Math.round((0.03 + (this.level * 0.01)) * 100)},
-          {type: 'energy_regen', modifier: 1 + Math.floor(this.level / 2)},
-          {type: 'technique_discount', modifier: Math.round((0.02 + (this.level * 0.005)) * 100)},
-          {type: 'max_energy', modifier: 10 + (this.level * 5)}
+          {type: 'technique_discount', modifier: Math.round((0.02 + (this.level * 0.005)) * 100)}
         ];
         return this.benefits;
       },
@@ -307,9 +305,7 @@ class SectService {
               benefits: [
                 {type: 'cultivation_speed', modifier: 5},
                 {type: 'resource_gathering', modifier: 3},
-                {type: 'energy_regen', modifier: 1},
-                {type: 'technique_discount', modifier: 2},
-                {type: 'max_energy', modifier: 10}
+                {type: 'technique_discount', modifier: 2}
               ],
               members: [
                 { id: 1, name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
@@ -337,9 +333,7 @@ class SectService {
               this.benefits = [
                 {type: 'cultivation_speed', modifier: Math.round((0.05 + (this.level * 0.01)) * 100)},
                 {type: 'resource_gathering', modifier: Math.round((0.03 + (this.level * 0.01)) * 100)},
-                {type: 'energy_regen', modifier: 1 + Math.floor(this.level / 2)},
-                {type: 'technique_discount', modifier: Math.round((0.02 + (this.level * 0.005)) * 100)},
-                {type: 'max_energy', modifier: 10 + (this.level * 5)}
+                {type: 'technique_discount', modifier: Math.round((0.02 + (this.level * 0.005)) * 100)}
               ];
               return this.benefits;
             };
@@ -480,9 +474,7 @@ class SectService {
       benefits: [
         {type: 'cultivation_speed', modifier: 5},
         {type: 'resource_gathering', modifier: 3},
-        {type: 'energy_regen', modifier: 1},
-        {type: 'technique_discount', modifier: 2},
-        {type: 'max_energy', modifier: 10}
+        {type: 'technique_discount', modifier: 2}
       ],
       members: [
         { id: 1, name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
@@ -505,9 +497,7 @@ class SectService {
         this.benefits = [
           {type: 'cultivation_speed', modifier: Math.round((0.05 + (this.level * 0.01)) * 100)},
           {type: 'resource_gathering', modifier: Math.round((0.03 + (this.level * 0.01)) * 100)},
-          {type: 'energy_regen', modifier: 1 + Math.floor(this.level / 2)},
-          {type: 'technique_discount', modifier: Math.round((0.02 + (this.level * 0.005)) * 100)},
-          {type: 'max_energy', modifier: 10 + (this.level * 5)}
+          {type: 'technique_discount', modifier: Math.round((0.02 + (this.level * 0.005)) * 100)}
         ];
         return this.benefits;
       },
@@ -997,9 +987,7 @@ class SectService {
         return [
           {type: 'cultivation_speed', modifier: 0},
           {type: 'resource_gathering', modifier: 0},
-          {type: 'energy_regen', modifier: 0},
-          {type: 'technique_discount', modifier: 0},
-          {type: 'max_energy', modifier: 0}
+          {type: 'technique_discount', modifier: 0}
         ];
       }
       
@@ -1010,9 +998,7 @@ class SectService {
         return [
           {type: 'cultivation_speed', modifier: Math.round((sect.benefits.cultivationSpeedBonus || 0) * 100)},
           {type: 'resource_gathering', modifier: Math.round((sect.benefits.resourceGatheringBonus || 0) * 100)},
-          {type: 'energy_regen', modifier: sect.benefits.energyRegenBonus || 0},
-          {type: 'technique_discount', modifier: Math.round((sect.benefits.techniqueDiscountPercent || 0) * 100)},
-          {type: 'max_energy', modifier: sect.benefits.maxEnergyBonus || 0}
+          {type: 'technique_discount', modifier: Math.round((sect.benefits.techniqueDiscountPercent || 0) * 100)}
         ];
       }
       

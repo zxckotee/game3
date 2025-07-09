@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import apiService from '../services/api';
+import BenefitsAPI from '../services/benefits-api';
 import SectService from '../services/sect-api';
 import InventoryServiceAPI from '../services/inventory-api';
 import CharacterProfileServiceAPI from '../services/character-profile-service-api';
@@ -645,9 +646,7 @@ const actions = {
             sectData.benefits = [
               {type: 'cultivation_speed', modifier: Math.round((benefitsObj.cultivationSpeedBonus || 0) * 100)},
               {type: 'resource_gathering', modifier: Math.round((benefitsObj.resourceGatheringBonus || 0) * 100)},
-              {type: 'energy_regen', modifier: benefitsObj.energyRegenBonus || 0},
-              {type: 'technique_discount', modifier: Math.round((benefitsObj.techniqueDiscountPercent || 0) * 100)},
-              {type: 'max_energy', modifier: benefitsObj.maxEnergyBonus || 0}
+              {type: 'technique_discount', modifier: Math.round((benefitsObj.techniqueDiscountPercent || 0) * 100)}
             ];
           }
           
@@ -666,9 +665,7 @@ const actions = {
             processedBenefits = [
               {type: 'cultivation_speed', modifier: Math.round((benefitsObj.cultivationSpeedBonus || 0) * 100)},
               {type: 'resource_gathering', modifier: Math.round((benefitsObj.resourceGatheringBonus || 0) * 100)},
-              {type: 'energy_regen', modifier: benefitsObj.energyRegenBonus || 0},
-              {type: 'technique_discount', modifier: Math.round((benefitsObj.techniqueDiscountPercent || 0) * 100)},
-              {type: 'max_energy', modifier: benefitsObj.maxEnergyBonus || 0}
+              {type: 'technique_discount', modifier: Math.round((benefitsObj.techniqueDiscountPercent || 0) * 100)}
             ];
           }
           
@@ -858,6 +855,24 @@ const actions = {
     // Для выбора члена секты для взаимодействия
     selectSectMember: (member) => {
       dispatch({ type: 'SELECT_SECT_MEMBER', payload: member });
+    },
+
+    refreshBenefits: async () => {
+      try {
+        console.log('🔄 Обновление бонусов игрока...');
+        const benefits = await BenefitsAPI.getPlayerBenefits();
+        dispatch({ type: ACTION_TYPES.UPDATE_PLAYER_BENEFITS, payload: benefits });
+        console.log('✅ Бонусы игрока успешно обновлены');
+      } catch (error) {
+        console.error('❌ Ошибка при обновлении бонусов игрока:', error);
+        dispatch({
+          type: ACTION_TYPES.ADD_NOTIFICATION,
+          payload: {
+            message: `Ошибка обновления бонусов: ${error.message}`,
+            type: 'error'
+          }
+        });
+      }
     }
   };
   

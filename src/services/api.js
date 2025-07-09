@@ -724,7 +724,8 @@ const apiService = {
       console.error('[API] Ошибка при получении данных о культивации:', error);
       throw error;
     }
-  }
+  },
+
 };
 
 module.exports = apiService;

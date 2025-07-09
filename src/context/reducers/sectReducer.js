@@ -25,9 +25,7 @@ const initialState = {
   benefits: [
     {type: 'cultivation_speed', modifier: 0},
     {type: 'resource_gathering', modifier: 0},
-    {type: 'energy_regen', modifier: 0},
-    {type: 'technique_discount', modifier: 0},
-    {type: 'max_energy', modifier: 0}
+    {type: 'technique_discount', modifier: 0}
   ],
   // Выбранный член секты для взаимодействия
   selectedMember: null
