@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import apiService from '../services/api';
-import BenefitsAPI from '../services/benefits-api';
 import SectService from '../services/sect-api';
 import InventoryServiceAPI from '../services/inventory-api';
 import CharacterProfileServiceAPI from '../services/character-profile-service-api';
@@ -857,23 +856,6 @@ const actions = {
       dispatch({ type: 'SELECT_SECT_MEMBER', payload: member });
     },
 
-    refreshBenefits: async () => {
-      try {
-        console.log('🔄 Обновление бонусов игрока...');
-        const benefits = await BenefitsAPI.getPlayerBenefits();
-        dispatch({ type: ACTION_TYPES.UPDATE_PLAYER_BENEFITS, payload: benefits });
-        console.log('✅ Бонусы игрока успешно обновлены');
-      } catch (error) {
-        console.error('❌ Ошибка при обновлении бонусов игрока:', error);
-        dispatch({
-          type: ACTION_TYPES.ADD_NOTIFICATION,
-          payload: {
-            message: `Ошибка обновления бонусов: ${error.message}`,
-            type: 'error'
-          }
-        });
-      }
-    }
   };
   
   // Экспортируем actions в глобальную переменную

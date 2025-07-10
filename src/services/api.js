@@ -559,26 +559,6 @@ const apiService = {
         gameState.player.statusEffects = [];
       }
       
-      // Загружаем и применяем бонусы
-      try {
-        console.log(`[API] Загрузка и применение бонусов для пользователя ${user.id}`);
-        const BenefitsServiceAPI = require('./benefits-api');
-        const benefitsResult = await BenefitsServiceAPI.collectAndApplyBenefits(
-          user.id,
-          gameState.player.secondaryStats,
-          gameState.player.statusEffects
-        );
-        
-        // Обновляем вторичные характеристики с учетом бонусов
-        gameState.player.secondaryStats = benefitsResult.updatedStats;
-        // Сохраняем список бонусов
-        gameState.player.benefits = benefitsResult.benefits;
-        console.log('[API] Бонусы успешно применены:', benefitsResult.benefits.length);
-      } catch (error) {
-        console.error('[API] Ошибка при загрузке и применении бонусов:', error);
-        // В случае ошибки продолжаем без бонусов
-        gameState.player.benefits = [];
-      }
       
       // Загружаем инвентарь
       const inventoryItems = await InventoryService.getInventoryItems(user.id);

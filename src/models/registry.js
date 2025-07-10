@@ -264,9 +264,3 @@ register('EquipmentItem', equipmentItemModels);
 register('EquipmentItemEffect', require('./equipment-item-effect'));
 register('EquipmentItemRequirement', require('./equipment-item-requirement'));
 register('EquipmentItemSpecialEffect', require('./equipment-item-special-effect'));
-
-// Регистрируем модель бонусов
-register('Benefit', require('./benefit'));
-
-// Регистрируем модель пользовательских бонусов
-register('PlayerBenefit', require('./player-benefit'));

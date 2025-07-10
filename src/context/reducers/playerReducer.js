@@ -2194,14 +2194,6 @@ export const playerReducer = (state, action) => {
       
       return state; // При ошибке состояние не меняется, предмет остается с базовыми данными
       
-    case ACTION_TYPES.UPDATE_PLAYER_BENEFITS:
-      return {
-        ...state,
-        player: {
-          ...state.player,
-          benefits: action.payload
-        }
-      };
     default:
       return state;
   }
