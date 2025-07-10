@@ -8,6 +8,7 @@ const { Sequelize } = require('sequelize');
 const techniqueService = require('./technique-service');
 const QuestService = require('./quest-service');
 const InventoryService = require('./inventory-service');
+const CharacterStatsService = require('./character-stats-service');
 
 let sequelize;
 // Асинхронная функция для получения экземпляра
@@ -22,31 +23,6 @@ async function getSequelizeInstance() {
  * Класс для работы с PvE боями
  */
 class CombatService {
-  /**
-   * Рассчитывает боевые характеристики игрока на основе его статов.
-   * @param {Object} characterStats - Объект характеристик персонажа из БД.
-   * @returns {Object} - Объект с рассчитанными боевыми характеристиками.
-   * @private
-   */
-  static _calculatePlayerStats(characterStats) {
-    const stats = characterStats.dataValues ? characterStats.dataValues : characterStats;
-
-    // Формулы, аналогичные pvp-service
-    const baseHealth = stats.health || 100;
-    const strength = stats.strength || 10;
-    const intellect = stats.intellect || 10;
-
-    const maxHealth = baseHealth + (strength * 10);
-    const maxEnergy = 100 + (intellect * 5); // Предположим базовую энергию 100
-
-    return {
-      maxHp: maxHealth,
-      currentHp: maxHealth,
-      maxEnergy: maxEnergy,
-      currentEnergy: maxEnergy,
-    };
-  }
-
   /**
    * Начать новый бой с NPC
    * @param {number} userId - ID игрока
@@ -85,20 +61,36 @@ class CombatService {
       throw new Error('Враг не найден');
     }
 
-    // Рассчитываем характеристики игрока
-    const calculatedPlayerStats = this._calculatePlayerStats(player.characterStats);
+    // Получаем полное состояние игрока, включая все модификаторы
+    const fullPlayerStats = await CharacterStatsService.getCombinedCharacterState(userId);
+
     const Combat = modelRegistry.getModel('Combat');
 
     // Получаем изученные техники игрока
     const learnedTechniques = await techniqueService.getLearnedTechniques(userId);
 
     const playerState = {
-      currentHp: calculatedPlayerStats.currentHp,
-      maxHp: calculatedPlayerStats.maxHp,
-      currentEnergy: calculatedPlayerStats.currentEnergy,
-      maxEnergy: calculatedPlayerStats.maxEnergy,
+      // Используем модифицированные характеристики для начала боя
+      currentHp: fullPlayerStats.modified.health,
+      maxHp: fullPlayerStats.modified.health,
+      currentEnergy: fullPlayerStats.modified.energy, // Предполагая, что у нас есть энергия в статах
+      maxEnergy: fullPlayerStats.modified.energy,
+      // Сохраняем базовые статы для будущего пересчета эффектов в бою
+      baseStats: fullPlayerStats.base,
+      // Сохраняем вторичные статы для использования в расчетах
+      secondaryStats: fullPlayerStats.secondary,
       effects: [],
       techniques: learnedTechniques || [] // Добавляем техники в состояние
+    };
+
+    const enemyBaseStats = {
+      health: enemy.stats.health,
+      energy: enemy.stats.energy,
+      strength: enemy.stats.strength,
+      intellect: enemy.stats.intellect,
+      agility: enemy.stats.agility,
+      spirit: enemy.stats.spirit,
+      // ... и другие статы, если они есть у врагов
     };
 
     const enemyState = {
@@ -106,7 +98,10 @@ class CombatService {
       maxHp: enemy.stats.health,
       currentEnergy: enemy.stats.energy,
       maxEnergy: enemy.stats.energy,
-      effects: []
+      effects: [],
+      baseStats: enemyBaseStats, // Сохраняем базовые статы для врага
+      modifiedStats: { ...enemyBaseStats }, // Начальные модифицированные статы
+      secondaryStats: {} // Врагам пока не считаем вторичные статы
     };
 
     const newCombat = await Combat.create({
@@ -197,6 +192,10 @@ class CombatService {
       combat.player_state.effects.push(defenseEffect);
       logEntry = { turn: 'player', action: 'defense', message: 'Игрок уходит в глухую оборону.' };
       console.log(`[CombatService] Игрок применил защиту в бою ${combatId}`);
+      
+      // Пересчитываем статы после применения эффекта защиты
+      this._recalculateCombatStats(combat.player_state);
+
 
     } else if (action.type === 'technique') {
       const technique = combat.player_state.techniques.find(t => t.id === action.id);
@@ -205,17 +204,8 @@ class CombatService {
       }
       console.log('[COMBAT_DEBUG] 3. Используется техника:', JSON.stringify(technique, null, 2));
 
-      // Расчет стоимости энергии с учетом модификаторов
-      const modifiers = this._getEffectModifiers(combat.player_state);
+      // TODO: Перенести расчет стоимости энергии на основе модифицированных статов
       let energyCost = technique.energy_cost || 0;
-
-      if (modifiers.energyCostModifier) {
-        energyCost = Math.floor(energyCost * (1 - modifiers.energyCostModifier / 100));
-      }
-      if (modifiers.isFree) {
-        energyCost = 0;
-      }
-
       if (combat.player_state.currentEnergy < energyCost) {
         throw new Error('Недостаточно энергии для применения техники');
       }
@@ -234,6 +224,9 @@ class CombatService {
         console.log('[COMBAT_DEBUG] 5. Техника имеет эффекты. Применяем...');
         this._applyTechniqueEffects(technique, targetState);
         message += ` Накладывает эффекты на ${targetName}.`;
+        
+        // Пересчитываем характеристики цели после наложения эффектов
+        this._recalculateCombatStats(targetState);
       }
 
       // Применяем прямой урон (только для атакующих техник)
@@ -315,186 +308,114 @@ class CombatService {
     }
 
     const newEffects = technique.effects.map(dbEffect => {
-      console.log('[COMBAT_DEBUG] 1. Исходный эффект из БД:', JSON.stringify(dbEffect, null, 2));
-
-      const newEffect = {
-        ...dbEffect, // Копируем все поля изначального эффекта
-        id: `${dbEffect.id}_${Date.now()}`, // Уникальный ID для каждого экземпляра эффекта
+      // Преобразуем эффект в унифицированную структуру, как в pvp-service
+      const details = dbEffect.modifies || {}; // 'modifies' - это наш effect_details_json
+      return {
+        id: `${dbEffect.id}_${Date.now()}`,
+        name: dbEffect.name,
+        effect_type: dbEffect.type, // buff, debuff
+        duration: dbEffect.duration,
         startTime: Date.now(),
         durationMs: (dbEffect.duration || 0) * 1000,
         sourceTechnique: technique.id,
+        // Унифицированная структура для совместимости с CharacterStatsService
+        effect_details_json: {
+          target_attribute: details.target_attribute,
+          value: details.value,
+          value_type: details.value_type,
+          original_description: dbEffect.description,
+        },
       };
-      
-      console.log('[COMBAT_DEBUG] 2. Преобразованный эффект для добавления:', JSON.stringify(newEffect, null, 2));
-      return newEffect;
     });
 
     targetState.effects = this.mergeEffects(targetState.effects || [], newEffects);
   }
 
   /**
-   * Объединяет новые эффекты с существующими, обрабатывая стаки.
-   * @param {Array} currentEffects - Текущие эффекты на цели.
-   * @param {Array} newEffects - Новые эффекты для добавления.
-   * @returns {Array} - Обновленный массив эффектов.
+   * Объединяет новые эффекты с существующими.
+   * Новые эффекты с тем же `name` заменяют старые.
    */
   static mergeEffects(currentEffects, newEffects) {
-    const result = [...currentEffects];
-
-    newEffects.forEach(newEffect => {
-      const existingEffectIndex = result.findIndex(e => e.name === newEffect.name);
-
-      if (existingEffectIndex !== -1) {
-        const existingEffect = result[existingEffectIndex];
-        // Обновляем существующий эффект (например, обновляем время действия)
-        result[existingEffectIndex] = {
-          ...existingEffect,
-          ...newEffect, // Новый эффект перезаписывает старый, но сохраняет некоторые свойства
-          startTime: newEffect.startTime, // Всегда обновляем время начала
-          durationMs: Math.max(existingEffect.durationMs - (Date.now() - existingEffect.startTime), 0) + newEffect.durationMs,
-        };
-      } else {
-        // Добавляем новый эффект
-        result.push(newEffect);
-      }
-    });
-
-    return result;
+    const effectMap = new Map(currentEffects.map(e => [e.name, e]));
+    newEffects.forEach(e => effectMap.set(e.name, e));
+    return Array.from(effectMap.values());
   }
 
   /**
-   * Получает модификаторы от активных эффектов.
-   * @param {Object} entityState - Состояние игрока или врага.
-   * @returns {Object} - Объект с модификаторами.
+   * Пересчитывает боевые характеристики сущности на основе ее базовых статов и текущих эффектов.
+   * @param {Object} entityState - Состояние игрока или врага (player_state или enemy_state).
    * @private
    */
-  static _getEffectModifiers(entityState) {
-    const modifiers = {
-        damageModifier: 0,
-        defenseModifier: 0,
-        critChanceModifier: 0,
-        critDamageModifier: 0,
-        dodgeChanceModifier: 0,
-        accuracyModifier: 0,
-        energyCostModifier: 0,
-        healingModifier: 0,
-        dotModifier: 0,
-        isFree: false,
-        stun: false,
-        silence: false,
-        root: false,
-    };
-
-    if (!entityState.effects || entityState.effects.length === 0) {
-        return modifiers;
+  static _recalculateCombatStats(entityState) {
+    if (!entityState.baseStats) {
+      console.warn('[CombatService] Попытка пересчитать статы без базовых характеристик.');
+      return;
     }
 
-    for (const effect of entityState.effects) {
-        if (!effect.modifiers) continue;
+    // 1. Применяем эффекты к базовым характеристикам
+    const modifiedStats = CharacterStatsService.applyEffectsToStats(
+      entityState.baseStats,
+      entityState.effects || []
+    );
 
-        // Простой парсер для модификаторов вида "damage_increase_10"
-        const parts = effect.modifiers.split('_');
-        if (parts.length < 3) continue;
+    // 2. Пересчитываем вторичные характеристики на основе модифицированных
+    const secondaryStats = CharacterStatsService.calculateSecondaryStats(
+      modifiedStats,
+      modifiedStats // Используем modifiedStats как основу для культивации
+    );
 
-        const [target, type, valueStr] = parts;
-        const value = parseInt(valueStr, 10);
+    // 3. Обновляем состояние сущности
+    entityState.modifiedStats = modifiedStats;
+    entityState.secondaryStats = secondaryStats;
 
-        if (isNaN(value)) continue;
-
-        switch (target) {
-            case 'damage':
-                if (type === 'increase') modifiers.damageModifier += value;
-                if (type === 'decrease') modifiers.damageModifier -= value;
-                break;
-            case 'defense':
-                if (type === 'increase') modifiers.defenseModifier += value;
-                if (type === 'decrease') modifiers.defenseModifier -= value;
-                break;
-            case 'critchance':
-                if (type === 'increase') modifiers.critChanceModifier += value;
-                break;
-            case 'critdamage':
-                if (type === 'increase') modifiers.critDamageModifier += value;
-                break;
-            case 'dodge':
-                if (type === 'increase') modifiers.dodgeChanceModifier += value;
-                break;
-            case 'accuracy':
-                if (type === 'increase') modifiers.accuracyModifier += value;
-                break;
-            case 'energy':
-                if (type === 'cost_reduction') modifiers.energyCostModifier += value;
-                break;
-            case 'healing':
-                if (type === 'increase') modifiers.healingModifier += value;
-                break;
-            case 'dot': // damage over time
-                if (type === 'increase') modifiers.dotModifier += value;
-                break;
-        }
-
-        // Проверка на статусные эффекты
-        if (effect.subtype === 'stun') modifiers.stun = true;
-        if (effect.subtype === 'silence') modifiers.silence = true;
-        if (effect.subtype === 'root') modifiers.root = true;
-    }
-
-    return modifiers;
+    // Опционально: можно обновить maxHp/maxEnergy, если они могут меняться в бою
+    entityState.maxHp = modifiedStats.health;
+    // entityState.maxEnergy = modifiedStats.energy;
   }
+
 
   /**
    * @private
    */
-  static _calculateDamage(attackerState, defenderState, baseDamage = null) {
-    // Базовые статы, если они не определены
-    const attackerStats = {
-        strength: attackerState.strength || 10,
-        intellect: attackerState.intellect || 10,
-        level: attackerState.level || 1,
-    };
-    const defenderStats = {
-        vitality: defenderState.vitality || 10,
-        level: defenderState.level || 1,
-    };
+  static _calculateDamage(attackerState, defenderState, techniqueDamage = null) {
+    // Используем пересчитанные вторичные характеристики
+    const attackerSecondary = attackerState.secondaryStats || {};
+    const defenderSecondary = defenderState.secondaryStats || {};
+    
+    // Для врагов, у которых нет secondaryStats, используем modifiedStats
+    const defenderModified = defenderState.modifiedStats || {};
 
-    const attackerModifiers = this._getEffectModifiers(attackerState);
-    const defenderModifiers = this._getEffectModifiers(defenderState);
+    // Если урон идет от техники, используем его. Иначе - базовая атака.
+    // Предполагаем, что тип урона (физ/маг) определяется техникой или базовым для класса.
+    // Для простоты пока считаем весь урон физическим.
+    const baseAttack = attackerSecondary.physicalAttack || (attackerState.modifiedStats?.strength || 10);
+    let finalBaseDamage = techniqueDamage !== null ? techniqueDamage : baseAttack;
 
-    // Если базовый урон не передан (обычная атака), рассчитываем его от силы.
-    // Если передан (атака от техники), используем его.
-    let finalBaseDamage = baseDamage !== null ? baseDamage : (attackerStats.strength || 10) * 2;
-
-    // 1. Модификаторы урона атакующего
-    const damageBonusPercent = attackerModifiers.damageModifier;
-    finalBaseDamage *= (1 + damageBonusPercent / 100);
-
-    // 2. Модификаторы защиты защищающегося
-    const defenseBonusPercent = defenderModifiers.defenseModifier;
-    const defenseReduction = (defenderStats.vitality || 10) * 0.5; // Базовая защита от живучести
-    const totalDefense = defenseReduction * (1 + defenseBonusPercent / 100);
+    // Защита цели
+    const totalDefense = defenderSecondary.physicalDefense || (defenderModified.strength * 0.5 + defenderModified.health * 0.3);
 
     let finalDamage = Math.max(1, finalBaseDamage - totalDefense);
 
-    // 3. Шанс уклонения
-    const dodgeChance = (defenderModifiers.dodgeChanceModifier || 0) / 100;
+    // Шанс уклонения (пока заглушка, т.к. не входит в secondaryStats)
+    const dodgeChance = (defenderSecondary.dodgeChance || 0) / 100;
     if (Math.random() < dodgeChance) {
         console.log('[CombatService] Уклонение!');
         return { damage: 0, isDodge: true, isCrit: false };
     }
 
-    // 4. Крит. урон
+    // Крит. урон
     let isCrit = false;
-    const critChance = ((attackerStats.intellect || 10) * 0.01) + (attackerModifiers.critChanceModifier / 100);
+    const critChance = (attackerSecondary.criticalChance || 5) / 100; // 5% базовый шанс
     if (Math.random() < critChance) {
         isCrit = true;
-        const critDamageBonus = 1.5 + (attackerModifiers.critDamageModifier / 100);
+        const critDamageBonus = 1.5 + ((attackerSecondary.criticalDamage || 0) / 100);
         finalDamage *= critDamageBonus;
         console.log(`[CombatService] Критический удар! Множитель: ${critDamageBonus}`);
     }
     
     finalDamage = Math.round(finalDamage);
 
-    console.log(`[CombatService] Расчет урона: База=${finalBaseDamage.toFixed(2)}, Защита=${totalDefense.toFixed(2)}, Итог=${finalDamage}`);
+    console.log(`[CombatService] Расчет урона: Атака=${finalBaseDamage.toFixed(2)}, Защита=${totalDefense.toFixed(2)}, Итог=${finalDamage}`);
 
     return { damage: finalDamage, isCrit, isDodge: false };
   }
