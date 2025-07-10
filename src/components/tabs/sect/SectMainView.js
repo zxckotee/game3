@@ -56,7 +56,7 @@ function SectMainView({ sect, user, onRefresh, showNotification }) {
   const [selectedMember, setSelectedMember] = useState(null);
 
   useEffect(() => {
-    actions.refreshBenefits();
+
   }, []);
   
   // Определяем, является ли пользователь лидером секты
