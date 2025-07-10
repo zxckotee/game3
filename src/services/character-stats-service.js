@@ -323,7 +323,7 @@ class CharacterStatsService {
       // 1. Параллельная загрузка данных
       const [baseStats, cultivationProgress, activeEffects] = await Promise.all([
         this.getCharacterStats(userId, transaction),
-        CultivationService.getCultivationProgress(userId, transaction),
+        require('./cultivation-service').getCultivationProgress(userId, transaction),
         ActivePlayerEffect.findAll({ where: { user_id: userId }, transaction })
       ]);
 
@@ -379,7 +379,7 @@ class CharacterStatsService {
       console.error(`Ошибка при получении комбинированного состояния персонажа для userId ${userId}:`, error);
       // Возвращаем базовые значения в случае ошибки
       const baseStats = await this.getCharacterStats(userId).catch(() => ({}));
-      const cultivationProgress = await CultivationService.getCultivationProgress(userId).catch(() => ({}));
+      const cultivationProgress = await require('./cultivation-service').getCultivationProgress(userId).catch(() => ({}));
       return {
         base: { ...baseStats, ...cultivationProgress },
         modified: { ...baseStats, ...cultivationProgress },
