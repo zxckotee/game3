@@ -420,50 +420,6 @@ const WeatherOverlay = styled.div`
   height: 100%;
   pointer-events: none;
   z-index: 2;
-  
-  ${props => {
-    switch (props.weather) {
-      case 'rain':
-        return css`
-          background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><line x1="20" y1="0" x2="10" y2="30" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/><line x1="30" y1="10" x2="20" y2="40" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/><line x1="40" y1="0" x2="30" y2="30" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/><line x1="50" y1="5" x2="40" y2="35" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/><line x1="60" y1="0" x2="50" y2="30" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/><line x1="70" y1="10" x2="60" y2="40" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/><line x1="80" y1="0" x2="70" y2="30" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/><line x1="90" y1="5" x2="80" y2="35" stroke="rgba(200, 200, 255, 0.5)" stroke-width="1"/></svg>');
-          background-repeat: repeat;
-          opacity: ${props.intensity || 0.7};
-          animation: ${rainAnimation} 0.5s linear infinite;
-        `;
-      case 'snow':
-        return css`
-          background-image: 
-            radial-gradient(circle at 50% 50%, white 0.5px, transparent 1px),
-            radial-gradient(circle at 70% 30%, white 0.5px, transparent 1px);
-          background-size: 100px 100px, 150px 150px;
-          opacity: ${props.intensity || 0.5};
-          animation: ${snowAnimation} 20s linear infinite;
-        `;
-      case 'fog':
-        return css`
-          background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(200, 200, 200, 0.2));
-          opacity: ${props.intensity || 0.5};
-          animation: ${fogAnimation} 20s ease-in-out infinite;
-        `;
-      case 'thunderstorm':
-        return css`
-          background-color: rgba(255, 255, 255, 0);
-          box-shadow: inset 0 0 100vw 0 rgba(255, 255, 255, 0);
-          animation: ${thunderAnimation} ${10 + Math.random() * 20}s ease-out infinite;
-          opacity: ${props.intensity || 0.2};
-        `;
-      case 'cloudy':
-        return css`
-          background-image: 
-            radial-gradient(circle at 30% 40%, rgba(220, 220, 220, 0.3) 20px, transparent 30px),
-            radial-gradient(circle at 70% 50%, rgba(220, 220, 220, 0.3) 30px, transparent 40px);
-          background-size: 200px 200px;
-          opacity: ${props.intensity || 0.3};
-        `;
-      default:
-        return '';
-    }
-  }}
 `;
 
 // Оверлей для особых событий
@@ -901,109 +857,18 @@ function MapTab() {
   return (
     <Container>
       <div>
-        <TimeWeatherPanel>
-          <InfoRow>
-            <InfoColumn>
-              <InfoLabel>Текущее время</InfoLabel>
-              <InfoValue>
-                <AnimatedIcon>{getTimeIcon(daytimePeriod)}</AnimatedIcon>
-                {formattedTime} ({daytimePeriod})
-              </InfoValue>
-            </InfoColumn>
-            
-            <InfoColumn>
-              <InfoLabel>Погода</InfoLabel>
-              <InfoValue>
-                <AnimatedIcon>{getWeatherIcon(weatherNames[currentWeather] || 'Ясно')}</AnimatedIcon>
-                {weatherNames[currentWeather] || 'Ясно'} 
-                {weatherIntensity && `(${Math.round(weatherIntensity * 10)}/10)`}
-              </InfoValue>
-            </InfoColumn>
-          </InfoRow>
-          
-          <InfoLabel>Цикл дня (День {dayCount})</InfoLabel>
-          <DayCycleProgress progress={dayProgress} />
-          
-          <InfoRow>
-            <InfoColumn>
-              <InfoLabel>Текущий сезон</InfoLabel>
-              <SeasonName season={currentSeason}>
-                {seasonIcons[currentSeason]} {seasonNames[currentSeason]}
-              </SeasonName>
-              <SeasonProgress season={currentSeason} progress={seasonProgress} />
-            </InfoColumn>
-            
-            <InfoColumn>
-              <SeasonDays>День {seasonDay} из {seasonLength}</SeasonDays>
-              <UpcomingChange>
-                Следующий сезон: <span>{seasonNames[nextSeason]}</span> через {seasonLength - seasonDay} дней
-              </UpcomingChange>
-            </InfoColumn>
-          </InfoRow>
-          
-          <InfoLabel>До смены погоды: {nextWeatherChange} мин.</InfoLabel>
-          
-          {activeEvent && (
-            <SpecialEventContainer active={true}>
-              <EventTitle>
-                {eventInfo[activeEvent]?.icon || '🌟'} {eventInfo[activeEvent]?.name || 'Особое событие'}
-              </EventTitle>
-              <EventDescription>
-                {eventInfo[activeEvent]?.description || 'Происходит особое событие, влияющее на окружающий мир.'}
-              </EventDescription>
-              <InfoLabel>Осталось времени: {eventRemainingTime} мин.</InfoLabel>
-              <EventProgress progress={eventProgress} />
-            </SpecialEventContainer>
-          )}
-        </TimeWeatherPanel>
         
         <MapArea 
           daytimePeriod={daytimePeriod} 
           season={currentSeason}
         >
-          {/* Оверлей погоды */}
-          <WeatherOverlay weather={currentWeather} intensity={weatherIntensity} />
+
           
           {/* Оверлей событий */}
           {activeEvent && <EventOverlay event={activeEvent} />}
           
           <MapGrid>
             {locations.map(location => {
-              // Бонусы и эффекты локации
-              const locationEffects = {};
-              
-              // Расчет особых эффектов для локации в зависимости от погоды и сезона
-              switch(location.type) {
-                case 'forest':
-                  if (currentSeason === 'spring') locationEffects.resourceBonus = 1.2;
-                  if (currentWeather === 'rain') locationEffects.energyRecovery = 1.1;
-                  break;
-                case 'mountain':
-                  if (currentSeason === 'winter') locationEffects.cultivationSpeed = 1.15;
-                  if (currentWeather === 'thunderstorm') locationEffects.insightChance = 1.2;
-                  break;
-                case 'water':
-                  if (currentSeason === 'summer') locationEffects.cooldown = 0.8;
-                  if (currentWeather === 'clear') locationEffects.spiritualEnergy = 1.2;
-                  break;
-                case 'city':
-                  if (currentSeason === 'autumn') locationEffects.tradeBonus = 1.15;
-                  if (currentWeather === 'fog') locationEffects.stealthBonus = 1.3;
-                  break;
-                case 'dungeon':
-                  if (currentSeason === 'winter') locationEffects.defenseBonus = 1.1;
-                  if (currentWeather === 'thunderstorm') locationEffects.attackBonus = 1.2;
-                  break;
-                default:
-                  break;
-              }
-              
-              // Специальные цветовые эффекты для локаций в зависимости от времени суток
-              let timeEffect = {};
-              if (daytimePeriod === 'ночь' || daytimePeriod === 'глубокая ночь') {
-                if (location.type === 'water') timeEffect.glow = '0 0 15px rgba(100, 150, 255, 0.3)';
-                if (location.type === 'dungeon') timeEffect.glow = '0 0 10px rgba(255, 50, 50, 0.2)';
-              }
               
               return (
                 <MapCell
@@ -1013,9 +878,7 @@ function MapTab() {
                     location.x === playerLocation.x &&
                     location.y === playerLocation.y
                   }
-                  style={timeEffect}
                   onClick={() => handleLocationClick(location)}
-                  data-effects={Object.keys(locationEffects).length > 0 ? 'active' : 'none'}
                 />
               );
             })}
@@ -1041,16 +904,6 @@ function MapTab() {
               {selectedLocation.description}
             </LocationDescription>
             
-            {selectedLocation.resources && (
-              <ResourcesList>
-                {selectedLocation.resources.map(resource => (
-                  <ResourceItem key={resource.id}>
-                    <ResourceLabel>{resource.name}</ResourceLabel>
-                    <ResourceValue>{resource.amount}</ResourceValue>
-                  </ResourceItem>
-                ))}
-              </ResourcesList>
-            )}
             
             {selectedLocation.x !== playerLocation.x ||
              selectedLocation.y !== playerLocation.y ? (
@@ -1068,232 +921,6 @@ function MapTab() {
               <ActionButton onClick={handleExplore}>
                 Исследовать местность
               </ActionButton>
-            )}
-            {/* Эффекты локации */}
-            {selectedLocation && (
-              <>
-                {/* Получаем эффекты для данной локации с учетом погоды и сезона */}
-                {(() => {
-                  // Базовые бонусы локации (независимо от того, находимся ли мы в ней)
-                  const locationEffects = {};
-                  
-                  // Расчет особых эффектов для локации в зависимости от погоды и сезона
-                  switch(selectedLocation.type) {
-                    case 'forest':
-                      locationEffects.baseEnergy = { value: '+5%', positive: true };
-                      locationEffects.basePerception = { value: '+10%', positive: true };
-                      
-                      if (currentSeason === 'spring') 
-                        locationEffects.resourceBonus = { value: '+20% к сбору ресурсов', positive: true };
-                      if (currentWeather === 'rain') 
-                        locationEffects.energyRecovery = { value: '+10% к восстановлению энергии', positive: true };
-                      break;
-                    case 'mountain':
-                      locationEffects.baseStrength = { value: '+5%', positive: true };
-                      locationEffects.baseStamina = { value: '+15%', positive: true };
-                      
-                      if (currentSeason === 'winter') 
-                        locationEffects.cultivationSpeed = { value: '+15% к скорости культивации', positive: true };
-                      if (currentWeather === 'thunderstorm') 
-                        locationEffects.insightChance = { value: '+20% к шансу озарения', positive: true };
-                      break;
-                    case 'water':
-                      locationEffects.baseWisdom = { value: '+10%', positive: true };
-                      locationEffects.baseHealing = { value: '+15%', positive: true };
-                      
-                      if (currentSeason === 'summer') 
-                        locationEffects.cooldown = { value: '-20% к времени восстановления навыков', positive: true };
-                      if (currentWeather === 'clear') 
-                        locationEffects.spiritualEnergy = { value: '+20% к получению духовной энергии', positive: true };
-                      break;
-                    case 'city':
-                      locationEffects.baseSocial = { value: '+20%', positive: true };
-                      locationEffects.baseLuck = { value: '+5%', positive: true };
-                      
-                      if (currentSeason === 'autumn') 
-                        locationEffects.tradeBonus = { value: '+15% к выгоде при торговле', positive: true };
-                      if (currentWeather === 'fog') 
-                        locationEffects.stealthBonus = { value: '+30% к скрытности', positive: true };
-                      break;
-                    case 'dungeon':
-                      locationEffects.baseAttack = { value: '+10%', positive: true };
-                      locationEffects.baseDefense = { value: '+5%', positive: true };
-                      
-                      if (currentSeason === 'winter') 
-                        locationEffects.defenseBonus = { value: '+10% к защите', positive: true };
-                      if (currentWeather === 'thunderstorm') 
-                        locationEffects.attackBonus = { value: '+20% к атаке', positive: true };
-                      break;
-                    default:
-                      break;
-                  }
-                  
-                  // Эффекты времени суток для разных локаций
-                  switch(daytimePeriod) {
-                    case 'рассвет':
-                      if (selectedLocation.type === 'forest')
-                        locationEffects.dawnPerception = { value: '+15% к восприятию', positive: true };
-                      if (selectedLocation.type === 'water')
-                        locationEffects.dawnMeditation = { value: '+25% к эффекту медитации', positive: true };
-                      break;
-                    case 'день':
-                      if (selectedLocation.type === 'mountain')
-                        locationEffects.dayStamina = { value: '+10% к выносливости', positive: true };
-                      break;
-                    case 'ночь':
-                    case 'глубокая ночь':
-                      if (selectedLocation.type === 'water')
-                        locationEffects.nightEnergy = { value: '+20% к духовной энергии', positive: true };
-                      if (selectedLocation.type === 'dungeon')
-                        locationEffects.nightMonsterStrength = { value: '+15% к силе монстров', positive: false };
-                      break;
-                    default:
-                      break;
-                  }
-                  
-                  // Особые эффекты при активных событиях
-                  if (activeEvent) {
-                    switch(activeEvent) {
-                      case 'bloom':
-                        if (selectedLocation.type === 'forest')
-                          locationEffects.bloomHerbQuality = { value: '+50% к качеству трав', positive: true };
-                        break;
-                      case 'spirit_tide':
-                        if (selectedLocation.type === 'water')
-                          locationEffects.tideSpiritualPower = { value: '+40% к силе духовных техник', positive: true };
-                        break;
-                      case 'solstice':
-                        if (selectedLocation.type === 'mountain')
-                          locationEffects.solsticeCultivation = { value: '+30% к скорости культивации', positive: true };
-                        break;
-                      case 'meteor_shower':
-                        locationEffects.meteorRareMaterials = { value: 'Шанс найти редкие материалы', positive: true };
-                        break;
-                      default:
-                        break;
-                    }
-                  }
-                  
-                  return (
-                    <WeatherEffectsPanel style={{ marginTop: '15px' }}>
-                      <h4 style={{ margin: '0 0 10px 0', color: '#d4af37' }}>Особенности локации:</h4>
-                      {/* Базовые бонусы локации */}
-                      <div style={{ marginBottom: '10px' }}>
-                        <p style={{ color: '#bbb', marginBottom: '5px' }}>Базовые бонусы:</p>
-                        {Object.entries(locationEffects)
-                          .filter(([key]) => key.startsWith('base'))
-                          .map(([key, effect], idx) => (
-                            <p key={idx}>
-                              {key.replace('base', '')}: <span positive={effect.positive ? 'true' : 'false'}>{effect.value}</span>
-                            </p>
-                          ))}
-                      </div>
-                      
-                      {/* Эффекты сезона, погоды и времени */}
-                      {Object.entries(locationEffects)
-                        .filter(([key]) => !key.startsWith('base'))
-                        .length > 0 && (
-                        <div>
-                          <p style={{ color: '#bbb', marginBottom: '5px' }}>Текущие эффекты:</p>
-                          {Object.entries(locationEffects)
-                            .filter(([key]) => !key.startsWith('base'))
-                            .map(([key, effect], idx) => (
-                              <p key={idx}>
-                                <span positive={effect.positive ? 'true' : 'false'}>{effect.value}</span>
-                              </p>
-                            ))}
-                        </div>
-                      )}
-                    </WeatherEffectsPanel>
-                  );
-                })()}
-                
-                {/* Погодные эффекты для текущей локации */}
-                {selectedLocation.x === playerLocation.x && selectedLocation.y === playerLocation.y && (
-                  <WeatherEffectsPanel>
-                    <h4 style={{ margin: '10px 0 8px 0', color: '#d4af37' }}>
-                      Эффекты текущей погоды 
-                      {Array.isArray(timeWeather.weatherEffects) && timeWeather.weatherEffects.length > 1 &&
-                        ` (${timeWeather.weatherEffects.length})`}
-                    </h4>
-                    
-                    {/* Проверяем есть ли вообще эффекты для отображения */}
-                    {(!timeWeather.weatherEffects || 
-                      (Array.isArray(timeWeather.weatherEffects) && timeWeather.weatherEffects.length === 0) ||
-                      (typeof timeWeather.weatherEffects === 'object' && Object.keys(timeWeather.weatherEffects).length === 0)) ? (
-                      <p style={{ color: '#aaa', fontStyle: 'italic' }}>Нет активных эффектов погоды</p>
-                    ) : (
-                      <>
-                        {/* Проверяем формат weatherEffects и отображаем соответственно */}
-                        {Array.isArray(timeWeather.weatherEffects) ? (
-                          // Новый формат - массив эффектов
-                          timeWeather.weatherEffects.map((effect, index) => (
-                            <p key={index}>
-                              {effect.type || 'Эффект'}: 
-                              <span positive={(effect.modifier > 0 || effect.positive) ? 'true' : 'false'}>
-                                {effect.modifier ? 
-                                  // Округляем значение модификатора перед отображением
-                                  (effect.modifier > 0 ? ' +' : ' ') + 
-                                  (typeof effect.modifier === 'number' ? Math.round(effect.modifier) : effect.modifier) + 
-                                  (effect.target ? ` к ${effect.target}` : '') 
-                                  : effect.description || ''}
-                              </span>
-                            </p>
-                          ))
-                        ) : (
-                          // Старый формат - объект с категориями эффектов
-                          <>
-                            {timeWeather.weatherEffects?.exploration?.movementEnergyCostModifier !== undefined && 
-                             timeWeather.weatherEffects.exploration.movementEnergyCostModifier !== 1.0 && (
-                              <p>Затраты энергии на передвижение: 
-                                <span positive={timeWeather.weatherEffects.exploration.movementEnergyCostModifier < 1.0 ? 'true' : 'false'}>
-                                  {timeWeather.weatherEffects.exploration.movementEnergyCostModifier < 1.0 ? ' -' : ' +'}
-                                  {Math.abs(Math.round((timeWeather.weatherEffects.exploration.movementEnergyCostModifier - 1) * 100))}%
-                                </span>
-                              </p>
-                            )}
-                            {timeWeather.weatherEffects?.exploration?.resourceFindRateModifier !== undefined &&
-                             timeWeather.weatherEffects.exploration.resourceFindRateModifier !== 1.0 && (
-                              <p>Шанс найти ресурсы: 
-                                <span positive={timeWeather.weatherEffects.exploration.resourceFindRateModifier > 1.0 ? 'true' : 'false'}>
-                                  {timeWeather.weatherEffects.exploration.resourceFindRateModifier > 1.0 ? ' +' : ' -'}
-                                  {Math.abs(Math.round((timeWeather.weatherEffects.exploration.resourceFindRateModifier - 1) * 100))}%
-                                </span>
-                              </p>
-                            )}
-                            {timeWeather.weatherEffects?.exploration?.resourceQualityModifier !== undefined &&
-                             timeWeather.weatherEffects.exploration.resourceQualityModifier !== 1.0 && (
-                              <p>Качество ресурсов: 
-                                <span positive={timeWeather.weatherEffects.exploration.resourceQualityModifier > 1.0 ? 'true' : 'false'}>
-                                  {timeWeather.weatherEffects.exploration.resourceQualityModifier > 1.0 ? ' +' : ' -'}
-                                  {Math.abs(Math.round((timeWeather.weatherEffects.exploration.resourceQualityModifier - 1) * 100))}%
-                                </span>
-                              </p>
-                            )}
-                            {timeWeather.weatherEffects?.combat?.enemySpawnRateModifier !== undefined &&
-                             timeWeather.weatherEffects.combat.enemySpawnRateModifier !== 1.0 && (
-                              <p>Частота появления врагов: 
-                                <span positive={timeWeather.weatherEffects.combat.enemySpawnRateModifier < 1.0 ? 'true' : 'false'}>
-                                  {timeWeather.weatherEffects.combat.enemySpawnRateModifier < 1.0 ? ' -' : ' +'}
-                                  {Math.abs(Math.round((timeWeather.weatherEffects.combat.enemySpawnRateModifier - 1) * 100))}%
-                                </span>
-                              </p>
-                            )}
-                            {timeWeather.weatherEffects?.system?.specialEncounterChance !== undefined &&
-                             timeWeather.weatherEffects.system.specialEncounterChance > 0 && (
-                              <p>Шанс особых встреч: 
-                                <span positive="true">
-                                  +{Math.round(timeWeather.weatherEffects.system.specialEncounterChance * 100)}%
-                                </span>
-                              </p>
-                            )}
-                          </>
-                        )}
-                      </>
-                    )}
-                  </WeatherEffectsPanel>
-                )}
-              </>
             )}
           </>
         ) : (

@@ -220,8 +220,6 @@ function CombatArea({ areaId }) {
   
   const areaEnemies = getModifiedEnemySpawns(
     areaId,
-    weather.timeOfDay,
-    weather.weatherType
   );
   
   let availableEnemies = [];
@@ -367,18 +365,6 @@ function CombatArea({ areaId }) {
   return (
     <Container>
       <WorldArea>
-        <WeatherBanner>
-          <WeatherInfo>
-            <WeatherIcon>{getTimeIcon(weather.timeOfDay)}</WeatherIcon>
-            <WeatherDetails>
-              <WeatherType>{weather.weatherType}</WeatherType>
-              <TimeOfDay>{weather.timeOfDay}</TimeOfDay>
-            </WeatherDetails>
-          </WeatherInfo>
-          <WeatherEffects>
-            Влияние погоды...
-          </WeatherEffects>
-        </WeatherBanner>
         <AreaInfo>
           <AreaTitle>
             {areaId === 'starting_area' && 'Тренировочная площадка'}
