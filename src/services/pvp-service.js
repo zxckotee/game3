@@ -4,6 +4,7 @@
 const modelRegistry = require('../models/registry');
 const { Op } = require('sequelize');
 const { targetTypes, damageTypes, statusEffects } = require('../data/combat');
+const EffectTypes = require('../constants/effectTypes');
 const QuestService = require('./quest-service');
 const InventoryService = require('./inventory-service');
 
@@ -274,51 +275,55 @@ class PvPService {
         }
       }
       
-      // Пытаемся определить тип эффекта, даже если subtype не указан
-      if (effect.subtype) {
-        // Классификация по подтипу
-        if (['regenerate', 'health_regen', 'heal', 'healing'].includes(effect.subtype)) {
-          periodicEffects.healing.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как healing по subtype`);
-        } else if (['energy_regen', 'mana_regen', 'stamina_regen'].includes(effect.subtype)) {
-          periodicEffects.energyRegen.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как energyRegen по subtype`);
-        } else if (['burn', 'bleed', 'poison', 'damage_over_time', 'dot', 'periodic_damage'].includes(effect.subtype)) {
-          periodicEffects.damageOverTime.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как damageOverTime по subtype`);
-        } else if (['stat_modifier', 'buff', 'debuff'].includes(effect.subtype)) {
-          periodicEffects.statModifiers.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как statModifier по subtype`);
-        }
-      } else if (effect.type) {
-        // Специальная обработка для эффекта "Регенерация"
-        if (effect.name === 'Регенерация' || effect.type === 'health_regen') {
-          periodicEffects.healing.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как healing по типу health_regen`);
-        }
-        // Специальная обработка для эффекта "Накопление энергии" - всегда классифицируем как energyRegen
-        else if (effect.name === 'Накопление энергии' || effect.type === 'energy_gain') {
-          // Всегда добавляем в периодические эффекты регенерации энергии
-          periodicEffects.energyRegen.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как energyRegen (${effect.type})`);
-        }
-        // Вторичная классификация по типу, если подтип не указан
-        else if (effect.type === 'healing' || effect.type === 'regeneration') {
-          periodicEffects.healing.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как healing по type`);
-        } else if (effect.type === 'energy' || effect.type === 'mana' || effect.type === 'stamina' || effect.type === 'regenerate') {
-          // Для всех других regenerate-эффектов по-прежнему используем энергию
-          periodicEffects.energyRegen.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как energyRegen по type`);
-        } else if (effect.type === 'dot' || effect.type === 'damage_over_time' || effect.type === 'poison' ||
-                  effect.type === 'burn' || effect.type === 'bleed') {
-          periodicEffects.damageOverTime.push(effect);
-          console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как damageOverTime по type`);
-        }
-      } else if (effect.damageBonus || effect.damageReduction) {
-        // Также проверяем эффекты старого формата
-        periodicEffects.statModifiers.push(effect);
-        console.log(`[PvP] Эффект ${effect.name || effect.id} классифицирован как statModifier по наличию modifiers`);
+      // Новая система классификации на основе EffectTypes
+      // Мы предполагаем, что `effect.effect_type` теперь доступно в объекте эффекта
+      const effectType = effect.effect_type || effect.type; // Используем effect.type для обратной совместимости
+
+      switch (effectType) {
+        case EffectTypes.STATS:
+        case EffectTypes.CULTIVATION:
+            // Эффекты, которые могут иметь периодическое восстановление
+            if (effect.description && effect.description.toLowerCase().includes('восстанавливает')) {
+                if (effect.description.toLowerCase().includes('здоровья')) {
+                    periodicEffects.healing.push(effect);
+                }
+                if (effect.description.toLowerCase().includes('духовной энергии')) {
+                    periodicEffects.energyRegen.push(effect);
+                }
+            } else {
+                periodicEffects.statModifiers.push(effect);
+            }
+            break;
+        case EffectTypes.COMBAT:
+             if (effect.description && effect.description.toLowerCase().includes('урона')) {
+                periodicEffects.damageOverTime.push(effect);
+            }
+            break;
+        // Пропускаем типы, которые не имеют периодического действия
+        case EffectTypes.INSTANT:
+        case EffectTypes.BREAKTHROOUGH:
+        case EffectTypes.DEFENSE:
+        case EffectTypes.MOVEMENT:
+        case EffectTypes.SPECIAL:
+        case EffectTypes.ADVANCED:
+        case EffectTypes.DRAWBACK:
+          break;
+        default:
+          // Логируем неклассифицированные или старые эффекты для дальнейшего анализа
+          if (effect.subtype) { // Обработка старой логики для обратной совместимости
+            if (['regenerate', 'health_regen', 'heal', 'healing'].includes(effect.subtype)) {
+              periodicEffects.healing.push(effect);
+            } else if (['energy_regen', 'mana_regen', 'stamina_regen'].includes(effect.subtype)) {
+              periodicEffects.energyRegen.push(effect);
+            } else if (['burn', 'bleed', 'poison', 'damage_over_time', 'dot', 'periodic_damage'].includes(effect.subtype)) {
+              periodicEffects.damageOverTime.push(effect);
+            } else if (['stat_modifier', 'buff', 'debuff'].includes(effect.subtype)) {
+              periodicEffects.statModifiers.push(effect);
+            }
+          } else {
+            console.log(`[PvP] Неизвестный или непериодический тип эффекта: ${effectType} для эффекта ${effect.name || effect.id}`);
+          }
+          break;
       }
     }
     
@@ -496,6 +501,294 @@ class PvPService {
   }
 
   /**
+   * Главная функция для применения любого эффекта к участнику.
+   * @param {Object} participant - Участник боя.
+   * @param {Object} effect - Объект эффекта для применения.
+   * @param {Object} transaction - Транзакция Sequelize.
+   * @returns {Object} Результат применения эффекта.
+   */
+  static async applyEffect(participant, effect, transaction) {
+    const effectType = effect.effect_type || effect.type;
+    let result = { success: false, message: `Неизвестный тип эффекта: ${effectType}` };
+
+    console.log(`[PvP] Применение эффекта "${effect.name || effect.id}" с типом "${effectType}" к участнику ${participant.id}`);
+
+    switch (effectType) {
+      case EffectTypes.INSTANT:
+        result = this.applyInstantEffect(participant, effect);
+        break;
+      case EffectTypes.STATS:
+        result = this.applyStatsEffect(participant, effect);
+        break;
+      case EffectTypes.COMBAT:
+        result = this.applyCombatEffect(participant, effect);
+        break;
+      case EffectTypes.CULTIVATION:
+        result = this.applyCultivationEffect(participant, effect);
+        break;
+      case EffectTypes.SPECIAL:
+      case EffectTypes.ADVANCED:
+      case EffectTypes.BREAKTHROUGH:
+      case EffectTypes.DEFENSE:
+      case EffectTypes.DRAWBACK:
+      case EffectTypes.MOVEMENT:
+        result = this.applySpecialEffect(participant, effect);
+        break;
+      //   result = this.applySpecialEffect(participant, effect);
+      //   break;
+      default:
+        console.log(`[PvP] Нет обработчика для типа эффекта: ${effectType}`);
+        break;
+    }
+    
+    // Обновляем состояние участника в БД, если эффект был успешно применен
+    if (result.success) {
+      await participant.update(result.changes, { transaction });
+      console.log(`[PvP] Эффект "${effect.name || effect.id}" успешно применен. Изменения:`, result.changes);
+    }
+
+    return result;
+  }
+
+  /**
+   * Обрабатывает мгновенные эффекты (восстановление здоровья, энергии и т.д.).
+   * @param {Object} participant - Участник боя.
+   * @param {Object} effect - Объект эффекта.
+   * @returns {Object} Результат с изменениями.
+   */
+  static applyInstantEffect(participant, effect) {
+    const changes = {};
+    const description = effect.description.toLowerCase();
+    const valueMatch = description.match(/\d+/);
+
+    if (!valueMatch) {
+        console.log(`[PvP] Не удалось извлечь значение из описания эффекта: ${effect.description}`);
+        return { success: false, changes: {} };
+    }
+    const value = parseInt(valueMatch[0], 10);
+
+    if (description.includes('восстанавливает') && description.includes('здоровья')) {
+      const newHealth = Math.min(participant.max_hp, participant.current_hp + value);
+      changes.current_hp = newHealth;
+    }
+
+    if (description.includes('восстанавливает') && description.includes('духовной энергии')) {
+      const newEnergy = Math.min(participant.max_energy, participant.current_energy + value);
+      changes.current_energy = newEnergy;
+    }
+
+    return { success: Object.keys(changes).length > 0, changes };
+  }
+
+  /**
+   * Обрабатывает эффекты, изменяющие характеристики.
+   * @param {Object} participant - Участник боя.
+   * @param {Object} effect - Объект эффекта.
+   * @returns {Object} Результат с изменениями.
+   */
+  static applyStatsEffect(participant, effect) {
+    const changes = {};
+    const description = effect.description.toLowerCase();
+    // Пример описания: "Временно повышает силу на 10% и выносливость на 15%"
+    // или "Увеличивает интеллект на 8 и восприятие на 5"
+
+    const parts = description.split(/ и |,/);
+    const statsMapping = {
+        'силу': 'strength',
+        'выносливость': 'stamina',
+        'интеллект': 'intelligence',
+        'восприятие': 'perception',
+        'контроль над ци': 'qi_control',
+        'все характеристики': 'all_stats'
+    };
+
+    for (const part of parts) {
+        const valueMatch = part.match(/(\d+)(%?)/);
+        if (!valueMatch) continue;
+
+        const value = parseInt(valueMatch[1], 10);
+        const isPercentage = valueMatch[2] === '%';
+
+        for (const key in statsMapping) {
+            if (part.includes(key)) {
+                const statName = statsMapping[key];
+                
+                // Для процентных и временных баффов нужна более сложная логика,
+                // которая будет хранить модификаторы отдельно от базовых статов.
+                // Пока что мы будем добавлять эффект в массив `effects` участника,
+                // а `getEffectModifiers` будет их вычислять.
+                
+                const newEffect = {
+                    id: `stat_buff_${statName}_${Date.now()}`,
+                    name: effect.name,
+                    type: 'buff', // или 'debuff'
+                    subtype: 'stat_modifier',
+                    targetStat: statName,
+                    value: value,
+                    isPercentage: isPercentage,
+                    durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000, // 5 минут по умолчанию
+                    appliedAt: new Date().toISOString(),
+                    source: effect.item_id || 'unknown'
+                };
+
+                // Вместо прямого изменения статов, мы добавляем эффект.
+                // Это более гибкий подход.
+                if (!participant.effects) {
+                    participant.effects = [];
+                }
+                participant.effects.push(newEffect);
+                changes.effects = participant.effects;
+
+                break;
+            }
+        }
+    }
+    
+    return { success: Object.keys(changes).length > 0, changes };
+  }
+
+  /**
+   * Обрабатывает боевые эффекты.
+   * @param {Object} participant - Участник боя.
+   * @param {Object} effect - Объект эффекта.
+   * @returns {Object} Результат с изменениями.
+   */
+  static applyCombatEffect(participant, effect) {
+    const changes = {};
+    const description = effect.description.toLowerCase();
+    const valueMatch = description.match(/(\d+)/);
+    const value = valueMatch ? parseInt(valueMatch[1], 10) : 0;
+
+    const newEffect = {
+        id: `combat_effect_${Date.now()}`,
+        name: effect.name,
+        type: 'buff', // или 'debuff'
+        subtype: 'combat_modifier',
+        durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000, // 5 минут по умолчанию
+        appliedAt: new Date().toISOString(),
+        source: effect.item_id || 'unknown',
+        modifies: {},
+    };
+
+    if (description.includes('физическую защиту')) {
+        newEffect.modifies.physicalDefense = { value: value, isPercentage: false };
+    }
+    if (description.includes('духовную защиту')) {
+        newEffect.modifies.magicDefense = { value: value, isPercentage: false };
+    }
+    if (description.includes('урона') && description.includes('отражающий')) {
+        newEffect.subtype = 'reflection';
+        newEffect.modifies.damageReflection = { value: value, isPercentage: true };
+    }
+    if (description.includes('урона огнем')) {
+        newEffect.subtype = 'dot';
+        newEffect.modifies.damageOverTime = { type: 'fire', value: value };
+    }
+    
+    if (Object.keys(newEffect.modifies).length > 0) {
+        if (!participant.effects) {
+            participant.effects = [];
+        }
+        participant.effects.push(newEffect);
+        changes.effects = participant.effects;
+        return { success: true, changes };
+    }
+
+    return { success: false, message: 'Не удалось определить боевой эффект' };
+  }
+
+  /**
+   * Обрабатывает эффекты, связанные с культивацией.
+   * @param {Object} participant - Участник боя.
+   * @param {Object} effect - Объект эффекта.
+   * @returns {Object} Результат с изменениями.
+   */
+  static applyCultivationEffect(participant, effect) {
+    const changes = {};
+    const description = effect.description.toLowerCase();
+    const valueMatch = description.match(/(\d+)/);
+    const value = valueMatch ? parseInt(valueMatch[1], 10) : 0;
+
+    const newEffect = {
+        id: `cultivation_effect_${Date.now()}`,
+        name: effect.name,
+        type: 'buff',
+        subtype: 'cultivation_modifier',
+        durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000,
+        appliedAt: new Date().toISOString(),
+        source: effect.item_id || 'unknown',
+        modifies: {},
+    };
+
+    if (description.includes('скорость культивации')) {
+        newEffect.modifies.cultivationSpeed = { value: value, isPercentage: true };
+    } else if (description.includes('скорость медитации')) {
+        newEffect.modifies.meditationSpeed = { value: value, isPercentage: true };
+    } else if (description.includes('максимум духовной энергии')) {
+        newEffect.modifies.maxEnergy = { value: value, isPercentage: true };
+    }
+
+    if (Object.keys(newEffect.modifies).length > 0) {
+        if (!participant.effects) {
+            participant.effects = [];
+        }
+        participant.effects.push(newEffect);
+        changes.effects = participant.effects;
+        return { success: true, changes };
+    }
+
+    return { success: false, message: 'Не удалось определить эффект культивации' };
+  }
+
+  /**
+   * Обрабатывает особые, сложные и уникальные эффекты.
+   * @param {Object} participant - Участник боя.
+   * @param {Object} effect - Объект эффекта.
+   * @returns {Object} Результат с изменениями.
+   */
+  static applySpecialEffect(participant, effect) {
+    const changes = {};
+    const description = effect.description.toLowerCase();
+    const effectType = effect.effect_type || effect.type;
+
+    const newEffect = {
+        id: `special_effect_${Date.now()}`,
+        name: effect.name,
+        type: 'buff',
+        subtype: `special_${effectType}`,
+        durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000,
+        appliedAt: new Date().toISOString(),
+        source: effect.item_id || 'unknown',
+        modifies: {},
+        originalDescription: effect.description
+    };
+
+    // Эта функция будет содержать сложную логику для каждого уникального эффекта.
+    // Пока что мы просто добавляем эффект с его описанием,
+    // а другие части системы (например, `calculateDamage`) должны будут его интерпретировать.
+    
+    if (description.includes('снимает все негативные эффекты')) {
+        // Логика снятия дебаффов
+        participant.effects = participant.effects.filter(e => e.type !== 'debuff');
+        changes.effects = participant.effects;
+    } else if (description.includes('шанс прорыва')) {
+        newEffect.modifies.breakthroughChance = { value: parseInt(description.match(/(\d+)/)[0], 10), isPercentage: true };
+    } else if (description.includes('скорость передвижения')) {
+        newEffect.modifies.movementSpeed = { value: parseInt(description.match(/(\d+)/)[0], 10), isPercentage: true };
+    } else {
+        // Для других спецэффектов просто добавляем их в массив
+    }
+
+    if (!participant.effects) {
+        participant.effects = [];
+    }
+    participant.effects.push(newEffect);
+    changes.effects = participant.effects;
+
+    return { success: true, changes };
+  }
+
+  /**
    * Применение эффектов, активируемых при действиях (например, "Накопление энергии")
    * @param {Object} participant - Участник боя
    * @param {Object} transaction - Транзакция Sequelize
@@ -588,6 +881,67 @@ class PvPService {
     return results;
   }
   
+  /**
+   * Вычисляет суммарные модификаторы от всех активных эффектов.
+   * @param {Object} participant - Участник боя.
+   * @returns {Object} Объект с суммарными модификаторами.
+   */
+  static getEffectModifiers(participant) {
+    const modifiers = {
+      // Статы
+      strength: 0,
+      stamina: 0,
+      intelligence: 0,
+      perception: 0,
+      qi_control: 0,
+      // Боевые
+      physicalDefense: 0,
+      magicDefense: 0,
+      damageReflection: 0, // в %
+      // DoT/HoT
+      damageOverTime: [], // массив объектов { type, value }
+      healthOverTime: [], // массив объектов { value }
+      // Культивация
+      cultivationSpeed: 0, // в %
+      meditationSpeed: 0, // в %
+      maxEnergy: 0, // в %
+      // Специальные
+      breakthroughChance: 0, // в %
+      movementSpeed: 0, // в %
+    };
+
+    if (!participant || !participant.effects || !Array.isArray(participant.effects)) {
+      return modifiers;
+    }
+
+    const now = Date.now();
+    const activeEffects = participant.effects.filter(effect => {
+        if (!effect.durationMs) return true; // Постоянные эффекты
+        const startTime = new Date(effect.appliedAt).getTime();
+        const elapsedMs = now - startTime;
+        return elapsedMs < effect.durationMs;
+    });
+
+    for (const effect of activeEffects) {
+        if (!effect.modifies) continue;
+
+        for (const key in effect.modifies) {
+            const mod = effect.modifies[key];
+            if (key === 'damageOverTime' || key === 'healthOverTime') {
+                modifiers[key].push(mod);
+            } else {
+                // Пока что мы просто суммируем. Для процентных баффов нужна более сложная логика,
+                // которая будет применяться к базовым статам.
+                if (modifiers[key] !== undefined) {
+                    modifiers[key] += mod.value;
+                }
+            }
+        }
+    }
+
+    return modifiers;
+  }
+
   /**
    * Проверка возможности выполнения действия
    * @param {Object} participant - Участник боя
