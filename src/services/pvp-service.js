@@ -7,6 +7,7 @@ const { targetTypes, damageTypes, statusEffects } = require('../data/combat');
 const EffectTypes = require('../constants/effectTypes');
 const QuestService = require('./quest-service');
 const InventoryService = require('./inventory-service');
+const PvpStatsService = require('./pvp-stats-service');
 
 /**
  * Класс для работы с PvP-системой
@@ -275,55 +276,17 @@ class PvPService {
         }
       }
       
-      // Новая система классификации на основе EffectTypes
-      // Мы предполагаем, что `effect.effect_type` теперь доступно в объекте эффекта
-      const effectType = effect.effect_type || effect.type; // Используем effect.type для обратной совместимости
-
-      switch (effectType) {
-        case EffectTypes.STATS:
-        case EffectTypes.CULTIVATION:
-            // Эффекты, которые могут иметь периодическое восстановление
-            if (effect.description && effect.description.toLowerCase().includes('восстанавливает')) {
-                if (effect.description.toLowerCase().includes('здоровья')) {
-                    periodicEffects.healing.push(effect);
-                }
-                if (effect.description.toLowerCase().includes('духовной энергии')) {
-                    periodicEffects.energyRegen.push(effect);
-                }
-            } else {
-                periodicEffects.statModifiers.push(effect);
-            }
-            break;
-        case EffectTypes.COMBAT:
-             if (effect.description && effect.description.toLowerCase().includes('урона')) {
-                periodicEffects.damageOverTime.push(effect);
-            }
-            break;
-        // Пропускаем типы, которые не имеют периодического действия
-        case EffectTypes.INSTANT:
-        case EffectTypes.BREAKTHROOUGH:
-        case EffectTypes.DEFENSE:
-        case EffectTypes.MOVEMENT:
-        case EffectTypes.SPECIAL:
-        case EffectTypes.ADVANCED:
-        case EffectTypes.DRAWBACK:
-          break;
-        default:
-          // Логируем неклассифицированные или старые эффекты для дальнейшего анализа
-          if (effect.subtype) { // Обработка старой логики для обратной совместимости
-            if (['regenerate', 'health_regen', 'heal', 'healing'].includes(effect.subtype)) {
-              periodicEffects.healing.push(effect);
-            } else if (['energy_regen', 'mana_regen', 'stamina_regen'].includes(effect.subtype)) {
-              periodicEffects.energyRegen.push(effect);
-            } else if (['burn', 'bleed', 'poison', 'damage_over_time', 'dot', 'periodic_damage'].includes(effect.subtype)) {
+      // Новая система классификации на основе унифицированной структуры эффектов
+      const details = effect.effect_details_json;
+      if (details && details.original_description) {
+          const description = details.original_description.toLowerCase();
+          if (description.includes('урона в секунду') || description.includes('урона огнем')) {
               periodicEffects.damageOverTime.push(effect);
-            } else if (['stat_modifier', 'buff', 'debuff'].includes(effect.subtype)) {
-              periodicEffects.statModifiers.push(effect);
-            }
-          } else {
-            console.log(`[PvP] Неизвестный или непериодический тип эффекта: ${effectType} для эффекта ${effect.name || effect.id}`);
+          } else if (description.includes('восстанавливает') && description.includes('здоровья')) {
+              periodicEffects.healing.push(effect);
+          } else if (description.includes('восстанавливает') && description.includes('духовной энергии')) {
+              periodicEffects.energyRegen.push(effect);
           }
-          break;
       }
     }
     
@@ -589,9 +552,6 @@ class PvPService {
   static applyStatsEffect(participant, effect) {
     const changes = {};
     const description = effect.description.toLowerCase();
-    // Пример описания: "Временно повышает силу на 10% и выносливость на 15%"
-    // или "Увеличивает интеллект на 8 и восприятие на 5"
-
     const parts = description.split(/ и |,/);
     const statsMapping = {
         'силу': 'strength',
@@ -599,52 +559,46 @@ class PvPService {
         'интеллект': 'intelligence',
         'восприятие': 'perception',
         'контроль над ци': 'qi_control',
-        'все характеристики': 'all_stats'
+        'все характеристики': 'all_stats' // Это потребует специальной обработки
     };
+
+    if (!participant.effects) {
+        participant.effects = [];
+    }
 
     for (const part of parts) {
         const valueMatch = part.match(/(\d+)(%?)/);
         if (!valueMatch) continue;
 
         const value = parseInt(valueMatch[1], 10);
-        const isPercentage = valueMatch[2] === '%';
+        const valueType = valueMatch[2] === '%' ? 'percentage' : 'absolute';
 
         for (const key in statsMapping) {
             if (part.includes(key)) {
-                const statName = statsMapping[key];
-                
-                // Для процентных и временных баффов нужна более сложная логика,
-                // которая будет хранить модификаторы отдельно от базовых статов.
-                // Пока что мы будем добавлять эффект в массив `effects` участника,
-                // а `getEffectModifiers` будет их вычислять.
+                const targetAttribute = statsMapping[key];
                 
                 const newEffect = {
-                    id: `stat_buff_${statName}_${Date.now()}`,
+                    id: `stat_buff_${targetAttribute}_${Date.now()}`,
                     name: effect.name,
-                    type: 'buff', // или 'debuff'
-                    subtype: 'stat_modifier',
-                    targetStat: statName,
-                    value: value,
-                    isPercentage: isPercentage,
-                    durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000, // 5 минут по умолчанию
+                    effect_type: EffectTypes.STATS,
+                    durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000,
                     appliedAt: new Date().toISOString(),
-                    source: effect.item_id || 'unknown'
+                    source: effect.item_id || 'unknown',
+                    // Новая унифицированная структура
+                    effect_details_json: {
+                        target_attribute: targetAttribute,
+                        value: value,
+                        value_type: valueType,
+                        original_description: effect.description
+                    }
                 };
-
-                // Вместо прямого изменения статов, мы добавляем эффект.
-                // Это более гибкий подход.
-                if (!participant.effects) {
-                    participant.effects = [];
-                }
                 participant.effects.push(newEffect);
-                changes.effects = participant.effects;
-
-                break;
             }
         }
     }
     
-    return { success: Object.keys(changes).length > 0, changes };
+    changes.effects = participant.effects;
+    return { success: true, changes };
   }
 
   /**
@@ -659,42 +613,38 @@ class PvPService {
     const valueMatch = description.match(/(\d+)/);
     const value = valueMatch ? parseInt(valueMatch[1], 10) : 0;
 
-    const newEffect = {
+    let newEffect = {
         id: `combat_effect_${Date.now()}`,
         name: effect.name,
-        type: 'buff', // или 'debuff'
-        subtype: 'combat_modifier',
-        durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000, // 5 минут по умолчанию
+        effect_type: EffectTypes.COMBAT,
+        durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000,
         appliedAt: new Date().toISOString(),
         source: effect.item_id || 'unknown',
-        modifies: {},
+        effect_details_json: {
+            original_description: effect.description,
+            value: value,
+        }
     };
 
     if (description.includes('физическую защиту')) {
-        newEffect.modifies.physicalDefense = { value: value, isPercentage: false };
-    }
-    if (description.includes('духовную защиту')) {
-        newEffect.modifies.magicDefense = { value: value, isPercentage: false };
-    }
-    if (description.includes('урона') && description.includes('отражающий')) {
-        newEffect.subtype = 'reflection';
-        newEffect.modifies.damageReflection = { value: value, isPercentage: true };
-    }
-    if (description.includes('урона огнем')) {
-        newEffect.subtype = 'dot';
-        newEffect.modifies.damageOverTime = { type: 'fire', value: value };
+        newEffect.effect_details_json.target_attribute = 'physicalDefense';
+        newEffect.effect_details_json.value_type = 'absolute';
+    } else if (description.includes('духовную защиту')) {
+        newEffect.effect_details_json.target_attribute = 'spiritualDefense';
+        newEffect.effect_details_json.value_type = 'absolute';
+    } else if (description.includes('урона') && description.includes('отражающий')) {
+        newEffect.effect_details_json.target_attribute = 'damageReflection';
+        newEffect.effect_details_json.value_type = 'percentage';
+    } else {
+        return { success: false, message: 'Не удалось определить боевой эффект' };
     }
     
-    if (Object.keys(newEffect.modifies).length > 0) {
-        if (!participant.effects) {
-            participant.effects = [];
-        }
-        participant.effects.push(newEffect);
-        changes.effects = participant.effects;
-        return { success: true, changes };
+    if (!participant.effects) {
+        participant.effects = [];
     }
-
-    return { success: false, message: 'Не удалось определить боевой эффект' };
+    participant.effects.push(newEffect);
+    changes.effects = participant.effects;
+    return { success: true, changes };
   }
 
   /**
@@ -709,35 +659,36 @@ class PvPService {
     const valueMatch = description.match(/(\d+)/);
     const value = valueMatch ? parseInt(valueMatch[1], 10) : 0;
 
-    const newEffect = {
+    let newEffect = {
         id: `cultivation_effect_${Date.now()}`,
         name: effect.name,
-        type: 'buff',
-        subtype: 'cultivation_modifier',
+        effect_type: EffectTypes.CULTIVATION,
         durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000,
         appliedAt: new Date().toISOString(),
         source: effect.item_id || 'unknown',
-        modifies: {},
+        effect_details_json: {
+            original_description: effect.description,
+            value: value,
+            value_type: 'percentage' // Большинство эффектов культивации - процентные
+        }
     };
 
     if (description.includes('скорость культивации')) {
-        newEffect.modifies.cultivationSpeed = { value: value, isPercentage: true };
+        newEffect.effect_details_json.target_attribute = 'cultivationSpeed';
     } else if (description.includes('скорость медитации')) {
-        newEffect.modifies.meditationSpeed = { value: value, isPercentage: true };
+        newEffect.effect_details_json.target_attribute = 'meditationSpeed';
     } else if (description.includes('максимум духовной энергии')) {
-        newEffect.modifies.maxEnergy = { value: value, isPercentage: true };
+        newEffect.effect_details_json.target_attribute = 'maxEnergy';
+    } else {
+        return { success: false, message: 'Не удалось определить эффект культивации' };
     }
 
-    if (Object.keys(newEffect.modifies).length > 0) {
-        if (!participant.effects) {
-            participant.effects = [];
-        }
-        participant.effects.push(newEffect);
-        changes.effects = participant.effects;
-        return { success: true, changes };
+    if (!participant.effects) {
+        participant.effects = [];
     }
-
-    return { success: false, message: 'Не удалось определить эффект культивации' };
+    participant.effects.push(newEffect);
+    changes.effects = participant.effects;
+    return { success: true, changes };
   }
 
   /**
@@ -751,32 +702,25 @@ class PvPService {
     const description = effect.description.toLowerCase();
     const effectType = effect.effect_type || effect.type;
 
+    // Для спецэффектов мы просто сохраняем их как есть,
+    // так как их логика будет обрабатываться в других местах (например, `calculateDamage` или `performAction`).
     const newEffect = {
         id: `special_effect_${Date.now()}`,
         name: effect.name,
-        type: 'buff',
-        subtype: `special_${effectType}`,
+        effect_type: effectType,
         durationMs: effect.durationSeconds ? effect.durationSeconds * 1000 : 300000,
         appliedAt: new Date().toISOString(),
         source: effect.item_id || 'unknown',
-        modifies: {},
-        originalDescription: effect.description
+        effect_details_json: {
+            original_description: effect.description
+        }
     };
-
-    // Эта функция будет содержать сложную логику для каждого уникального эффекта.
-    // Пока что мы просто добавляем эффект с его описанием,
-    // а другие части системы (например, `calculateDamage`) должны будут его интерпретировать.
     
     if (description.includes('снимает все негативные эффекты')) {
-        // Логика снятия дебаффов
-        participant.effects = participant.effects.filter(e => e.type !== 'debuff');
+        participant.effects = participant.effects.filter(e => e.type !== 'debuff' && e.subtype !== 'debuff');
+        // Этот эффект мгновенный и не должен добавляться в массив
         changes.effects = participant.effects;
-    } else if (description.includes('шанс прорыва')) {
-        newEffect.modifies.breakthroughChance = { value: parseInt(description.match(/(\d+)/)[0], 10), isPercentage: true };
-    } else if (description.includes('скорость передвижения')) {
-        newEffect.modifies.movementSpeed = { value: parseInt(description.match(/(\d+)/)[0], 10), isPercentage: true };
-    } else {
-        // Для других спецэффектов просто добавляем их в массив
+        return { success: true, changes };
     }
 
     if (!participant.effects) {
@@ -1330,30 +1274,28 @@ class PvPService {
   static async calculateDamage(attacker, defender, baseDamage, damageType, actionType = 'attack', techniqueId = null) {
     // Инициализируем реестр моделей, если он еще не инициализирован
     await modelRegistry.initializeRegistry();
-    
-    // Получаем модели через реестр
-    const PvPPlayerStats = modelRegistry.getModel('PvPPlayerStats');
     const LearnedTechnique = modelRegistry.getModel('LearnedTechnique');
 
-    // Получаем эффекты от экипировки
-    const attackerEquipmentEffects = await this._getEquipmentEffects(attacker.user_id);
-    const defenderEquipmentEffects = await this._getEquipmentEffects(defender.user_id);
-    
-    // Базовый урон
-    let damage = baseDamage;
-    
-    // Если указан ID техники и это действие техники, получаем информацию о ее уровне
-    let techniqueLevel = 1; // По умолчанию уровень 1
+    // 1. Получаем полные, рассчитанные характеристики для обоих участников
+    const [attackerFullStats, defenderFullStats] = await Promise.all([
+        PvpStatsService.getPvpParticipantStats(attacker),
+        PvpStatsService.getPvpParticipantStats(defender)
+    ]);
+
+    // 2. Используем модифицированные и вторичные характеристики для расчетов
+    const finalAttackerStats = { ...attackerFullStats.modified, ...attackerFullStats.secondary };
+    const finalDefenderStats = { ...defenderFullStats.modified, ...defenderFullStats.secondary };
+
+    // 3. Получаем уровень техники, если она используется
+    let techniqueLevel = 1;
     if (techniqueId && actionType === 'technique') {
       try {
-        // Получаем информацию о выученной технике
         const learnedTechnique = await LearnedTechnique.findOne({
           where: {
-            userId: attacker.user_id,
+            userId: attacker.user_id, // ВАЖНО: убедиться, что user_id есть в объекте attacker
             techniqueId: techniqueId
           }
         });
-        
         if (learnedTechnique) {
           techniqueLevel = learnedTechnique.level;
         }
@@ -1361,55 +1303,12 @@ class PvPService {
         console.error(`[PvP] Ошибка при получении уровня техники:`, error);
       }
     }
-    
-    // Получаем характеристики атакующего и защищающегося
-    let attackerStats = await PvPPlayerStats.findOne({
-      where: {
-        user_id: attacker.user_id,
-        room_id: attacker.room_id
-      }
-    });
-    
-    let defenderStats = await PvPPlayerStats.findOne({
-      where: {
-        user_id: defender.user_id,
-        room_id: defender.room_id
-      }
-    });
 
-    // Создаем копии статов, чтобы не изменять оригинальные объекты
-    const finalAttackerStats = attackerStats ? { ...attackerStats.get({ plain: true }) } : {};
-    const finalDefenderStats = defenderStats ? { ...defenderStats.get({ plain: true }) } : {};
-
-    // Применяем statBoost эффекты от экипировки
-    const equipmentEffects = [...attackerEquipmentEffects, ...defenderEquipmentEffects];
-    for (const effect of equipmentEffects) {
-        if (effect.type === 'statBoost') {
-            const isAttackerEffect = attackerEquipmentEffects.includes(effect);
-            const targetStats = isAttackerEffect ? finalAttackerStats : finalDefenderStats;
-            const statName = effect.target;
-
-            if (targetStats && typeof targetStats[statName] === 'number') {
-                if (effect.operation === 'add') {
-                    targetStats[statName] += effect.value;
-                }
-            }
-        }
-    }
-    
-    // Базовые значения в зависимости от уровня, если характеристики не найдены
-    const attackerLevel = attacker.level || 1;
-    const defenderLevel = defender.level || 1;
-    
-    // Расчет базовых характеристик на основе уровня
-    const baseAttack = Math.max(5, Math.floor(attackerLevel * 1.5));
-    const baseDefense = Math.max(3, Math.floor(defenderLevel * 0.8));
-    
-    // Значения характеристик с учетом возможного отсутствия данных и эффектов
-    const attackerPhysicalAttack = finalAttackerStats.physical_attack || baseAttack;
-    const attackerSpiritualAttack = finalAttackerStats.spiritual_attack || baseAttack;
-    const defenderPhysicalDefense = finalDefenderStats.physical_defense || baseDefense;
-    const defenderSpiritualDefense = finalDefenderStats.spiritual_defense || baseDefense;
+    // 4. Используем рассчитанные характеристики
+    const attackerPhysicalAttack = finalAttackerStats.physicalAttack;
+    const attackerSpiritualAttack = finalAttackerStats.spiritualAttack;
+    const defenderPhysicalDefense = finalDefenderStats.physicalDefense;
+    const defenderSpiritualDefense = finalDefenderStats.spiritualDefense;
     
     console.log(`[PvP] Расчет урона с учетом уровней и экипировки:`, {
       attackerLevel,

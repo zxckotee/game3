@@ -311,6 +311,74 @@ class CharacterStatsService {
   }
 
   /**
+   * Применяет массив эффектов к набору базовых характеристик.
+   * @param {Object} baseStats - Базовые характеристики.
+   * @param {Array<Object>} activeEffects - Массив активных эффектов.
+   * @returns {Object} Модифицированные характеристики.
+   */
+  static applyEffectsToStats(baseStats, activeEffects) {
+    const modifiedState = { ...baseStats };
+
+    for (const effect of activeEffects) {
+      // Эффекты из pvp-service могут иметь другую структуру, адаптируем их
+      const details = effect.effect_details_json || effect.modifies;
+      if (!details || effect.effect_type === 'instant') {
+        continue;
+      }
+
+      // Если это новая структура из pvp-service
+      if (effect.modifies) {
+          for (const targetAttribute in effect.modifies) {
+              const mod = effect.modifies[targetAttribute];
+              const value = parseFloat(mod.value);
+              const isPercentage = mod.isPercentage;
+
+              if (isNaN(value) || !modifiedState.hasOwnProperty(targetAttribute)) {
+                  console.warn(`[Stats] Пропуск неверного модификатора в PvP эффекте:`, mod);
+                  continue;
+              }
+
+              if (isPercentage) {
+                  const baseValue = parseFloat(baseStats[targetAttribute]);
+                  if (!isNaN(baseValue)) {
+                      modifiedState[targetAttribute] += baseValue * (value / 100);
+                  }
+              } else {
+                  modifiedState[targetAttribute] += value;
+              }
+          }
+      } else { // Старая структура из ActivePlayerEffect
+          const targetAttribute = details.target_attribute;
+          const value = parseFloat(details.value);
+          const valueType = details.value_type;
+
+          if (isNaN(value) || !targetAttribute || !modifiedState.hasOwnProperty(targetAttribute)) {
+              console.warn(`[Stats] Пропуск неверного эффекта из БД:`, details);
+              continue;
+          }
+          
+          if (valueType === 'percentage') {
+              const baseValue = parseFloat(baseStats[targetAttribute]);
+              if(!isNaN(baseValue)) {
+                  modifiedState[targetAttribute] += baseValue * (value / 100);
+              }
+          } else { // 'absolute'
+              modifiedState[targetAttribute] += value;
+          }
+      }
+    }
+    
+    // Округление значений после всех модификаций
+    for(const key in modifiedState) {
+      if(typeof modifiedState[key] === 'number') {
+          modifiedState[key] = Math.floor(modifiedState[key]);
+      }
+    }
+
+    return modifiedState;
+  }
+
+  /**
    * Получение полного состояния персонажа, включая базовые, модифицированные и вторичные характеристики
    * @param {number} userId - ID пользователя
    * @param {object} [transaction] - Опциональная транзакция Sequelize
@@ -327,44 +395,12 @@ class CharacterStatsService {
         ActivePlayerEffect.findAll({ where: { user_id: userId }, transaction })
       ]);
 
-      // 2. Создание базового и модифицируемого состояний
+      // 2. Создание базового состояния
       const baseState = { ...baseStats, ...cultivationProgress };
-      const modifiedState = { ...baseState };
 
-      // 3. Применение эффектов
-      for (const effect of activeEffects) {
-        const details = effect.effect_details_json;
-        if (!details || effect.effect_type === 'instant') {
-          continue;
-        }
-
-        const targetAttribute = details.target_attribute;
-        const value = parseFloat(details.value);
-        const valueType = details.value_type;
-
-        if (isNaN(value) || !targetAttribute || !modifiedState.hasOwnProperty(targetAttribute)) {
-            console.warn(`Skipping invalid effect:`, details);
-            continue;
-        }
-        
-        // Для процентных модификаторов расчет должен производиться от *базового* значения
-        if (valueType === 'percentage') {
-            const baseValue = parseFloat(baseState[targetAttribute]);
-            if(!isNaN(baseValue)) {
-                modifiedState[targetAttribute] += baseValue * (value / 100);
-            }
-        } else { // 'absolute'
-            modifiedState[targetAttribute] += value;
-        }
-      }
+      // 3. Применение эффектов с помощью новой централизованной функции
+      const modifiedState = this.applyEffectsToStats(baseState, activeEffects);
       
-      // Округление значений после всех модификаций
-      for(const key in modifiedState) {
-        if(typeof modifiedState[key] === 'number') {
-            modifiedState[key] = Math.floor(modifiedState[key]);
-        }
-      }
-
       // 4. Расчет вторичных характеристик
       const secondaryStats = this.calculateSecondaryStats(modifiedState, modifiedState);
 
