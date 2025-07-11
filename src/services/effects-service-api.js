@@ -210,3 +210,32 @@ module.exports.getAllEffects = EffectsServiceAPI.getAllEffects;
 module.exports.addEffect = EffectsServiceAPI.addEffect;
 module.exports.removeEffect = EffectsServiceAPI.removeEffect;
 module.exports.updateWeatherEffects = EffectsServiceAPI.updateWeatherEffects;
+
+/**
+ * Получает активные временные эффекты для отображения в UI.
+ * @param {number} userId - ID пользователя
+ * @returns {Promise<Array<Object>>} - Массив активных эффектов
+ */
+EffectsServiceAPI.getActivePlayerEffects = async function(userId) {
+  try {
+    const response = await fetch(`/api/active-effects/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        'Content-Type': 'application/json'
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Ошибка при получении активных эффектов');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Ошибка при получении активных эффектов:', error);
+    throw error;
+  }
+};
+
+module.exports.getActivePlayerEffects = EffectsServiceAPI.getActivePlayerEffects;

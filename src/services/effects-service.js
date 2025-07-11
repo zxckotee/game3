@@ -1,6 +1,5 @@
-const { Effect, User } = require('../models');
 const { Sequelize, Op } = require('sequelize');
-
+const modelRegistry = require('../models/registry');
 /**
  * Сервис для работы с эффектами на серверной стороне
  */
@@ -12,6 +11,10 @@ class EffectsService {
    */
   static async getAllEffects(userId) {
     try {
+      await modelRegistry.initializeRegistry();
+      const User = modelRegistry.getModel('User');
+      const Effect = modelRegistry.getModel('Effect');
+
       // Проверяем существование пользователя
       const user = await User.findByPk(userId);
       if (!user) {
@@ -58,6 +61,10 @@ class EffectsService {
    */
   static async addEffect(userId, effectData) {
     try {
+      await modelRegistry.initializeRegistry();
+      const User = modelRegistry.getModel('User');
+      const Effect = modelRegistry.getModel('Effect');
+
       // Проверяем существование пользователя
       const user = await User.findByPk(userId);
       if (!user) {
@@ -104,6 +111,9 @@ class EffectsService {
    */
   static async removeEffect(userId, effectId) {
     try {
+      await modelRegistry.initializeRegistry();
+      const Effect = modelRegistry.getModel('Effect');
+
       const result = await Effect.destroy({
         where: {
           id: effectId,
@@ -126,6 +136,9 @@ class EffectsService {
    */
   static async removeEffectsBySourceType(userId, sourceType) {
     try {
+      await modelRegistry.initializeRegistry();
+      const Effect = modelRegistry.getModel('Effect');
+
       const result = await Effect.destroy({
         where: {
           user_id: userId,
@@ -147,6 +160,9 @@ class EffectsService {
    */
   static async removeExpiredEffects(userId = null) {
     try {
+      await modelRegistry.initializeRegistry();
+      const Effect = modelRegistry.getModel('Effect');
+
       const whereClause = {
         expires_at: {
           [Op.not]: null,
@@ -363,6 +379,47 @@ class EffectsService {
     }
     
     return effects;
+  }
+
+  /**
+   * Получает все активные временные эффекты игрока для отображения на UI.
+   * @param {number} userId - ID пользователя
+   * @returns {Promise<Array<Object>>} - Массив отформатированных эффектов
+   */
+  static async getActivePlayerEffects(userId) {
+    try {
+      await modelRegistry.initializeRegistry();
+      const ActivePlayerEffect = modelRegistry.getModel('ActivePlayerEffect');
+
+      const now = new Date();
+      const effects = await ActivePlayerEffect.findAll({
+        where: {
+          user_id: userId,
+          // Выбираем только временные эффекты, которые еще не истекли
+          duration_seconds: { [Op.ne]: -1 },
+          expires_at: { [Op.gt]: now }
+        }
+      });
+
+      return effects.map(effect => {
+        const details = effect.effect_details_json || {};
+        const expiresAt = new Date(effect.expires_at);
+        const remainingSeconds = Math.max(0, Math.round((expiresAt - now) / 1000));
+
+        return {
+          id: effect.id,
+          name: details.original_description || effect.name,
+          value: details.value,
+          value_type: details.value_type,
+          remaining_seconds: remainingSeconds,
+          effect_type: effect.effect_type,
+        };
+      });
+
+    } catch (error) {
+      console.error('Ошибка при получении активных эффектов игрока:', error);
+      throw error;
+    }
   }
 }
 

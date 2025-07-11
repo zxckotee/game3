@@ -264,3 +264,8 @@ register('EquipmentItem', equipmentItemModels);
 register('EquipmentItemEffect', require('./equipment-item-effect'));
 register('EquipmentItemRequirement', require('./equipment-item-requirement'));
 register('EquipmentItemSpecialEffect', require('./equipment-item-special-effect'));
+
+// Регистрируем модели эффектов
+register('Effect', require('./effect'));
+register('ActivePlayerEffect', require('./active-player-effect'));
+

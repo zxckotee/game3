@@ -1,0 +1,50 @@
+.active-effects-container {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.active-effects-container h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #d4af37;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+.active-effects-container ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.effect-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.effect-icon {
+  font-size: 1.2rem;
+}
+
+.effect-name {
+  flex-grow: 1;
+  color: #f0f0f0;
+}
+
+.effect-value {
+  color: #aaffaa; /* Зеленый для положительных */
+}
+
+.effect-timer {
+  color: #aaa;
+  font-style: italic;
+}

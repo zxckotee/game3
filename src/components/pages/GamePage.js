@@ -6,6 +6,7 @@ import apiService from '../../services/api';
 
 // Импортируем компоненты UI
 import ActiveEffectsPanel from '../ui/ActiveEffectsPanel';
+import ActiveEffectsDisplay from '../effects/ActiveEffectsDisplay';
 
 // Импортируем компоненты вкладок
 import CultivationTab from '../tabs/CultivationTab';
@@ -759,7 +760,7 @@ function GamePage() {
         
         <RightPanel>
           {/* Панель активных эффектов */}
-          <ActiveEffectsPanel />
+          <ActiveEffectsDisplay userId={state.player.id} />
           
           <div>
             <h3>Уведомления</h3>

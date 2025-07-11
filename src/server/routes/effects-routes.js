@@ -7,7 +7,7 @@ const { validateAuth, validateAdmin } = require('../middleware/auth-middleware')
 // API-эндпоинты для работы с эффектами
 
 // Получение всех эффектов пользователя
-router.get('/api/effects/:userId', async (req, res) => {
+router.get('/api/effects/:userId', validateAuth, async (req, res) => {
   try {
     const userId = req.params.userId;
     const effects = await EffectsService.getAllEffects(userId);
@@ -19,7 +19,7 @@ router.get('/api/effects/:userId', async (req, res) => {
 });
 
 // Добавление нового эффекта
-router.post('/api/effects/:userId', async (req, res) => {
+router.post('/api/effects/:userId', validateAuth, async (req, res) => {
   try {
     const userId = req.params.userId;
     const effectData = req.body;
@@ -32,7 +32,7 @@ router.post('/api/effects/:userId', async (req, res) => {
 });
 
 // Удаление эффекта
-router.delete('/api/effects/:userId/:effectId', async (req, res) => {
+router.delete('/api/effects/:userId/:effectId', validateAuth, async (req, res) => {
   try {
     const userId = req.params.userId;
     const effectId = req.params.effectId;
@@ -50,7 +50,7 @@ router.delete('/api/effects/:userId/:effectId', async (req, res) => {
 });
 
 // Обновление эффектов погоды
-router.post('/api/effects/:userId/update-weather', async (req, res) => {
+router.post('/api/effects/:userId/update-weather', validateAuth, async (req, res) => {
   try {
     const userId = req.params.userId;
     const weatherData = req.body;
@@ -64,6 +64,18 @@ router.post('/api/effects/:userId/update-weather', async (req, res) => {
     res.json(effects);
   } catch (error) {
     console.error('Ошибка при обновлении эффектов погоды:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Получение активных эффектов для UI
+router.get('/api/active-effects/:userId', validateAuth, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const activeEffects = await EffectsService.getActivePlayerEffects(userId);
+    res.json(activeEffects);
+  } catch (error) {
+    console.error('Ошибка при получении активных эффектов игрока:', error);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
