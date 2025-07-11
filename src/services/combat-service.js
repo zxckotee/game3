@@ -84,13 +84,12 @@ class CombatService {
     };
 
     const enemyBaseStats = {
-      health: enemy.stats.health,
-      energy: enemy.stats.energy,
-      strength: enemy.stats.strength,
-      intellect: enemy.stats.intellect,
-      agility: enemy.stats.agility,
-      spirit: enemy.stats.spirit,
-      // ... и другие статы, если они есть у врагов
+      health: enemy.stats.health || 100,
+      energy: enemy.stats.energy || 50,
+      physicalDefense: enemy.stats.physicalDefense || 0,
+      spiritualDefense: enemy.stats.spiritualDefense || 0,
+      accuracy: enemy.stats.accuracy || 0,
+      evasion: enemy.stats.evasion || 0,
     };
 
     const enemyState = {
@@ -392,7 +391,7 @@ class CombatService {
     let finalBaseDamage = techniqueDamage !== null ? techniqueDamage : baseAttack;
 
     // Защита цели
-    const totalDefense = defenderSecondary.physicalDefense || (defenderModified.strength * 0.5 + defenderModified.health * 0.3);
+    const totalDefense = defenderSecondary.physicalDefense || defenderModified.physicalDefense || 0;
 
     let finalDamage = Math.max(1, finalBaseDamage - totalDefense);
 
