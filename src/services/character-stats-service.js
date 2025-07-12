@@ -291,7 +291,7 @@ class CharacterStatsService {
       const combinedState = await this.getCombinedCharacterState(userId);
       const secondaryStats = combinedState.secondary;
       
-      console.log(`[CharacterStats] Вторичные характеристики пользователя ${userId}:`, secondaryStats);
+      //console.log(`[CharacterStats] Вторичные характеристики пользователя ${userId}:`, secondaryStats);
       
       return secondaryStats;
     } catch (error) {

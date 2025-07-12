@@ -8,6 +8,7 @@ const EffectTypes = require('../constants/effectTypes');
 const QuestService = require('./quest-service');
 const InventoryService = require('./inventory-service');
 const PvpStatsService = require('./pvp-stats-service');
+const CharacterStatsService = require('./character-stats-service');
 
 /**
  * Класс для работы с PvP-системой
@@ -194,7 +195,7 @@ class PvPService {
     let totalHealthChange = 0;
     let totalEnergyChange = 0;
     
-    console.log(`[PvP] Применение периодических эффектов для участника ${participant.id} (${participant.username || 'Unknown'}). Всего эффектов: ${participant.effects.length}`);
+    //console.log(`[PvP] Применение периодических эффектов для участника ${participant.id} (${participant.username || 'Unknown'}). Всего эффектов: ${participant.effects.length}`);
     
     // Создаем классификацию эффектов для более эффективной обработки
     const periodicEffects = {
@@ -291,12 +292,12 @@ class PvPService {
     }
     
     // Логируем категоризацию для отладки
-    console.log(`[PvP] Категоризация эффектов для участника ${participant.id}:`, {
+    /*console.log(`[PvP] Категоризация эффектов для участника ${participant.id}:`, {
       healing: periodicEffects.healing.length,
       energyRegen: periodicEffects.energyRegen.length,
       damageOverTime: periodicEffects.damageOverTime.length,
       statModifiers: periodicEffects.statModifiers.length
-    });
+    });*/
     
     // Обрабатываем эффекты регенерации здоровья
     for (const effect of periodicEffects.healing) {
@@ -391,7 +392,7 @@ class PvPService {
     participant.current_energy = newEnergy;
     participant.status = newStatus;
     
-    console.log(`[PvP] Итоговые изменения для участника ${participant.id}:`, {
+   /* console.log(`[PvP] Итоговые изменения для участника ${participant.id}:`, {
       healthChange: `${oldHealth} -> ${newHealth} (${totalHealthChange > 0 ? '+' : ''}${totalHealthChange})`,
       energyChange: `${oldEnergy} -> ${newEnergy} (${totalEnergyChange > 0 ? '+' : ''}${totalEnergyChange})`,
       statusChange: oldStatus !== newStatus ? `${oldStatus} -> ${newStatus}` : 'без изменений',
@@ -401,7 +402,7 @@ class PvPService {
         damageOverTime: periodicEffects.damageOverTime.length,
         statModifiers: periodicEffects.statModifiers.length
       }
-    });
+    });*/
     
     // Формируем подробный отчет об изменениях
     const changes = {
@@ -432,7 +433,7 @@ class PvPService {
         effects_result: results
       }, { transaction });
       
-      console.log(`[PvP] Сохранены изменения здоровья и энергии для участника ${participant.id}. HP: ${newHealth}, Energy: ${newEnergy}`);
+      //console.log(`[PvP] Сохранены изменения здоровья и энергии для участника ${participant.id}. HP: ${newHealth}, Energy: ${newEnergy}`);
     } catch (error) {
       console.error(`[PvP] ОШИБКА при сохранении изменений: ${error.message}`);
     }
@@ -967,7 +968,7 @@ class PvPService {
       };
     }
     
-    console.log(`[PvP] Расчет модификаторов эффектов для участника ${participant.id}. Всего эффектов: ${participant.effects.length}`);
+    //console.log(`[PvP] Расчет модификаторов эффектов для участника ${participant.id}. Всего эффектов: ${participant.effects.length}`);
     
     const modifiers = {
       damage: 0,            // Модификатор урона (в процентах)
@@ -1180,14 +1181,14 @@ class PvPService {
     }
     
     // Детальное логирование итоговых модификаторов
-    console.log(`[PvP] Итоговые модификаторы для участника ${participant.id}:`,
+   /* console.log(`[PvP] Итоговые модификаторы для участника ${participant.id}:`,
       Object.entries(modifiers)
         .filter(([_, value]) => value !== 0)
         .reduce((acc, [key, value]) => {
           acc[key] = value;
           return acc;
         }, {})
-    );
+    );*/
     
     return modifiers;
   }
@@ -1234,33 +1235,149 @@ class PvPService {
    * @returns {Promise<Array>} - Массив эффектов
    * @private
    */
-  static async _getEquipmentEffects(userId) {
+  /**
+   * Получение эффектов экипировки пользователя
+   * @param {number} userId - ID пользователя
+   * @returns {Promise<Array>} - Массив эффектов экипировки
+   */
+  static async getEquipmentEffects(userId) {
     if (!userId) {
       return [];
     }
 
     try {
+      console.log(`[PvP] Получение эффектов экипировки для пользователя ${userId}`);
+      
+      // Получаем все предметы инвентаря
       const inventory = await InventoryService.getInventoryItems(userId);
-      const equippedItems = inventory.filter(item => item.equipped);
+      
+      // Фильтруем только экипированные предметы
+      const equippedItems = inventory.filter(item => item.equipped === true);
+      
+      console.log(`[PvP] Найдено ${equippedItems.length} экипированных предметов для пользователя ${userId}`);
 
       const effects = [];
       for (const item of equippedItems) {
-        // Ищем эффекты в stats, как это делается в inventory-service
-        if (item.stats && item.stats.effects && Array.isArray(item.stats.effects)) {
-          for (const effect of item.stats.effects) {
-            if (effect.type === 'statBoost' || effect.type === 'combatBoost') {
-              effects.push(effect);
+        // ИСПРАВЛЕНО: Ищем эффекты в правильном поле item.effects
+        if (item.effects && Array.isArray(item.effects)) {
+          console.log(`[PvP] Предмет ${item.name || item.item_id} имеет ${item.effects.length} эффектов`);
+          
+          for (const effect of item.effects) {
+            // Добавляем все типы эффектов экипировки
+            if (effect.type === 'statBoost' || effect.type === 'combatBoost' || effect.type === 'elementalBoost') {
+              // Обогащаем эффект информацией об источнике
+              const enrichedEffect = {
+                ...effect,
+                sourceItem: item.item_id || item.id,
+                sourceItemName: item.name
+              };
+              effects.push(enrichedEffect);
+              
+              console.log(`[PvP] Добавлен эффект: ${effect.type}/${effect.target} = ${effect.value} от предмета ${item.name}`);
             }
           }
+        } else {
+          console.log(`[PvP] Предмет ${item.name || item.item_id} не имеет эффектов`);
         }
       }
       
-      
+      console.log(`[PvP] Итого найдено ${effects.length} эффектов экипировки для пользователя ${userId}`);
       return effects;
     } catch (error) {
       console.error(`[PvP] Ошибка при получении эффектов экипировки для пользователя ${userId}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Получение полных характеристик игрока с учетом экипировки
+   * @param {number} userId - ID пользователя
+   * @returns {Promise<Object>} - Полные характеристики игрока
+   */
+  static async getPlayerFullStats(userId) {
+    try {
+      console.log(`[PvP] Получение полных характеристик для пользователя ${userId}`);
+      
+      // 1. Получаем базовые характеристики персонажа
+      const baseStats = await CharacterStatsService.getCharacterStats(userId);
+      console.log(`[PvP] Базовые характеристики:`, baseStats);
+      
+      // 2. Получаем эффекты экипировки
+      const equipmentEffects = await this.getEquipmentEffects(userId);
+      console.log(`[PvP] Эффекты экипировки (${equipmentEffects.length}):`, equipmentEffects);
+      
+      // 3. Преобразуем эффекты экипировки в формат, совместимый с CharacterStatsService
+      const formattedEffects = equipmentEffects.map(effect => ({
+        effect_details_json: {
+          target_attribute: this.mapTargetToAttribute(effect.target),
+          value: parseFloat(effect.value),
+          value_type: effect.operation === 'add' ? 'absolute' : 'percentage',
+          original_description: `${effect.type}: ${effect.target} ${effect.operation || 'boost'} ${effect.value}`
+        },
+        effect_type: 'equipment',
+        name: `${effect.sourceItemName} - ${effect.type}`,
+        source: effect.sourceItem
+      }));
+      
+      // 4. Применяем эффекты экипировки к базовым характеристикам
+      const modifiedStats = CharacterStatsService.applyEffectsToStats(baseStats, formattedEffects);
+      console.log(`[PvP] Модифицированные характеристики:`, modifiedStats);
+      
+      // 5. Рассчитываем вторичные характеристики (атака, защита и т.д.)
+      const secondaryStats = CharacterStatsService.calculateSecondaryStats(modifiedStats, modifiedStats);
+      console.log(`[PvP] Вторичные характеристики:`, secondaryStats);
+      
+      // 6. Возвращаем полный набор характеристик
+      return {
+        base: baseStats,
+        modified: modifiedStats,
+        secondary: secondaryStats,
+        equipmentEffects: equipmentEffects
+      };
+    } catch (error) {
+      console.error(`[PvP] Ошибка при получении полных характеристик для пользователя ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Маппинг целей эффектов экипировки на атрибуты характеристик
+   * @param {string} target - Цель эффекта из БД
+   * @returns {string} - Атрибут характеристики
+   */
+  static mapTargetToAttribute(target) {
+    const mapping = {
+      // Основные характеристики
+      'strength': 'strength',
+      'intellect': 'intellect',
+      'intelligence': 'intellect',
+      'spirit': 'spirit',
+      'agility': 'agility',
+      'dexterity': 'agility',
+      'health': 'health',
+      'perception': 'intellect',
+      
+      // Боевые характеристики
+      'physicalAttack': 'physicalAttack',
+      'physicalDamage': 'physicalAttack',
+      'spiritualAttack': 'spiritualAttack',
+      'spiritualDamage': 'spiritualAttack',
+      'physicalDefense': 'physicalDefense',
+      'spiritualDefense': 'spiritualDefense',
+      'critChance': 'criticalChance',
+      'criticalChance': 'criticalChance',
+      'dodgeChance': 'luck',
+      'attackSpeed': 'attackSpeed',
+      'movementSpeed': 'movementSpeed',
+      
+      // Элементальные эффекты (пока как бонусы к атаке)
+      'fire': 'spiritualAttack',
+      'water': 'spiritualAttack',
+      'earth': 'physicalAttack',
+      'air': 'agility'
+    };
+    
+    return mapping[target] || target;
   }
 
   /**
@@ -1272,198 +1389,146 @@ class PvPService {
    * @returns {Object} Итоговый урон и информация о критическом ударе
    */
   static async calculateDamage(attacker, defender, baseDamage, damageType, actionType = 'attack', techniqueId = null) {
-    // Инициализируем реестр моделей, если он еще не инициализирован
-    await modelRegistry.initializeRegistry();
-    const LearnedTechnique = modelRegistry.getModel('LearnedTechnique');
-
-    // 1. Получаем полные, рассчитанные характеристики для обоих участников
-    const [attackerFullStats, defenderFullStats] = await Promise.all([
-        PvpStatsService.getPvpParticipantStats(attacker),
-        PvpStatsService.getPvpParticipantStats(defender)
-    ]);
-
-    // 2. Используем модифицированные и вторичные характеристики для расчетов
-    const finalAttackerStats = { ...attackerFullStats.modified, ...attackerFullStats.secondary };
-    const finalDefenderStats = { ...defenderFullStats.modified, ...defenderFullStats.secondary };
-
-    // 3. Получаем уровень техники, если она используется
-    let techniqueLevel = 1;
-    if (techniqueId && actionType === 'technique') {
-      try {
-        const learnedTechnique = await LearnedTechnique.findOne({
-          where: {
-            userId: attacker.user_id, // ВАЖНО: убедиться, что user_id есть в объекте attacker
-            techniqueId: techniqueId
-          }
-        });
-        if (learnedTechnique) {
-          techniqueLevel = learnedTechnique.level;
-        }
-      } catch (error) {
-        console.error(`[PvP] Ошибка при получении уровня техники:`, error);
-      }
-    }
-
-    // 4. Используем рассчитанные характеристики
-    const attackerPhysicalAttack = finalAttackerStats.physicalAttack;
-    const attackerSpiritualAttack = finalAttackerStats.spiritualAttack;
-    const defenderPhysicalDefense = finalDefenderStats.physicalDefense;
-    const defenderSpiritualDefense = finalDefenderStats.spiritualDefense;
-    
-    console.log(`[PvP] Расчет урона с учетом уровней и экипировки:`, {
-      attackerLevel,
-      defenderLevel,
-      baseAttack,
-      baseDefense,
-      attackerPhysicalAttack,
-      attackerSpiritualAttack,
-      defenderPhysicalDefense,
-      defenderSpiritualDefense,
-      baseDamage,
-      damageType,
-      actionType
-    });
-    
-    // Расчет урона в зависимости от типа действия и типа урона
-    if (actionType === 'attack') {
-      // Урон обычной атаки = physical_attack - physical_defense
-      damage = baseDamage + attackerPhysicalAttack - defenderPhysicalDefense;
-    } else if (actionType === 'technique') {
-      // Рассчитываем базовый урон техники с учетом ее уровня
-      // Формула: каждый уровень техники добавляет 10% к базовому урону
-      const techniqueLevelMultiplier = 1 + (0.1 * (techniqueLevel - 1));
-      const scaledBaseDamage = Math.floor(baseDamage * techniqueLevelMultiplier);
+    try {
+      console.log(`[PvP] Начало расчета урона: атакующий ${attacker.user_id}, защищающийся ${defender.user_id}, базовый урон ${baseDamage}, тип ${damageType}`);
       
-      console.log(`[PvP] Расчет урона техники с учетом уровня ${techniqueLevel}:`, {
-        baseDamage,
-        techniqueLevelMultiplier,
-        scaledBaseDamage
+      // 1. Получаем полные характеристики для обоих участников
+      const [attackerStats, defenderStats] = await Promise.all([
+        this.getPlayerFullStats(attacker.user_id),
+        this.getPlayerFullStats(defender.user_id)
+      ]);
+
+      // 2. Извлекаем финальные характеристики (модифицированные + вторичные)
+      const attackerFinalStats = { ...attackerStats.modified, ...attackerStats.secondary };
+      const defenderFinalStats = { ...defenderStats.modified, ...defenderStats.secondary };
+
+      console.log(`[PvP] Характеристики атакующего:`, {
+        physicalAttack: attackerFinalStats.physicalAttack,
+        spiritualAttack: attackerFinalStats.spiritualAttack,
+        criticalChance: attackerFinalStats.criticalChance
       });
       
-      if (damageType === 'physical') {
-        // Урон физической техники = (baseDamage * levelMultiplier) + physical_attack - physical_defense
-        damage = scaledBaseDamage + attackerPhysicalAttack - defenderPhysicalDefense;
-      } else if (damageType === 'spiritual') {
-        // Урон духовной техники = (baseDamage * levelMultiplier) + spiritual_attack - spiritual_defense
-        damage = scaledBaseDamage + attackerSpiritualAttack - defenderSpiritualDefense;
-      }
-    }
-    
-    // Проверка на уклонение (перед расчетом критического удара)
-    const baseDodgeChance = 10; // Базовый шанс уклонения 10%
-    let dodgeChance = baseDodgeChance;
-    
-    // Учитываем параметр luck из состояния защищающегося
-    if (finalDefenderStats.luck) {
-      dodgeChance += finalDefenderStats.luck;
-    }
-    
-    // Учитываем эффекты скорости у защищающегося
-    if (defender.effects && Array.isArray(defender.effects)) {
-      const speedEffects = defender.effects.filter(e => e.subtype === 'speed');
-      for (const effect of speedEffects) {
-        const dodgeBonus = effect.value ? effect.value / 2 : 0;
-        dodgeChance += dodgeBonus;
-      }
-    }
+      console.log(`[PvP] Характеристики защищающегося:`, {
+        physicalDefense: attackerFinalStats.physicalDefense,
+        spiritualDefense: defenderFinalStats.spiritualDefense,
+        luck: defenderFinalStats.luck
+      });
 
-    // Применяем combatBoost эффекты к шансу уклонения
-    for (const effect of defenderEquipmentEffects) {
-        if (effect.type === 'combatBoost' && effect.target === 'dodgeChance') {
-            dodgeChance += effect.value * 100; // Приводим к процентам
+      // 3. Получаем уровень техники, если используется
+      let techniqueLevel = 1;
+      if (techniqueId && actionType === 'technique') {
+        try {
+          await modelRegistry.initializeRegistry();
+          const LearnedTechnique = modelRegistry.getModel('LearnedTechnique');
+          const learnedTechnique = await LearnedTechnique.findOne({
+            where: {
+              userId: attacker.user_id,
+              techniqueId: techniqueId
+            }
+          });
+          if (learnedTechnique) {
+            techniqueLevel = learnedTechnique.level;
+          }
+        } catch (error) {
+          console.error(`[PvP] Ошибка при получении уровня техники:`, error);
         }
-    }
-    
-    // Проверяем, уклонился ли защищающийся
-    const isDodged = Math.random() * 100 < dodgeChance;
-    
-    if (isDodged) {
+      }
+
+      // 4. Рассчитываем базовый урон
+      let damage = baseDamage;
+      
+      if (actionType === 'technique') {
+        // Для техник: базовый урон увеличивается на 10% за каждый уровень
+        const techniqueLevelMultiplier = 1 + (0.1 * (techniqueLevel - 1));
+        damage = Math.floor(baseDamage * techniqueLevelMultiplier);
+        console.log(`[PvP] Урон техники уровня ${techniqueLevel}: ${baseDamage} -> ${damage}`);
+      }
+
+      // 5. Добавляем атаку и вычитаем защиту
+      if (damageType === 'physical') {
+        damage = damage + attackerFinalStats.physicalAttack - defenderFinalStats.physicalDefense;
+      } else if (damageType === 'spiritual') {
+        damage = damage + attackerFinalStats.spiritualAttack - defenderFinalStats.spiritualDefense;
+      } else {
+        // По умолчанию используем физический урон
+        damage = damage + attackerFinalStats.physicalAttack - defenderFinalStats.physicalDefense;
+      }
+
+      console.log(`[PvP] Урон после учета атаки/защиты: ${damage}`);
+
+      // 6. Проверяем уклонение
+      let dodgeChance = 5; // Базовый шанс уклонения 5%
+      if (defenderFinalStats.luck) {
+        dodgeChance += Math.floor(defenderFinalStats.luck / 2); // Удача дает бонус к уклонению
+      }
+      
+      const isDodged = Math.random() * 100 < dodgeChance;
+      if (isDodged) {
+        console.log(`[PvP] Атака уклонена! Шанс уклонения: ${dodgeChance}%`);
+        return {
+          damage: 0,
+          isCritical: false,
+          isDodged: true,
+          dodgeChance: dodgeChance,
+          critChance: 0
+        };
+      }
+
+      // 7. Проверяем критический удар
+      let critChance = 5; // Базовый шанс крита 5%
+      if (attackerFinalStats.criticalChance) {
+        critChance = attackerFinalStats.criticalChance;
+      }
+      
+      const isCritical = Math.random() * 100 < critChance;
+      if (isCritical) {
+        damage = Math.floor(damage * 1.5); // Критический удар увеличивает урон в 1.5 раза
+        console.log(`[PvP] Критический удар! Урон увеличен до ${damage}`);
+      }
+
+      // 8. Применяем эффекты участников (если есть)
+      if (attacker.effects && Array.isArray(attacker.effects)) {
+        for (const effect of attacker.effects) {
+          if (effect.damageBonus && typeof effect.damageBonus === 'number') {
+            damage = Math.floor(damage * (1 + effect.damageBonus));
+            console.log(`[PvP] Применен бонус урона от эффекта ${effect.name}: +${effect.damageBonus * 100}%`);
+          }
+        }
+      }
+
+      if (defender.effects && Array.isArray(defender.effects)) {
+        for (const effect of defender.effects) {
+          if (effect.damageReduction && typeof effect.damageReduction === 'number') {
+            damage = Math.floor(damage * (1 - effect.damageReduction));
+            console.log(`[PvP] Применено снижение урона от эффекта ${effect.name}: -${effect.damageReduction * 100}%`);
+          }
+        }
+      }
+
+      // 9. Минимальный урон = 1
+      damage = Math.max(1, damage);
+
+      console.log(`[PvP] Итоговый урон: ${damage}, критический: ${isCritical}, уклонение: ${isDodged}`);
+
       return {
-        damage: 0,
-        isCritical: false,
-        isDodged: true,
+        damage,
+        isCritical,
+        isDodged: false,
+        critChance: critChance,
         dodgeChance: dodgeChance
       };
-    }
-    
-    // Проверяем критический удар
-    let critChance = 5; // Базовый шанс критического удара
-    
-    if (finalAttackerStats.criticalChance) {
-      critChance = finalAttackerStats.criticalChance;
-    }
 
-    // Применяем combatBoost эффекты к шансу крита
-    for (const effect of attackerEquipmentEffects) {
-        if (effect.type === 'combatBoost' && effect.target === 'critChance') {
-            critChance += effect.value * 100; // Приводим к процентам
-        }
+    } catch (error) {
+      console.error(`[PvP] Ошибка при расчете урона:`, error);
+      // Возвращаем минимальный урон в случае ошибки
+      return {
+        damage: 1,
+        isCritical: false,
+        isDodged: false,
+        critChance: 5,
+        dodgeChance: 5
+      };
     }
-    
-    const isCritical = Math.random() * 100 < critChance;
-    
-    // Получаем модификаторы от эффектов атакующего
-    const attackerModifiers = PvPService.getEffectModifiers(attacker);
-    
-    // Получаем модификаторы от эффектов защищающегося
-    const defenderModifiers = PvPService.getEffectModifiers(defender);
-    
-    // Применяем combatBoost эффекты к урону и защите
-    for (const effect of equipmentEffects) {
-        if (effect.type === 'combatBoost') {
-            if (attackerEquipmentEffects.includes(effect) && effect.target === 'physicalDamage') {
-                damage += effect.value;
-            }
-            if (defenderEquipmentEffects.includes(effect) && effect.target === 'physicalDefense') {
-                damage -= effect.value;
-            }
-        }
-    }
-
-    // Применяем модификаторы урона от атакующего
-    if (attackerModifiers.damage !== 0) {
-      damage *= (1 + (attackerModifiers.damage / 100));
-    }
-    
-    // Применяем модификаторы защиты от защищающегося
-    if (defenderModifiers.defense !== 0) {
-      damage *= (1 - Math.min(0.8, defenderModifiers.defense / 100));
-    }
-    if (attacker.effects && attacker.effects.length > 0) {
-      for (const effect of attacker.effects) {
-        if (effect.damageBonus && !effect.subtype) { // Только если это не новый тип эффекта
-          damage *= (1 + effect.damageBonus);
-          console.log(`[PvP] Применен бонус урона от эффекта ${effect.name || effect.id}: ${effect.damageBonus * 100}%`);
-        }
-      }
-    }
-    
-    if (defender.effects && defender.effects.length > 0) {
-      for (const effect of defender.effects) {
-        if (effect.damageReduction && !effect.subtype) { // Только если это не новый тип эффекта
-          damage *= (1 - effect.damageReduction);
-          console.log(`[PvP] Применено снижение урона от эффекта ${effect.name || effect.id}: ${effect.damageReduction * 100}%`);
-        }
-      }
-    }
-    
-    // Если критический удар, увеличиваем урон
-    if (isCritical) {
-      damage *= 1.5;
-    }
-    
-    // Урон не должен быть отрицательным
-    damage = Math.max(1, Math.floor(damage));
-    
-    console.log(`[PvP] Итоговый урон: ${damage}, критический: ${isCritical}`);
-    
-    return {
-      damage,
-      isCritical,
-      isDodged: false,
-      critChance: critChance, // Добавляем информацию о шансе крита
-      dodgeChance: dodgeChance // Добавляем информацию о шансе уклонения
-    };
   }
   /**
    * Получение списка доступных режимов PvP
@@ -1921,7 +1986,7 @@ class PvPService {
           });
           
           // Гарантируем, что все эффекты с одинаковыми именами, но разными ID, сохраняются отдельно
-          console.log(`[PvP] Всего эффектов для участника ${participant.id}: ${participant.effects.length}`);
+          //console.log(`[PvP] Всего эффектов для участника ${participant.id}: ${participant.effects.length}`);
         }
         
         // Применяем периодические эффекты для каждого участника
@@ -2035,7 +2100,7 @@ class PvPService {
           };
         });
         
-        console.log(`[PvP] Отформатировано ${formattedEffects.length} эффектов для участника ${p.id}`);
+       // console.log(`[PvP] Отформатировано ${formattedEffects.length} эффектов для участника ${p.id}`);
         
         return {
           id: p.id,
@@ -3487,7 +3552,7 @@ class PvPService {
 
         // Если пользователь является участником, обновляем его характеристики
         if (participant) {
-          console.log(`[PvP] Обновление характеристик игрока ${userId} при получении состояния комнаты ${roomId}`);
+          //console.log(`[PvP] Обновление характеристик игрока ${userId} при получении состояния комнаты ${roomId}`);
           await this.savePlayerStats(userId, roomId);
         }
       }
@@ -3963,7 +4028,7 @@ class PvPService {
       // Получаем характеристики игрока
       const playerStats = await CharacterStatsService.getSecondaryStats(userId);
       
-      console.log(`[PvP] Получены характеристики игрока ${userId}:`, playerStats);
+      //console.log(`[PvP] Получены характеристики игрока ${userId}:`, playerStats);
       
       // Получаем модель PvPPlayerStats
       const PvPPlayerStats = modelRegistry.getModel('PvPPlayerStats');
@@ -3989,7 +4054,7 @@ class PvPService {
           spiritual_defense: playerStats.spiritualDefense || 0
         }, options);
         
-        console.log(`[PvP] Обновлены характеристики игрока ${userId} в комнате ${roomId}`);
+        //console.log(`[PvP] Обновлены характеристики игрока ${userId} в комнате ${roomId}`);
       } else {
         // Если записи нет, создаём новую
         await PvPPlayerStats.create({
