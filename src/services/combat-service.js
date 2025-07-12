@@ -69,12 +69,21 @@ class CombatService {
     // Получаем изученные техники игрока
     const learnedTechniques = await techniqueService.getLearnedTechniques(userId);
 
+    // Рассчитываем здоровье по формуле: 100 + (level * 2) + (health * 2)
+    const playerLevel = fullPlayerStats.base.level || 1;
+    const healthStat = fullPlayerStats.modified.health || 10;
+    const calculatedMaxHp = 100 + (playerLevel * 2) + (healthStat * 2);
+    
+    // Рассчитываем энергию аналогично
+    const energyStat = fullPlayerStats.modified.energy || 50;
+    const calculatedMaxEnergy = 50 + (playerLevel * 1) + (energyStat * 1);
+
     const playerState = {
-      // Используем модифицированные характеристики для начала боя
-      currentHp: fullPlayerStats.modified.health,
-      maxHp: fullPlayerStats.modified.health,
-      currentEnergy: fullPlayerStats.modified.energy, // Предполагая, что у нас есть энергия в статах
-      maxEnergy: fullPlayerStats.modified.energy,
+      // Используем рассчитанные значения здоровья и энергии
+      currentHp: calculatedMaxHp,
+      maxHp: calculatedMaxHp,
+      currentEnergy: calculatedMaxEnergy,
+      maxEnergy: calculatedMaxEnergy,
       // Сохраняем базовые статы для будущего пересчета эффектов в бою
       baseStats: fullPlayerStats.base,
       // Сохраняем вторичные статы для использования в расчетах
@@ -100,7 +109,8 @@ class CombatService {
       effects: [],
       baseStats: enemyBaseStats, // Сохраняем базовые статы для врага
       modifiedStats: { ...enemyBaseStats }, // Начальные модифицированные статы
-      secondaryStats: {} // Врагам пока не считаем вторичные статы
+      secondaryStats: {}, // Врагам пока не считаем вторичные статы
+      enemyLevel: enemy.level || 1 // Добавляем уровень врага для расчета урона
     };
 
     const newCombat = await Combat.create({
@@ -367,56 +377,144 @@ class CombatService {
     entityState.modifiedStats = modifiedStats;
     entityState.secondaryStats = secondaryStats;
 
-    // Опционально: можно обновить maxHp/maxEnergy, если они могут меняться в бою
-    entityState.maxHp = modifiedStats.health;
-    // entityState.maxEnergy = modifiedStats.energy;
+    // 4. Пересчитываем максимальное здоровье и энергию по правильной формуле
+    const playerLevel = entityState.baseStats.level || 1;
+    const healthStat = modifiedStats.health || 10;
+    const energyStat = modifiedStats.energy || 50;
+    
+    // Используем ту же формулу, что и при создании боя: 100 + (level * 2) + (health * 2)
+    const newMaxHp = 100 + (playerLevel * 2) + (healthStat * 2);
+    const newMaxEnergy = 50 + (playerLevel * 1) + (energyStat * 1);
+    
+    // Обновляем максимальные значения
+    entityState.maxHp = newMaxHp;
+    entityState.maxEnergy = newMaxEnergy;
+    
+    // Убеждаемся, что текущие значения не превышают новые максимальные
+    entityState.currentHp = Math.min(entityState.currentHp, newMaxHp);
+    entityState.currentEnergy = Math.min(entityState.currentEnergy, newMaxEnergy);
+    
+    console.log(`[CombatService] Пересчитаны характеристики: maxHp=${newMaxHp}, maxEnergy=${newMaxEnergy}`);
   }
 
 
   /**
+   * Упрощенная система расчета урона: (10% + уровень_атакующего)% от максимального здоровья цели
+   * @param {Object} attackerState - Состояние атакующего (игрок или враг)
+   * @param {Object} defenderState - Состояние защищающегося (игрок или враг)
+   * @param {number|null} techniqueDamage - Базовый урон техники (если используется)
+   * @param {string} damageType - Тип урона ('physical' или 'spiritual')
+   * @param {string} actionType - Тип действия ('attack' или 'technique')
+   * @returns {Object} Результат расчета урона
    * @private
    */
-  static _calculateDamage(attackerState, defenderState, techniqueDamage = null) {
-    // Используем пересчитанные вторичные характеристики
-    const attackerSecondary = attackerState.secondaryStats || {};
-    const defenderSecondary = defenderState.secondaryStats || {};
+  static _calculateDamage(attackerState, defenderState, techniqueDamage = null, damageType = 'physical', actionType = 'attack') {
+    console.log(`[CombatService] Начало расчета урона: тип=${damageType}, действие=${actionType}, техника=${techniqueDamage || 'нет'}`);
     
-    // Для врагов, у которых нет secondaryStats, используем modifiedStats
-    const defenderModified = defenderState.modifiedStats || {};
-
-    // Если урон идет от техники, используем его. Иначе - базовая атака.
-    // Предполагаем, что тип урона (физ/маг) определяется техникой или базовым для класса.
-    // Для простоты пока считаем весь урон физическим.
-    const baseAttack = attackerSecondary.physicalAttack || (attackerState.modifiedStats?.strength || 10);
-    let finalBaseDamage = techniqueDamage !== null ? techniqueDamage : baseAttack;
-
-    // Защита цели
-    const totalDefense = defenderSecondary.physicalDefense || defenderModified.physicalDefense || 0;
-
-    let finalDamage = Math.max(1, finalBaseDamage - totalDefense);
-
-    // Шанс уклонения (пока заглушка, т.к. не входит в secondaryStats)
-    const dodgeChance = (defenderSecondary.dodgeChance || 0) / 100;
-    if (Math.random() < dodgeChance) {
-        console.log('[CombatService] Уклонение!');
-        return { damage: 0, isDodge: true, isCrit: false };
+    // 1. Определяем уровень атакующего
+    let attackerLevel = 1;
+    if (attackerState.baseStats && attackerState.baseStats.level) {
+      // Для игрока: уровень из baseStats
+      attackerLevel = attackerState.baseStats.level;
+    } else if (attackerState.baseStats && attackerState.baseStats.health) {
+      // Для врага: используем уровень врага (будет передан в baseStats)
+      attackerLevel = attackerState.enemyLevel || 1;
     }
 
-    // Крит. урон
-    let isCrit = false;
-    const critChance = (attackerSecondary.criticalChance || 5) / 100; // 5% базовый шанс
-    if (Math.random() < critChance) {
-        isCrit = true;
-        const critDamageBonus = 1.5 + ((attackerSecondary.criticalDamage || 0) / 100);
-        finalDamage *= critDamageBonus;
-        console.log(`[CombatService] Критический удар! Множитель: ${critDamageBonus}`);
+    // 2. Получаем максимальное здоровье цели
+    const defenderMaxHp = defenderState.maxHp || 100;
+
+    console.log(`[CombatService] Уровень атакующего: ${attackerLevel}, MaxHP цели: ${defenderMaxHp}`);
+
+    // 3. Рассчитываем базовый процент урона: 10% + уровень
+    let damagePercent = 10 + attackerLevel;
+    
+    // 4. Если используется техника, добавляем бонус
+    if (actionType === 'technique' && techniqueDamage) {
+      // Техника добавляет фиксированный урон к проценту
+      const techniqueBonus = Math.floor(techniqueDamage / 10); // 10 урона техники = +1% к урону
+      damagePercent += techniqueBonus;
+      console.log(`[CombatService] Бонус от техники: +${techniqueBonus}% (базовый урон техники: ${techniqueDamage})`);
+    }
+
+    // 5. Рассчитываем базовый урон
+    let damage = Math.floor((defenderMaxHp * damagePercent) / 100);
+    
+    console.log(`[CombatService] Базовый урон: ${damagePercent}% от ${defenderMaxHp} = ${damage}`);
+
+    // 6. Проверяем уклонение
+    let dodgeChance = 5; // Базовый шанс уклонения 5%
+    
+    // Для игрока: используем характеристику удачи
+    if (defenderState.secondaryStats && defenderState.secondaryStats.luck) {
+      dodgeChance += Math.floor(defenderState.secondaryStats.luck / 2);
+    }
+    // Для врага: используем evasion из базовых характеристик
+    else if (defenderState.baseStats && defenderState.baseStats.evasion) {
+      dodgeChance += Math.floor(defenderState.baseStats.evasion / 10);
     }
     
-    finalDamage = Math.round(finalDamage);
+    const isDodged = Math.random() * 100 < dodgeChance;
+    if (isDodged) {
+      console.log(`[CombatService] Атака уклонена! Шанс уклонения: ${dodgeChance}%`);
+      return {
+        damage: 0,
+        isCrit: false,
+        isDodge: true,
+        dodgeChance: dodgeChance,
+        critChance: 0
+      };
+    }
 
-    console.log(`[CombatService] Расчет урона: Атака=${finalBaseDamage.toFixed(2)}, Защита=${totalDefense.toFixed(2)}, Итог=${finalDamage}`);
+    // 7. Проверяем критический удар
+    let critChance = 5; // Базовый шанс крита 5%
+    
+    // Для игрока: используем характеристику критического шанса
+    if (attackerState.secondaryStats && attackerState.secondaryStats.criticalChance) {
+      critChance = attackerState.secondaryStats.criticalChance;
+    }
+    // Для врага: базовый шанс + бонус от уровня
+    else if (attackerState.baseStats) {
+      critChance = 5 + Math.floor(attackerLevel / 2);
+    }
+    
+    const isCrit = Math.random() * 100 < critChance;
+    if (isCrit) {
+      damage = Math.floor(damage * 1.5); // Критический удар увеличивает урон в 1.5 раза
+      console.log(`[CombatService] Критический удар! Урон увеличен до ${damage}`);
+    }
 
-    return { damage: finalDamage, isCrit, isDodge: false };
+    // 8. Применяем эффекты (если есть)
+    if (attackerState.effects && Array.isArray(attackerState.effects)) {
+      for (const effect of attackerState.effects) {
+        if (effect.damageBonus && typeof effect.damageBonus === 'number') {
+          damage = Math.floor(damage * (1 + effect.damageBonus));
+          console.log(`[CombatService] Применен бонус урона от эффекта ${effect.name}: +${effect.damageBonus * 100}%`);
+        }
+      }
+    }
+
+    if (defenderState.effects && Array.isArray(defenderState.effects)) {
+      for (const effect of defenderState.effects) {
+        if (effect.damageReduction && typeof effect.damageReduction === 'number') {
+          damage = Math.floor(damage * (1 - effect.damageReduction));
+          console.log(`[CombatService] Применено снижение урона от эффекта ${effect.name}: -${effect.damageReduction * 100}%`);
+        }
+      }
+    }
+
+    // 9. Минимальный урон = 1
+    damage = Math.max(1, damage);
+
+    console.log(`[CombatService] Итоговый урон: ${damage} (${damagePercent}% от ${defenderMaxHp}), критический: ${isCrit}, уклонение: ${isDodged}`);
+
+    return {
+      damage,
+      isCrit,
+      isDodge: false,
+      critChance: critChance,
+      dodgeChance: dodgeChance
+    };
   }
 
   /**
