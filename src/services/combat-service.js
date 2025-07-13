@@ -235,14 +235,17 @@ class CombatService {
         this._applyTechniqueEffects(technique, targetState);
         message += ` Накладывает эффекты на ${targetName}.`;
         
-        // Пересчитываем характеристики цели после наложения эффектов
-        this._recalculateCombatStats(targetState);
+        // Пересчитываем характеристики только для игрока, не для врагов
+        // DoT эффекты не должны влиять на максимальное здоровье врагов
+        if (targetState === combat.player_state) {
+          this._recalculateCombatStats(targetState);
+        }
       }
 
       // Применяем прямой урон (только для атакующих техник)
       if (isAttack && technique.damage > 0) {
         console.log(`[COMBAT_DEBUG] 6. Техника имеет прямой урон: ${technique.damage}. Наносим...`);
-        const attackResult = this._calculateDamage(combat.player_state, combat.enemy_state, technique.damage);
+        const attackResult = this._calculateDamage(combat.player_state, combat.enemy_state, technique.damage, 'physical', 'technique');
         targetState.currentHp = Math.max(0, targetState.currentHp - attackResult.damage);
         
         if (attackResult.isDodge) {
@@ -525,21 +528,22 @@ class CombatService {
 
     console.log(`[CombatService] Уровень атакующего: ${attackerLevel}, MaxHP цели: ${defenderMaxHp}`);
 
-    // 3. Рассчитываем базовый процент урона: 10% + уровень
-    let damagePercent = 10 + attackerLevel;
+    // 3. Рассчитываем базовый урон
+    let damage;
+    let damagePercent = 0; // Для логирования
     
-    // 4. Если используется техника, добавляем бонус
+    // 4. Для техник используем прямые значения как в PvP
     if (actionType === 'technique' && techniqueDamage) {
-      // Техника добавляет фиксированный урон к проценту
-      const techniqueBonus = Math.floor(techniqueDamage / 10); // 10 урона техники = +1% к урону
-      damagePercent += techniqueBonus;
-      console.log(`[CombatService] Бонус от техники: +${techniqueBonus}% (базовый урон техники: ${techniqueDamage})`);
+      // Техника наносит прямой урон (как в PvP)
+      damage = techniqueDamage;
+      damagePercent = Math.round((damage / defenderMaxHp) * 100); // Для логирования
+      console.log(`[CombatService] Прямой урон от техники: ${damage}`);
+    } else {
+      // Для обычных атак используем процентный расчет
+      damagePercent = 10 + attackerLevel;
+      damage = Math.floor((defenderMaxHp * damagePercent) / 100);
+      console.log(`[CombatService] Базовый урон: ${damagePercent}% от ${defenderMaxHp} = ${damage}`);
     }
-
-    // 5. Рассчитываем базовый урон
-    let damage = Math.floor((defenderMaxHp * damagePercent) / 100);
-    
-    console.log(`[CombatService] Базовый урон: ${damagePercent}% от ${defenderMaxHp} = ${damage}`);
 
     // 6. Проверяем уклонение
     let dodgeChance = 5; // Базовый шанс уклонения 5%
