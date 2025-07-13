@@ -55,3 +55,20 @@ export const getCombatState = async (combatId) => {
     };
   }
 };
+
+/**
+ * Получает текущий статус боя пользователя
+ * @returns {Promise<Object>} Промис с информацией о текущем бое пользователя
+ */
+export const getUserCombatStatus = async () => {
+  try {
+    const response = await apiRequest('GET', '/api/combat/user/status');
+    return response;
+  } catch (error) {
+    console.error('Ошибка при получении статуса боя пользователя:', error);
+    return {
+      success: false,
+      message: error.message || 'Сетевая ошибка или сервер недоступен'
+    };
+  }
+};

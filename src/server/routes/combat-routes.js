@@ -82,4 +82,23 @@ router.get('/:combatId/state', async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/combat/user/status
+ * @desc    Получить текущий статус боя пользователя
+ * @access  Private
+ */
+router.get('/user/status', validateAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await CombatService.getUserCombatStatus(userId);
+    res.json(result);
+  } catch (error) {
+    console.error('Ошибка при получении статуса боя пользователя:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 module.exports = router;

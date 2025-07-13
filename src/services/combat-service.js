@@ -170,7 +170,7 @@ class CombatService {
       } else {
         message += ` Нанесено ${attackResult.damage} урона.`;
       }
-      logEntry = { turn: 'player', action: 'attack', ...attackResult, message };
+      logEntry = { turn: 'player', action: 'attack', ...attackResult, message, timestamp: new Date() };
       console.log(`[CombatService] Игрок атаковал в бою ${combatId}. Результат:`, attackResult);
     } else if (action.type === 'defense') {
       // Логика защиты, адаптированная из pvp-service
@@ -200,7 +200,7 @@ class CombatService {
       };
 
       combat.player_state.effects.push(defenseEffect);
-      logEntry = { turn: 'player', action: 'defense', message: 'Игрок уходит в глухую оборону.' };
+      logEntry = { turn: 'player', action: 'defense', message: 'Игрок уходит в глухую оборону.', timestamp: new Date() };
       console.log(`[CombatService] Игрок применил защиту в бою ${combatId}`);
       
       // Пересчитываем статы после применения эффекта защиты
@@ -267,7 +267,7 @@ class CombatService {
         console.log(`[COMBAT_DEBUG] 7.1. Здоровье игрока после исцеления: ${targetState.currentHp}`);
       }
 
-      logEntry = { turn: 'player', action: 'technique', message };
+      logEntry = { turn: 'player', action: 'technique', message, timestamp: new Date() };
 
     } else {
       throw new Error(`Неизвестное действие: ${action.type}`);
@@ -284,11 +284,11 @@ class CombatService {
     if (combat.player_state.currentHp <= 0) {
       combat.status = 'completed';
       combat.winner = 'enemy';
-      combat.log.push({ message: 'Игрок потерпел поражение.' });
+      combat.log.push({ message: 'Игрок потерпел поражение.', timestamp: new Date() });
     } else if (combat.enemy_state.currentHp <= 0) {
       combat.status = 'completed';
       combat.winner = 'player';
-      combat.log.push({ message: 'Противник повержен!' });
+      combat.log.push({ message: 'Противник повержен!', timestamp: new Date() });
       const rewards = await this._processRewards(combat, userId);
       combat.rewards = rewards; // Динамически добавляем награды в объект
     } else {
@@ -636,7 +636,7 @@ class CombatService {
       message += ` Вам нанесено ${attackResult.damage} урона.`;
     }
     
-    const logEntry = { turn: 'enemy', action: 'attack', ...attackResult, message };
+    const logEntry = { turn: 'enemy', action: 'attack', ...attackResult, message, timestamp: new Date() };
     console.log(`[CombatService] Противник атаковал в бою ${combat.id}. Результат:`, attackResult);
     return logEntry;
   }
@@ -812,7 +812,7 @@ class CombatService {
             }
             if (value > 0) {
               totalHealthChange -= value;
-              battleLogEntries.push({ message: `${entityName} получает ${value} урона от эффекта "${effect.name}".` });
+              battleLogEntries.push({ message: `${entityName} получает ${value} урона от эффекта "${effect.name}".`, timestamp: new Date() });
               console.log(`[CombatService] Применен урон от эффекта "${effect.name}": ${value}`);
             }
             break;
@@ -824,7 +824,7 @@ class CombatService {
               value = effect.value || 5;
               if (value > 0) {
                 totalEnergyChange += value;
-                battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".` });
+                battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".`, timestamp: new Date() });
                 console.log(`[CombatService] Применена регенерация энергии от эффекта "${effect.name}": ${value}`);
               }
             } else {
@@ -832,7 +832,7 @@ class CombatService {
               value = effect.value || 15;
               if (value > 0) {
                 totalHealthChange += value;
-                battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
+                battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".`, timestamp: new Date() });
                 console.log(`[CombatService] Применена регенерация здоровья от эффекта "${effect.name}": ${value}`);
               }
             }
@@ -843,7 +843,7 @@ class CombatService {
             value = effect.healing || effect.value || 15;
             if (value > 0) {
               totalHealthChange += value;
-              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".`, timestamp: new Date() });
               console.log(`[CombatService] Применено лечение от эффекта "${effect.name}": ${value}`);
             }
             break;
@@ -853,7 +853,7 @@ class CombatService {
             value = effect.value || 15;
             if (value > 0) {
               totalHealthChange += value;
-              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".`, timestamp: new Date() });
               console.log(`[CombatService] Применена регенерация здоровья от эффекта "${effect.name}": ${value}`);
             }
             break;
@@ -863,7 +863,7 @@ class CombatService {
             value = effect.value || 5;
             if (value > 0) {
               totalEnergyChange += value;
-              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".` });
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".`, timestamp: new Date() });
               console.log(`[CombatService] Применена регенерация энергии от эффекта "${effect.name}": ${value}`);
             }
             break;
@@ -890,7 +890,7 @@ class CombatService {
             value = effect.value || 5;
             if (value > 0) {
               totalHealthChange -= value;
-              battleLogEntries.push({ message: `${entityName} получает ${value} урона от эффекта "${effect.name}".` });
+              battleLogEntries.push({ message: `${entityName} получает ${value} урона от эффекта "${effect.name}".`, timestamp: new Date() });
               console.log(`[CombatService] Применен урон от эффекта "${effect.name}": ${value}`);
             }
             break;
@@ -901,7 +901,7 @@ class CombatService {
             value = effect.value || 15;
             if (value > 0) {
               totalHealthChange += value;
-              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".`, timestamp: new Date() });
               console.log(`[CombatService] Применено лечение от эффекта "${effect.name}": ${value}`);
             }
             break;
@@ -912,7 +912,7 @@ class CombatService {
             value = effect.value || 5;
             if (value > 0) {
               totalEnergyChange += value;
-              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".` });
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".`, timestamp: new Date() });
               console.log(`[CombatService] Применена регенерация энергии от эффекта "${effect.name}": ${value}`);
             }
             break;
@@ -1006,12 +1006,12 @@ class CombatService {
       if (combat.player_state.currentHp <= 0) {
         combat.status = 'completed';
         combat.winner = 'enemy';
-        combat.log.push({ message: 'Игрок потерпел поражение от периодических эффектов.' });
+        combat.log.push({ message: 'Игрок потерпел поражение от периодических эффектов.', timestamp: new Date() });
         changed = true;
       } else if (combat.enemy_state.currentHp <= 0) {
         combat.status = 'completed';
         combat.winner = 'player';
-        combat.log.push({ message: 'Противник повержен периодическими эффектами!' });
+        combat.log.push({ message: 'Противник повержен периодическими эффектами!', timestamp: new Date() });
         const rewards = await this._processRewards(combat, combat.user_id);
         combat.rewards = rewards;
         changed = true;
@@ -1154,6 +1154,46 @@ class CombatService {
     }
 
     return rewards;
+  }
+
+  /**
+   * Получает текущий статус боя пользователя
+   * @param {number} userId - ID пользователя
+   * @returns {Object} - Статус боя пользователя
+   */
+  static async getUserCombatStatus(userId) {
+    try {
+      const Combat = modelRegistry.getModel('Combat');
+      
+      // Ищем активный бой пользователя
+      const activeCombat = await Combat.findOne({
+        where: {
+          user_id: userId,
+          status: 'active'
+        },
+        order: [['created_at', 'DESC']]
+      });
+
+      if (activeCombat) {
+        return {
+          success: true,
+          inCombat: true,
+          combatId: activeCombat.id,
+          combat: activeCombat.toJSON()
+        };
+      }
+
+      return {
+        success: true,
+        inCombat: false
+      };
+    } catch (error) {
+      console.error('[CombatService] Ошибка при получении статуса боя пользователя:', error);
+      return {
+        success: false,
+        message: error.message
+      };
+    }
   }
 }
 
