@@ -83,6 +83,29 @@ router.get('/:combatId/state', async (req, res) => {
 });
 
 /**
+ * @route   POST /api/combat/:combatId/forfeit
+ * @desc    Принудительно завершить бой с поражением игрока
+ * @access  Private
+ */
+router.post('/:combatId/forfeit', validateAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { combatId } = req.params;
+
+    const result = await CombatService.forfeitCombat(combatId, userId);
+    res.json(result);
+
+  } catch (error) {
+    console.error(`[CombatRoutes] Ошибка при сдаче боя ${req.params.combatId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка на сервере при сдаче боя',
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route   GET /api/combat/user/status
  * @desc    Получить текущий статус боя пользователя
  * @access  Private

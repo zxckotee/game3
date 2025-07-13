@@ -57,6 +57,24 @@ export const getCombatState = async (combatId) => {
 };
 
 /**
+ * Принудительно завершить бой с поражением игрока
+ * @param {number} combatId - ID боя
+ * @returns {Promise<Object>} Промис с результатом операции
+ */
+export const forfeitCombat = async (combatId) => {
+  try {
+    const response = await apiRequest('POST', `/api/combat/${combatId}/forfeit`);
+    return response;
+  } catch (error) {
+    console.error(`Ошибка при сдаче боя ${combatId}:`, error);
+    return {
+      success: false,
+      message: error.message || 'Сетевая ошибка или сервер недоступен'
+    };
+  }
+};
+
+/**
  * Получает текущий статус боя пользователя
  * @returns {Promise<Object>} Промис с информацией о текущем бое пользователя
  */

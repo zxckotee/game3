@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
 import CombatArea from '../world/CombatArea';
+import { getUserCombatStatus, forfeitCombat } from '../../services/combat-api';
 // // import useTimeWeather from '../../hooks/useTimeWeather';
 
 const Container = styled.div`
@@ -637,6 +638,11 @@ function MapTab() {
   const [isExploring, setIsExploring] = useState(false);
   const [currentAreaId, setCurrentAreaId] = useState(null);
   
+  // Состояния для combat
+  const [combatState, setCombatState] = useState(null);
+  const [activeEnemy, setActiveEnemy] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
   // Получаем данные о мире и локациях с проверкой на существование
   const world = state?.world || {};
   const playerLocation = state?.player?.location || { x: 3, y: 3 };
@@ -682,6 +688,57 @@ function MapTab() {
   const eventDuration = 120; // Примерная длительность события
   const eventProgress = activeEvent ? (eventRemainingTime / eventDuration) * 100 : 0;
   
+  // Проверка текущего статуса пользователя в Combat при загрузке
+  useEffect(() => {
+    const checkUserCombatStatus = async () => {
+      try {
+        console.log('[MapTab] Проверяем текущий статус пользователя в Combat');
+        setLoading(true);
+        
+        const response = await getUserCombatStatus();
+        
+        if (response.success && response.inCombat) {
+          console.log('[MapTab] Пользователь находится в активном бою:', response);
+          
+          // Устанавливаем состояние боя
+          setCombatState(response.combat);
+          
+          // Определяем область для боя (можно улучшить логику определения области)
+          setCurrentAreaId('starting_area');
+          setIsExploring(true);
+          
+          // Создаем объект врага из данных боя
+          if (response.combat.enemy_state) {
+            setActiveEnemy({
+              name: response.combat.enemy_state.name || 'Неизвестный враг',
+              level: response.combat.enemy_state.enemyLevel || 1,
+              id: response.combat.enemy_id || 'unknown'
+            });
+          }
+          
+          // Показываем уведомление пользователю
+          actions.addNotification({
+            message: 'Вы находитесь в активном бою. Перенаправляем...',
+            type: 'info'
+          });
+        }
+      } catch (error) {
+        console.error('[MapTab] Ошибка при проверке статуса пользователя:', error);
+        actions.addNotification({
+          message: 'Ошибка при проверке статуса в Combat',
+          type: 'error'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // Проверяем статус пользователя при загрузке компонента
+    if (state.player?.id) {
+      checkUserCombatStatus();
+    }
+  }, [state.player?.id]); // Зависимость от ID игрока
+
   // Подписываемся на события обновления времени для синхронизации с другими компонентами
   useEffect(() => {
     // Функция для принудительного обновления компонента
@@ -696,7 +753,7 @@ function MapTab() {
     // При первом рендере сразу обновляем
     forceUpdate();
     console.log('⚡ MapTab TimeWeatherPanel: Инициализация и подписка на обновления', {
-      hour, 
+      hour,
       minute,
       formattedTime,
       worldTime,
@@ -842,14 +899,58 @@ function MapTab() {
     }
   };
   
+  // Обработчик возврата к карте с поддержкой принудительного завершения боя
+  const handleReturnToMap = async () => {
+    if (combatState && combatState.status === 'active') {
+      try {
+        console.log('[MapTab] Принудительное завершение активного боя:', combatState.id);
+        
+        const result = await forfeitCombat(combatState.id);
+        
+        if (result.success) {
+          actions.addNotification({
+            message: 'Вы сдались и покинули бой',
+            type: 'warning'
+          });
+          console.log('[MapTab] Бой успешно завершен с поражением игрока');
+        } else {
+          actions.addNotification({
+            message: `Ошибка при выходе из боя: ${result.message}`,
+            type: 'error'
+          });
+          console.error('[MapTab] Ошибка при завершении боя:', result.message);
+        }
+      } catch (error) {
+        console.error('[MapTab] Ошибка при принудительном завершении боя:', error);
+        actions.addNotification({
+          message: 'Произошла ошибка при выходе из боя',
+          type: 'error'
+        });
+      }
+    }
+    
+    // Сброс всех состояний боя
+    setCombatState(null);
+    setActiveEnemy(null);
+    setIsExploring(false);
+    setCurrentAreaId(null);
+    
+    console.log('[MapTab] Возврат к карте завершен');
+  };
+
   // Если игрок находится в режиме исследования, показываем CombatArea
   if (isExploring && currentAreaId) {
     return (
       <div>
-        <BackButton onClick={() => setIsExploring(false)}>
+        <BackButton onClick={handleReturnToMap}>
           Вернуться к карте
         </BackButton>
-        <CombatArea areaId={currentAreaId} />
+        <CombatArea
+          areaId={currentAreaId}
+          existingCombat={combatState}
+          activeEnemy={activeEnemy}
+          onForcedExit={handleReturnToMap}
+        />
       </div>
     );
   }

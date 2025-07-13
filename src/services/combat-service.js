@@ -1195,6 +1195,72 @@ class CombatService {
       };
     }
   }
+
+  /**
+   * Принудительно завершить бой с поражением игрока
+   * @param {number} combatId - ID боя
+   * @param {number} userId - ID игрока
+   * @returns {Object} - Результат операции
+   */
+  static async forfeitCombat(combatId, userId) {
+    try {
+      const Combat = modelRegistry.getModel('Combat');
+      const combat = await Combat.findByPk(combatId);
+
+      if (!combat) {
+        return {
+          success: false,
+          message: 'Бой не найден'
+        };
+      }
+
+      if (combat.user_id !== userId) {
+        return {
+          success: false,
+          message: 'Доступ запрещен - это не ваш бой'
+        };
+      }
+
+      if (combat.status !== 'active') {
+        return {
+          success: false,
+          message: 'Бой уже завершен'
+        };
+      }
+
+      // Завершаем бой с поражением игрока
+      combat.status = 'completed';
+      combat.winner = 'enemy';
+      
+      // Добавляем запись в лог
+      const currentLog = combat.log || [];
+      currentLog.push({
+        message: 'Игрок сдался и покинул бой.',
+        timestamp: new Date(),
+        type: 'forfeit'
+      });
+      combat.log = currentLog;
+
+      // Помечаем поля как измененные для Sequelize
+      combat.changed('log', true);
+      await combat.save();
+
+      console.log(`[CombatService] Игрок ${userId} сдался в бою ${combatId}`);
+
+      return {
+        success: true,
+        message: 'Бой завершен. Вы сдались.',
+        combat: combat.toJSON()
+      };
+
+    } catch (error) {
+      console.error('[CombatService] Ошибка при сдаче боя:', error);
+      return {
+        success: false,
+        message: `Ошибка при завершении боя: ${error.message}`
+      };
+    }
+  }
 }
 
 module.exports = CombatService;

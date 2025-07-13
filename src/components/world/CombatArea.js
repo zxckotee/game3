@@ -133,11 +133,32 @@ const RewardItem = styled.div`
   }
 `;
 
-function CombatArea({ areaId }) {
+function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnemy = null, onForcedExit = null }) {
   const { state, actions } = useGame();
   
-  const [combatState, setCombatState] = useState(null);
-  const [activeEnemy, setActiveEnemy] = useState(null); // Хранит полный объект врага во время боя
+  const [combatState, setCombatState] = useState(existingCombat);
+  const [activeEnemy, setActiveEnemy] = useState(propActiveEnemy); // Хранит полный объект врага во время боя
+
+  // Инициализация с существующим боем
+  useEffect(() => {
+    if (existingCombat) {
+      console.log('[CombatArea] Инициализация с существующим боем:', existingCombat);
+      setCombatState(existingCombat);
+      
+      // Если враг не передан через пропсы, создаем его из данных боя
+      if (!propActiveEnemy && existingCombat.enemy_state) {
+        const enemyFromCombat = {
+          name: existingCombat.enemy_state.name || 'Неизвестный враг',
+          level: existingCombat.enemy_state.enemyLevel || 1,
+          id: existingCombat.enemy_id || 'unknown',
+          icon: '👹', // Дефолтная иконка
+          stats: existingCombat.enemy_state
+        };
+        setActiveEnemy(enemyFromCombat);
+        console.log('[CombatArea] Создан объект врага из данных боя:', enemyFromCombat);
+      }
+    }
+  }, [existingCombat, propActiveEnemy]);
 
   useEffect(() => {
     if (!combatState || combatState.status !== 'active') {
@@ -274,9 +295,16 @@ function CombatArea({ areaId }) {
     const actionPayload = typeof action === 'string' ? { type: action } : action;
 
     if (actionPayload.type === 'flee') {
-        setCombatState(null);
-        setActiveEnemy(null);
-        actions.addNotification({ message: 'Вы сбежали из боя', type: 'warning' });
+        // Если есть обработчик принудительного выхода, используем его
+        if (onForcedExit) {
+          console.log('[CombatArea] Вызов принудительного выхода через onForcedExit');
+          onForcedExit();
+        } else {
+          // Стандартная логика бегства
+          setCombatState(null);
+          setActiveEnemy(null);
+          actions.addNotification({ message: 'Вы сбежали из боя', type: 'warning' });
+        }
         return;
     }
 
