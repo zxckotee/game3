@@ -1052,10 +1052,10 @@ useEffect(() => {
       
       <TabMenu>
         <TabButton 
-          active={activeTab === 'pills'} 
-          onClick={() => setActiveTab('pills')}
+          active={activeTab === 'consumable'} // пилюли просто назовем расходниками, ведь у нас добавлены зелья и это все должно быть в одном разделе
+          onClick={() => setActiveTab('consumable')}
         >
-          Пилюли
+          Расходники
         </TabButton>
         <TabButton 
           active={activeTab === 'talismans'} 
