@@ -740,9 +740,8 @@ class CombatService {
     const battleLogEntries = [];
     const modifiers = this._getEffectModifiers(entityState);
 
-    for (let i = 0; i < ticks; i++) {
-      if (entityState.currentHp <= 0) break;
-
+    // Применяем эффекты только один раз, как в PvP системе
+    if (entityState.currentHp > 0) {
       for (const effect of entityState.effects) {
         let value;
         
@@ -766,6 +765,12 @@ class CombatService {
               effectType = 'poison';
             } else if (name.includes('лечение') || name.includes('исцеление')) {
               effectType = 'heal';
+            } else if (name.includes('оглушение') || name.includes('стан')) {
+              effectType = 'stun';
+            } else if (name.includes('защита') || name.includes('щит')) {
+              effectType = 'protect';
+            } else if (name.includes('ускорение') || name.includes('скорость')) {
+              effectType = 'speed';
             }
           }
         }
@@ -782,8 +787,25 @@ class CombatService {
           case 'burn':
           case 'bleed':
           case 'poison':
-            // Используем damage или value для урона
-            value = Math.round((effect.damage || effect.value || 0) * (1 + modifiers.dotModifier / 100));
+            // Используем точные значения как в PvP
+            if (effect.value && effect.value > 0) {
+              value = effect.value;
+            } else {
+              // Определяем урон по типу эффекта, как в PvP
+              switch (effectType) {
+                case 'burn':
+                  value = 8; // Огненный урон
+                  break;
+                case 'poison':
+                  value = 6; // Урон от яда
+                  break;
+                case 'bleed':
+                  value = 7; // Кровотечение
+                  break;
+                default:
+                  value = 5; // Стандартный урон
+              }
+            }
             if (value > 0) {
               totalHealthChange -= value;
               battleLogEntries.push({ message: `${entityName} получает ${value} урона от эффекта "${effect.name}".` });
@@ -794,16 +816,16 @@ class CombatService {
           case 'regenerate':
             // Проверяем, это регенерация здоровья или энергии по названию
             if (effect.name && effect.name.toLowerCase().includes('энерги')) {
-              // Для эффектов энергии используем value или healing
-              value = Math.round((effect.value || effect.healing || 5) * (1 + modifiers.healingModifier / 100));
+              // Для эффектов энергии используем точные значения
+              value = effect.value || 5;
               if (value > 0) {
                 totalEnergyChange += value;
                 battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".` });
                 console.log(`[CombatService] Применена регенерация энергии от эффекта "${effect.name}": ${value}`);
               }
             } else {
-              // Для эффектов здоровья используем healing или value
-              value = Math.round((effect.healing || effect.value || 0) * (1 + modifiers.healingModifier / 100));
+              // Для эффектов здоровья используем точные значения
+              value = effect.value || 15;
               if (value > 0) {
                 totalHealthChange += value;
                 battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
@@ -813,8 +835,8 @@ class CombatService {
             break;
             
           case 'heal':
-            // Прямое лечение
-            value = Math.round((effect.healing || effect.value || 0) * (1 + modifiers.healingModifier / 100));
+            // Прямое лечение - используем точные значения
+            value = effect.healing || effect.value || 15;
             if (value > 0) {
               totalHealthChange += value;
               battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
@@ -823,8 +845,8 @@ class CombatService {
             break;
 
           case 'health_regen':
-            // Новый тип для регенерации здоровья (как в PvP)
-            value = Math.round((effect.healing || effect.value || 15) * (1 + modifiers.healingModifier / 100));
+            // Новый тип для регенерации здоровья (как в PvP) - используем точные значения
+            value = effect.value || 15;
             if (value > 0) {
               totalHealthChange += value;
               battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
@@ -833,8 +855,57 @@ class CombatService {
             break;
 
           case 'energy_gain':
-            // Новый тип для накопления энергии (как в PvP)
-            value = Math.round((effect.value || effect.healing || 5) * (1 + modifiers.healingModifier / 100));
+            // Новый тип для накопления энергии (как в PvP) - используем точные значения
+            value = effect.value || 5;
+            if (value > 0) {
+              totalEnergyChange += value;
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".` });
+              console.log(`[CombatService] Применена регенерация энергии от эффекта "${effect.name}": ${value}`);
+            }
+            break;
+
+          case 'stun':
+            // Оглушение - не применяется в периодических эффектах, только блокирует действия
+            console.log(`[CombatService] Эффект оглушения "${effect.name}" активен (не применяется в периодических эффектах)`);
+            break;
+
+          case 'protect':
+          case 'speed':
+          case 'buff':
+          case 'debuff':
+            // Эти эффекты не применяются периодически, они влияют на модификаторы
+            console.log(`[CombatService] Эффект модификатора "${effect.name}" типа "${effectType}" активен`);
+            break;
+
+          case 'fire':
+          case 'ice':
+          case 'lightning':
+          case 'damage':
+          case 'dot':
+            // Альтернативные названия для урона со временем
+            value = effect.value || 5;
+            if (value > 0) {
+              totalHealthChange -= value;
+              battleLogEntries.push({ message: `${entityName} получает ${value} урона от эффекта "${effect.name}".` });
+              console.log(`[CombatService] Применен урон от эффекта "${effect.name}": ${value}`);
+            }
+            break;
+
+          case 'healing':
+          case 'regeneration':
+            // Альтернативные названия для лечения
+            value = effect.value || 15;
+            if (value > 0) {
+              totalHealthChange += value;
+              battleLogEntries.push({ message: `${entityName} восстанавливает ${value} здоровья от эффекта "${effect.name}".` });
+              console.log(`[CombatService] Применено лечение от эффекта "${effect.name}": ${value}`);
+            }
+            break;
+
+          case 'energy_regen':
+          case 'mana_regen':
+            // Альтернативные названия для восстановления энергии
+            value = effect.value || 5;
             if (value > 0) {
               totalEnergyChange += value;
               battleLogEntries.push({ message: `${entityName} восстанавливает ${value} энергии от эффекта "${effect.name}".` });
