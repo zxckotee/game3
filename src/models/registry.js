@@ -269,3 +269,6 @@ register('EquipmentItemSpecialEffect', require('./equipment-item-special-effect'
 register('Effect', require('./effect'));
 register('ActivePlayerEffect', require('./active-player-effect'));
 
+// Регистрируем модель локаций
+register('Location', require('./location'));
+

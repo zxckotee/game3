@@ -3,6 +3,7 @@ import styled, { css, keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
 import CombatArea from '../world/CombatArea';
 import { getUserCombatStatus, forfeitCombat } from '../../services/combat-api';
+import { getAllLocations } from '../../services/location-api';
 // // import useTimeWeather from '../../hooks/useTimeWeather';
 
 const Container = styled.div`
@@ -609,24 +610,114 @@ const BackButton = styled(ActionButton)`
   }
 `;
 
-// Примерные данные для карты, если они отсутствуют в состоянии
+// Fallback данные для карты, если API недоступен
 const defaultLocations = [
-  { id: 1, name: 'Долина Начала', type: 'forest', x: 3, y: 3, description: 'Место, где начинают свой путь молодые культиваторы.', resources: [{ id: 1, name: 'Духовные травы', amount: 'Мало' }] },
-  { id: 2, name: 'Горы Облачного Пика', type: 'mountain', x: 5, y: 2, description: 'Высокие горы, окутанные облаками и духовной энергией.', resources: [{ id: 2, name: 'Духовные камни', amount: 'Средне' }] },
-  { id: 3, name: 'Город Восточного Ветра', type: 'city', x: 7, y: 5, description: 'Крупный город, центр торговли и культивации.', resources: [{ id: 3, name: 'Товары', amount: 'Много' }] },
-  { id: 4, name: 'Озеро Отражений', type: 'water', x: 2, y: 6, description: 'Мистическое озеро, в котором отражаются звезды даже днем.', resources: [{ id: 4, name: 'Водные эссенции', amount: 'Много' }] },
-  { id: 5, name: 'Пещера Тысячи Испытаний', type: 'dungeon', x: 8, y: 8, description: 'Древнее место испытаний для культиваторов.', resources: [{ id: 5, name: 'Сокровища', amount: 'Редко' }] },
-  { id: 6, name: 'Туманный Лес', type: 'forest', x: 1, y: 1, description: 'Древний лес, окутанный вечным туманом, где растут редкие виды духовных грибов.', resources: [{ id: 6, name: 'Духовные грибы', amount: 'Средне' }] },
-  { id: 7, name: 'Вулканический Пик', type: 'mountain', x: 9, y: 2, description: 'Активный вулкан, источающий огненную ци, идеальное место для практиков огненного пути.', resources: [{ id: 7, name: 'Огненные кристаллы', amount: 'Редко' }] },
-  { id: 8, name: 'Деревня Речного Камня', type: 'city', x: 4, y: 7, description: 'Небольшое поселение у подножия гор, известное мастерами-ремесленниками и целебными травами.', resources: [{ id: 8, name: 'Редкие рукоделия', amount: 'Много' }] },
-  { id: 9, name: 'Ледяное Озеро', type: 'water', x: 6, y: 9, description: 'Озеро, не тающее даже летом, с водой, насыщенной чистейшей инь-энергией.', resources: [{ id: 9, name: 'Инь-эссенция', amount: 'Много' }] },
-  { id: 10, name: 'Запретные Руины', type: 'dungeon', x: 2, y: 3, description: 'Древние руины забытой цивилизации, полные опасных ловушек и бесценных артефактов.', resources: [{ id: 10, name: 'Древние артефакты', amount: 'Редко' }] }
+  {
+    id: 'starting_valley',
+    name: 'Долина Начала',
+    type: 'forest',
+    energyCost: 0,
+    backgroundImage: '/assets/images/map/1.png',
+    coordinates: { x: 1, y: 1 },
+    description: 'Мирная долина, где начинают свой путь молодые культиваторы. Здесь растут базовые духовные травы и обитают слабые духовные звери.',
+    enemies: ['training_dummy', 'weak_spirit_beast'],
+    effects: [],
+    requirements: null
+  },
+  {
+    id: 'misty_swamps',
+    name: 'Туманные Болота',
+    type: 'swamp',
+    energyCost: 15,
+    backgroundImage: '/assets/images/map/2.png',
+    coordinates: { x: 2, y: 1 },
+    description: 'Опасные болота, окутанные вечным туманом. Здесь скрываются ядовитые существа и блуждающие души.',
+    enemies: ['swamp_wraith', 'poison_toad', 'mist_spirit'],
+    effects: [{ type: 'fog_bonus', modifier: 20 }],
+    requirements: null
+  },
+  {
+    id: 'crystal_caves',
+    name: 'Кристальные Пещеры',
+    type: 'cave',
+    energyCost: 25,
+    backgroundImage: '/assets/images/map/3.png',
+    coordinates: { x: 3, y: 1 },
+    description: 'Подземные пещеры, наполненные магическими кристаллами. Источник земной энергии и редких минералов.',
+    enemies: ['crystal_golem', 'cave_bat', 'earth_elemental'],
+    effects: [{ type: 'earth_cultivation_bonus', modifier: 15 }],
+    requirements: { cultivation: { level: 5 } }
+  },
+  {
+    id: 'burning_wastelands',
+    name: 'Пылающие Пустоши',
+    type: 'desert',
+    energyCost: 35,
+    backgroundImage: '/assets/images/map/4.png',
+    coordinates: { x: 4, y: 1 },
+    description: 'Выжженная пустыня с активными вулканами. Место силы для практиков огненного пути.',
+    enemies: ['fire_salamander', 'lava_beast', 'desert_scorpion'],
+    effects: [
+      { type: 'fire_cultivation_bonus', modifier: 20 },
+      { type: 'water_cultivation_penalty', modifier: -10 }
+    ],
+    requirements: { cultivation: { level: 10 } }
+  },
+  {
+    id: 'frozen_peaks',
+    name: 'Ледяные Вершины',
+    type: 'mountain',
+    energyCost: 45,
+    backgroundImage: '/assets/images/map/5.png',
+    coordinates: { x: 5, y: 1 },
+    description: 'Заснеженные горные пики с ледяными ветрами. Испытание холодом для сильных культиваторов.',
+    enemies: ['ice_wolf', 'frost_giant', 'blizzard_spirit'],
+    effects: [
+      { type: 'ice_cultivation_bonus', modifier: 20 },
+      { type: 'fire_cultivation_penalty', modifier: -15 }
+    ],
+    requirements: { cultivation: { level: 15 } }
+  },
+  {
+    id: 'ancient_forest',
+    name: 'Древний Лес',
+    type: 'forest',
+    energyCost: 55,
+    backgroundImage: '/assets/images/map/6.png',
+    coordinates: { x: 6, y: 1 },
+    description: 'Древний лес с могущественными духами природы. Место силы для друидов и натуралистов.',
+    enemies: ['treant_guardian', 'forest_drake', 'nature_spirit'],
+    effects: [
+      { type: 'nature_cultivation_bonus', modifier: 25 },
+      { type: 'herb_gathering_bonus', modifier: 30 }
+    ],
+    requirements: { cultivation: { level: 20 } }
+  },
+  {
+    id: 'celestial_observatory',
+    name: 'Небесная Обсерватория',
+    type: 'tower',
+    energyCost: 70,
+    backgroundImage: '/assets/images/map/7.png',
+    coordinates: { x: 7, y: 1 },
+    description: 'Мистическая башня, достигающая небес. Место изучения звездной магии и высших искусств.',
+    enemies: ['star_guardian', 'void_wraith', 'celestial_construct'],
+    effects: [
+      { type: 'astral_cultivation_bonus', modifier: 30 },
+      { type: 'technique_learning_bonus', modifier: 20 }
+    ],
+    requirements: { cultivation: { level: 25 } }
+  }
 ];
 
 // Соответствие типов локаций и ID областей для боя
 const locationTypeToAreaId = {
   'mountain': 'mountain_path',
   'forest': 'starting_area',
+  'swamp': 'misty_swamps',
+  'cave': 'crystal_caves',
+  'desert': 'burning_wastelands',
+  'tower': 'celestial_observatory',
   'dungeon': 'ancient_ruins',
   'city': 'starting_area',
   'water': 'starting_area'
@@ -643,10 +734,13 @@ function MapTab() {
   const [activeEnemy, setActiveEnemy] = useState(null);
   const [loading, setLoading] = useState(false);
   
-  // Получаем данные о мире и локациях с проверкой на существование
+  // Состояния для локаций
+  const [locations, setLocations] = useState(defaultLocations);
+  const [locationsLoading, setLocationsLoading] = useState(true);
+  
+  // Получаем данные о мире и игроке с проверкой на существование
   const world = state?.world || {};
-  const playerLocation = state?.player?.location || { x: 3, y: 3 };
-  const locations = world?.map?.locations || defaultLocations;
+  const playerLocation = state?.player?.location || { x: 1, y: 1 }; // Изменено на координаты стартовой локации
   const cultivation = state?.player?.cultivation || {};
   
   // Используем useReducer для принудительного обновления компонента
@@ -687,6 +781,41 @@ function MapTab() {
   // Длительность события (если есть)
   const eventDuration = 120; // Примерная длительность события
   const eventProgress = activeEvent ? (eventRemainingTime / eventDuration) * 100 : 0;
+  
+  // Загрузка локаций из API
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        console.log('[MapTab] Загружаем локации из API');
+        setLocationsLoading(true);
+        
+        const fetchedLocations = await getAllLocations();
+        
+        if (fetchedLocations && fetchedLocations.length > 0) {
+          console.log('[MapTab] Локации успешно загружены:', fetchedLocations.length);
+          setLocations(fetchedLocations);
+        } else {
+          console.warn('[MapTab] API вернул пустой массив локаций, используем fallback');
+          setLocations(defaultLocations);
+        }
+      } catch (error) {
+        console.error('[MapTab] Ошибка загрузки локаций:', error);
+        // В случае ошибки используем fallback локации
+        setLocations(defaultLocations);
+        
+        if (actions.addNotification) {
+          actions.addNotification({
+            message: 'Не удалось загрузить локации с сервера, используются локальные данные',
+            type: 'warning'
+          });
+        }
+      } finally {
+        setLocationsLoading(false);
+      }
+    };
+    
+    loadLocations();
+  }, []); // Загружаем только один раз при монтировании компонента
   
   // Проверка текущего статуса пользователя в Combat при загрузке
   useEffect(() => {
@@ -786,15 +915,33 @@ function MapTab() {
   const handleTravel = () => {
     if (!selectedLocation) return;
     
-    // Проверяем, достаточно ли энергии для путешествия
-    const distance = Math.abs(selectedLocation.x - playerLocation.x) +
-                    Math.abs(selectedLocation.y - playerLocation.y);
-    const energyCost = distance * 5;
+    // Используем energyCost из локации
+    const energyCost = selectedLocation.energyCost || 0;
     
+    // Проверяем требования доступа к локации
+    if (selectedLocation.requirements) {
+      const requirements = selectedLocation.requirements;
+      
+      // Проверяем уровень культивации
+      if (requirements.cultivation && requirements.cultivation.level) {
+        const playerLevel = cultivation.level || 1;
+        if (playerLevel < requirements.cultivation.level) {
+          if (actions.addNotification) {
+            actions.addNotification({
+              message: `Для доступа к локации "${selectedLocation.name}" требуется ${requirements.cultivation.level} уровень культивации`,
+              type: 'error'
+            });
+          }
+          return;
+        }
+      }
+    }
+    
+    // Проверяем, достаточно ли энергии для путешествия
     if ((cultivation.energy || 0) < energyCost) {
       if (actions.addNotification) {
         actions.addNotification({
-          message: 'Недостаточно духовной энергии для путешествия',
+          message: `Недостаточно духовной энергии для путешествия (требуется: ${energyCost})`,
           type: 'error'
         });
       }
@@ -814,16 +961,34 @@ function MapTab() {
     
     if (actions.addNotification) {
       actions.addNotification({
-        message: `Вы успешно переместились в ${selectedLocation.name}`,
+        message: `Вы успешно переместились в ${selectedLocation.name}${energyCost > 0 ? ` (-${energyCost} энергии)` : ''}`,
         type: 'success'
       });
     }
   };
   
   const handleExplore = () => {
-    // Определяем ID области для исследования на основе типа локации
-    const locationType = playerLocation.type || 'forest';
-    const areaId = locationTypeToAreaId[locationType] || 'starting_area';
+    // Находим текущую локацию игрока
+    const currentLocation = locations.find(loc =>
+      loc.coordinates.x === playerLocation.x && loc.coordinates.y === playerLocation.y
+    ) || locations.find(loc => loc.id === 'starting_valley'); // Fallback на стартовую локацию
+    
+    // Определяем ID области для исследования
+    let areaId;
+    if (currentLocation && currentLocation.id) {
+      // Используем ID локации напрямую, если он есть в locationTypeToAreaId
+      areaId = locationTypeToAreaId[currentLocation.type] || currentLocation.id;
+    } else {
+      // Fallback на старую логику
+      const locationType = playerLocation.type || 'forest';
+      areaId = locationTypeToAreaId[locationType] || 'starting_area';
+    }
+    
+    console.log('[MapTab] Исследуем локацию:', {
+      currentLocation: currentLocation?.name,
+      areaId,
+      playerLocation
+    });
     
     setCurrentAreaId(areaId);
     setIsExploring(true);
@@ -1005,18 +1170,50 @@ function MapTab() {
               {selectedLocation.description}
             </LocationDescription>
             
+            {selectedLocation.requirements && Object.keys(selectedLocation.requirements).length > 0 && (
+              <div style={{ margin: '10px 0', padding: '8px', backgroundColor: '#2a2a2a', borderRadius: '4px' }}>
+                <div style={{ color: '#ffd700', fontSize: '14px', marginBottom: '5px' }}>Требования для доступа:</div>
+                {selectedLocation.requirements.minLevel && (
+                  <div style={{ color: '#ccc', fontSize: '12px' }}>
+                    Минимальный уровень: {selectedLocation.requirements.minLevel}
+                  </div>
+                )}
+                {selectedLocation.requirements.completedLocations && selectedLocation.requirements.completedLocations.length > 0 && (
+                  <div style={{ color: '#ccc', fontSize: '12px' }}>
+                    Завершить локации: {selectedLocation.requirements.completedLocations.join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {selectedLocation.effects && Object.keys(selectedLocation.effects).length > 0 && (
+              <div style={{ margin: '10px 0', padding: '8px', backgroundColor: '#1a3a1a', borderRadius: '4px' }}>
+                <div style={{ color: '#90ee90', fontSize: '14px', marginBottom: '5px' }}>Эффекты локации:</div>
+                {selectedLocation.effects.experienceBonus && (
+                  <div style={{ color: '#ccc', fontSize: '12px' }}>
+                    Бонус опыта: +{selectedLocation.effects.experienceBonus}%
+                  </div>
+                )}
+                {selectedLocation.effects.dropRateBonus && (
+                  <div style={{ color: '#ccc', fontSize: '12px' }}>
+                    Бонус дропа: +{selectedLocation.effects.dropRateBonus}%
+                  </div>
+                )}
+                {selectedLocation.effects.energyRegenBonus && (
+                  <div style={{ color: '#ccc', fontSize: '12px' }}>
+                    Бонус восстановления энергии: +{selectedLocation.effects.energyRegenBonus}%
+                  </div>
+                )}
+              </div>
+            )}
             
             {selectedLocation.x !== playerLocation.x ||
              selectedLocation.y !== playerLocation.y ? (
               <ActionButton
                 onClick={handleTravel}
-                disabled={(cultivation.energy || 0) < 
-                  (Math.abs(selectedLocation.x - playerLocation.x) +
-                   Math.abs(selectedLocation.y - playerLocation.y)) * 5}
+                disabled={(cultivation.energy || 0) < (selectedLocation.energyCost || 0)}
               >
-                Отправиться в путь (
-                {(Math.abs(selectedLocation.x - playerLocation.x) +
-                  Math.abs(selectedLocation.y - playerLocation.y)) * 5} энергии)
+                Отправиться в путь ({selectedLocation.energyCost || 0} энергии)
               </ActionButton>
             ) : (
               <ActionButton onClick={handleExplore}>

@@ -7,6 +7,7 @@
 const resourceRoutes = require('./resource-routes');
 const techniqueRoutes = require('./technique-routes');
 const enemyRoutes = require('./enemy-routes'); // Закомментировано, т.к. маршруты перенесены в server.js
+const locationRoutes = require('./location-routes'); // Маршруты локаций
 const merchantRoutes = require('./merchant-routes');
 const achievementRoutes = require('./achievement-routes');
 const alchemyRoutes = require('./alchemy-routes');
@@ -40,7 +41,10 @@ function registerRoutes(app) {
   app.use(techniqueRoutes);
   
   // Маршруты врагов теперь регистрируются напрямую в server.js
-  app.use(enemyRoutes);  
+  app.use(enemyRoutes);
+  
+  // Регистрируем маршруты локаций
+  app.use(locationRoutes);
   
   // Регистрируем маршруты торговцев
   app.use(merchantRoutes);

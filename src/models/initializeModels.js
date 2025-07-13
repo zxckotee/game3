@@ -53,7 +53,7 @@ async function waitForInitialization() {
   }
   
   if (initializing && initPromise) {
-    log('Ожидание завершения текущей инициализации моделей...');
+    console.log('Ожидание завершения текущей инициализации моделей...');
     return initPromise;
   }
   
@@ -105,7 +105,7 @@ async function initializeModels() {
   initPromise = (async () => {
     try {
       // Получаем экземпляр Sequelize
-      log('Получение экземпляра Sequelize...');
+      console.log('Получение экземпляра Sequelize...');
       
       // Используем initializeDatabaseConnection напрямую
       const { initializeDatabaseConnection } = require('../services/database-connection-manager');
@@ -121,7 +121,7 @@ async function initializeModels() {
         throw new Error('Не удалось получить экземпляр Sequelize');
       }
       
-      log('Экземпляр Sequelize успешно получен');
+      console.log('Экземпляр Sequelize успешно получен');
       
       // Загружаем все файлы моделей из директории models
       const modelFiles = fs
@@ -139,7 +139,7 @@ async function initializeModels() {
           );
         });
       
-      log(`Найдено ${modelFiles.length} файлов моделей`);
+      console.log(`Найдено ${modelFiles.length} файлов моделей`);
       
       // Сортируем модели для правильного порядка инициализации
       // Некоторые модели должны быть инициализированы раньше других из-за зависимостей
@@ -236,7 +236,7 @@ async function initializeModels() {
       
       return modelRegistry;
     } catch (error) {
-      log(`Критическая ошибка при инициализации моделей: ${error.message}`, 'error');
+      console.log(`Критическая ошибка при инициализации моделей: ${error.message}`);
       console.error(error.stack);
       initializing = false;
       throw error;
