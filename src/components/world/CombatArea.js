@@ -4,7 +4,7 @@ import { useGame } from '../../context/GameContext';
 import { startCombat as startCombatAPI, performCombatAction, getCombatState } from '../../services/combat-api';
 const { getCultivationProgress } = require('../../services/cultivation-api');
 const { getCharacterProfile } = require('../../services/character-profile-service-api');
-import { enemies, getModifiedEnemySpawns } from '../../data/enemies-adapter';
+import { enemies } from '../../data/enemies-adapter';
 import PveBattleInterface from '../battle/PveBattleInterface';
 import BattleResult from '../battle/BattleResult';
 
@@ -133,7 +133,7 @@ const RewardItem = styled.div`
   }
 `;
 
-function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnemy = null, onForcedExit = null }) {
+function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnemy = null, onForcedExit = null, locationData = null }) {
   const { state, actions } = useGame();
   
   const [combatState, setCombatState] = useState(existingCombat);
@@ -239,29 +239,48 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
     return newEnemy;
   };
   
-  const areaEnemies = getModifiedEnemySpawns(
-    areaId,
-  );
+  // Используем данные врагов из API локации вместо хардкода
+  const areaEnemies = locationData?.enemies || [];
+  console.log('[CombatArea] Используем врагов из locationData:', areaEnemies);
   
   let availableEnemies = [];
   if (!Array.isArray(areaEnemies)) {
     console.error('areaEnemies не является массивом:', areaEnemies);
   } else {
     try {
-      availableEnemies = areaEnemies.map(spawn => {
-        if (!spawn || typeof spawn !== 'object') {
-          console.error('Некорректный объект spawn:', spawn);
-          return null;
-        }
-        const enemy = spawnEnemy(spawn);
-        if (!enemy || !enemy.stats) {
+      // API возвращает полные объекты врагов из базы данных
+      availableEnemies = areaEnemies.map(enemy => {
+        if (!enemy || typeof enemy !== 'object') {
           console.error('Некорректный объект enemy:', enemy);
           return null;
         }
-        return {
-          ...enemy,
-          available: state.player.cultivation.level >= spawn.minLevel
+        
+        // Проверяем, что у врага есть необходимые поля
+        if (!enemy.id || !enemy.name) {
+          console.error('У врага отсутствуют обязательные поля:', enemy);
+          return null;
+        }
+        
+        // Преобразуем данные врага в формат, ожидаемый CombatArea
+        const formattedEnemy = {
+          id: enemy.id,
+          name: enemy.name,
+          level: enemy.level || 1,
+          description: enemy.description || '',
+          stats: enemy.stats || {
+            health: 100,
+            energy: 50,
+            physicalDefense: 10,
+            spiritualDefense: 10
+          },
+          attacks: enemy.attacks || [],
+          experience: enemy.experience || 10,
+          currency: enemy.currency || { min: 1, max: 5 },
+          loot: enemy.loot || [],
+          available: state.player.cultivation.level >= (enemy.level || 1)
         };
+        
+        return formattedEnemy;
       }).filter(enemy => enemy !== null);
     } catch (error) {
       console.error('Ошибка при обработке врагов:', error);

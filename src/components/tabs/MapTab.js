@@ -800,6 +800,7 @@ function MapTab() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isExploring, setIsExploring] = useState(false);
   const [currentAreaId, setCurrentAreaId] = useState(null);
+  const [currentLocationData, setCurrentLocationData] = useState(null);
   
   // Состояния для combat
   const [combatState, setCombatState] = useState(null);
@@ -807,7 +808,7 @@ function MapTab() {
   const [loading, setLoading] = useState(false);
   
   // Состояния для локаций
-  const [locations, setLocations] = useState(defaultLocations);
+  const [locations, setLocations] = useState([]);
   const [locationsLoading, setLocationsLoading] = useState(true);
   
   // Получаем данные о мире и игроке с проверкой на существование
@@ -865,20 +866,24 @@ function MapTab() {
         
         if (fetchedLocations && fetchedLocations.length > 0) {
           console.log('[MapTab] Локации успешно загружены:', fetchedLocations.length);
+          console.log('[MapTab] Структура первой локации:', fetchedLocations[0]);
           setLocations(fetchedLocations);
         } else {
-          console.warn('[MapTab] API вернул пустой массив локаций, используем fallback');
-          setLocations(defaultLocations);
+          console.warn('[MapTab] API вернул пустой массив локаций');
+          if (actions.addNotification) {
+            actions.addNotification({
+              message: 'Не удалось загрузить локации с сервера',
+              type: 'error'
+            });
+          }
         }
       } catch (error) {
         console.error('[MapTab] Ошибка загрузки локаций:', error);
-        // В случае ошибки используем fallback локации
-        setLocations(defaultLocations);
         
         if (actions.addNotification) {
           actions.addNotification({
-            message: 'Не удалось загрузить локации с сервера, используются локальные данные',
-            type: 'warning'
+            message: 'Ошибка при загрузке локаций с сервера',
+            type: 'error'
           });
         }
       } finally {
@@ -1042,7 +1047,7 @@ function MapTab() {
   const handleExplore = () => {
     // Находим текущую локацию игрока
     const currentLocation = locations.find(loc =>
-      loc.coordinates.x === playerLocation.x && loc.coordinates.y === playerLocation.y
+      loc.coordinates?.x === playerLocation.x && loc.coordinates?.y === playerLocation.y
     ) || locations.find(loc => loc.id === 'starting_valley'); // Fallback на стартовую локацию
     
     // Определяем ID области для исследования
@@ -1059,10 +1064,12 @@ function MapTab() {
     console.log('[MapTab] Исследуем локацию:', {
       currentLocation: currentLocation?.name,
       areaId,
-      playerLocation
+      playerLocation,
+      enemies: currentLocation?.enemies
     });
     
     setCurrentAreaId(areaId);
+    setCurrentLocationData(currentLocation); // Сохраняем данные локации
     setIsExploring(true);
   };
   
@@ -1171,6 +1178,7 @@ function MapTab() {
     setActiveEnemy(null);
     setIsExploring(false);
     setCurrentAreaId(null);
+    setCurrentLocationData(null); // Очищаем данные локации
     
     console.log('[MapTab] Возврат к карте завершен');
   };
@@ -1187,6 +1195,7 @@ function MapTab() {
           existingCombat={combatState}
           activeEnemy={activeEnemy}
           onForcedExit={handleReturnToMap}
+          locationData={currentLocationData}
         />
       </div>
     );
@@ -1206,20 +1215,42 @@ function MapTab() {
           {activeEvent && <EventOverlay event={activeEvent} />}
           
           <MapGrid>
-            {locations.map(location => {
-              
-              return (
-                <MapCell
-                  key={location.id}
-                  type={location.type}
-                  isPlayerLocation={
-                    location.x === playerLocation.x &&
-                    location.y === playerLocation.y
-                  }
-                  onClick={() => handleLocationClick(location)}
-                />
-              );
-            })}
+            {locationsLoading ? (
+              <div style={{
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                color: '#aaa',
+                padding: '50px',
+                fontSize: '1.1rem'
+              }}>
+                Загрузка локаций...
+              </div>
+            ) : locations.length === 0 ? (
+              <div style={{
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                color: '#ff6b6b',
+                padding: '50px',
+                fontSize: '1.1rem'
+              }}>
+                Локации не загружены
+              </div>
+            ) : (
+              locations.map(location => {
+                console.log('[MapTab] Рендерим локацию:', location.name, 'с координатами:', location.coordinates);
+                return (
+                  <MapCell
+                    key={location.id}
+                    type={location.type}
+                    isPlayerLocation={
+                      location.coordinates?.x === playerLocation.x &&
+                      location.coordinates?.y === playerLocation.y
+                    }
+                    onClick={() => handleLocationClick(location)}
+                  />
+                );
+              })
+            )}
           </MapGrid>
         </MapArea>
       </div>
@@ -1312,8 +1343,8 @@ function MapTab() {
               </EnemiesSection>
             )}
             
-            {selectedLocation.x !== playerLocation.x ||
-             selectedLocation.y !== playerLocation.y ? (
+            {selectedLocation.coordinates?.x !== playerLocation.x ||
+             selectedLocation.coordinates?.y !== playerLocation.y ? (
               <ActionButton
                 onClick={handleTravel}
                 disabled={(cultivation.energy || 0) < (selectedLocation.energyCost || 0)}
