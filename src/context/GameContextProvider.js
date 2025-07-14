@@ -862,6 +862,85 @@ const actions = {
       dispatch({ type: 'SELECT_SECT_MEMBER', payload: member });
     },
 
+    // Действия для аватарки персонажа
+    uploadAvatar: async (userId, file) => {
+      try {
+        console.log(`[GameContext] Загрузка аватарки для пользователя ${userId}`);
+        
+        // Диспатчим начало загрузки
+        dispatch({ type: ACTION_TYPES.UPLOAD_AVATAR_REQUEST });
+        
+        // Загружаем аватарку через API
+        const result = await CharacterProfileServiceAPI.uploadAvatar(userId, file);
+        
+        // Диспатчим успешную загрузку
+        dispatch({
+          type: ACTION_TYPES.UPLOAD_AVATAR_SUCCESS,
+          payload: result.avatar
+        });
+        
+        // Обновляем аватарку в состоянии
+        dispatch({
+          type: ACTION_TYPES.SET_AVATAR,
+          payload: result.avatar
+        });
+        
+        // Показываем уведомление об успехе
+        dispatch({
+          type: ACTION_TYPES.ADD_NOTIFICATION,
+          payload: {
+            message: 'Аватарка успешно загружена',
+            type: 'success'
+          }
+        });
+        
+        return result;
+      } catch (error) {
+        console.error('[GameContext] Ошибка при загрузке аватарки:', error);
+        
+        // Диспатчим ошибку загрузки
+        dispatch({
+          type: ACTION_TYPES.UPLOAD_AVATAR_FAILURE,
+          payload: error.message
+        });
+        
+        // Показываем уведомление об ошибке
+        dispatch({
+          type: ACTION_TYPES.ADD_NOTIFICATION,
+          payload: {
+            message: 'Ошибка загрузки аватарки: ' + error.message,
+            type: 'error'
+          }
+        });
+        
+        throw error;
+      }
+    },
+    
+    loadAvatar: async (userId) => {
+      try {
+        console.log(`[GameContext] Загрузка аватарки для пользователя ${userId}`);
+        
+        // Получаем аватарку через API
+        const avatar = await CharacterProfileServiceAPI.getAvatar(userId);
+        
+        // Обновляем аватарку в состоянии
+        dispatch({
+          type: ACTION_TYPES.SET_AVATAR,
+          payload: avatar
+        });
+        
+        return avatar;
+      } catch (error) {
+        console.error('[GameContext] Ошибка при загрузке аватарки:', error);
+        return null;
+      }
+    },
+    
+    clearAvatar: () => {
+      dispatch({ type: ACTION_TYPES.CLEAR_AVATAR });
+    },
+
   };
   
   // Экспортируем actions в глобальную переменную

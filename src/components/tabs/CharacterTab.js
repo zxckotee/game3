@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
 
@@ -114,6 +114,56 @@ const Avatar = styled.div`
     transform: scale(1.05);
     box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
   }
+`;
+
+const AvatarImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+`;
+
+const AvatarUploadContainer = styled.div`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+`;
+
+const AvatarUploadButton = styled.button`
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: #1a1a1a;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const AvatarFileInput = styled.input`
+  display: none;
+`;
+
+const AvatarUploadStatus = styled.div`
+  font-size: 0.8rem;
+  color: ${props => props.error ? '#ff6b6b' : '#4ecdc4'};
+  text-align: center;
+  min-height: 20px;
 `;
 
 const CharacterInfo = styled.div`
@@ -327,6 +377,10 @@ function CharacterTab() {
   const cultivation = player?.cultivation || {};
   const characterStats = player?.characterStats || { base: null, modified: null, secondary: null };
   
+  // Состояние для загрузки аватарки
+  const fileInputRef = useRef(null);
+  const [uploadStatus, setUploadStatus] = useState('');
+  
   // Загрузка статистики персонажа при монтировании компонента
   useEffect(() => {
     if (player && player.id) {
@@ -334,6 +388,65 @@ function CharacterTab() {
       actions.loadCharacterStats(player.id);
     }
   }, [player.id, actions]);
+  
+  // Загрузка аватарки персонажа при монтировании компонента
+  useEffect(() => {
+    if (player && player.id && !player.avatar) {
+      console.log('CharacterTab: Загружаем аватарку персонажа');
+      actions.loadAvatar(player.id);
+    }
+  }, [player.id, player.avatar, actions]);
+  
+  // Обработчики для загрузки аватарки
+  const handleAvatarClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  const validateFile = (file) => {
+    // Проверка типа файла
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return 'Поддерживаются только файлы JPG, PNG и WebP';
+    }
+    
+    // Проверка размера файла (2MB)
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return 'Размер файла не должен превышать 2MB';
+    }
+    
+    return null;
+  };
+  
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Валидация файла
+    const validationError = validateFile(file);
+    if (validationError) {
+      setUploadStatus(validationError);
+      return;
+    }
+    
+    try {
+      setUploadStatus('Загрузка...');
+      await actions.uploadAvatar(player.id, file);
+      setUploadStatus('Аватарка успешно загружена!');
+      
+      // Очищаем статус через 3 секунды
+      setTimeout(() => setUploadStatus(''), 3000);
+    } catch (error) {
+      console.error('Ошибка загрузки аватарки:', error);
+      setUploadStatus('Ошибка загрузки аватарки');
+      setTimeout(() => setUploadStatus(''), 3000);
+    }
+    
+    // Очищаем input
+    event.target.value = '';
+  };
   
   // Helper функции (аналогичные EquipmentTab)
   const getStatDisplayName = (statKey) => {
@@ -399,9 +512,46 @@ function CharacterTab() {
   return (
     <Container>
       <CharacterPanel>
-        <Avatar>
-          {(player.name || '?')[0].toUpperCase()}
-        </Avatar>
+        <AvatarUploadContainer>
+          <Avatar onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
+            {player.avatar ? (
+              <AvatarImage
+                src={player.avatar}
+                alt={player.name || 'Аватарка персонажа'}
+                onError={(e) => {
+                  console.warn('Ошибка загрузки аватарки:', e.target.src);
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div style={{
+              display: player.avatar ? 'none' : 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%',
+              fontSize: '4rem',
+              fontWeight: 'bold',
+              color: '#d4af37'
+            }}>
+              {(player.name || '?')[0].toUpperCase()}
+            </div>
+          </Avatar>
+          
+          <AvatarFileInput
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            onChange={handleFileChange}
+          />
+          
+          {uploadStatus && (
+            <AvatarUploadStatus error={uploadStatus.includes('Ошибка') || uploadStatus.includes('превышать') || uploadStatus.includes('Поддерживаются')}>
+              {uploadStatus}
+            </AvatarUploadStatus>
+          )}
+        </AvatarUploadContainer>
         
         <CharacterInfo>
           <CharacterName>{player.name || 'Безымянный'}</CharacterName>

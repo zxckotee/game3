@@ -2047,6 +2047,62 @@ export const playerReducer = (state, action) => {
           characterStats: action.payload
         }
       };
+
+    // Обработчики для аватарки персонажа
+    case ACTION_TYPES.UPLOAD_AVATAR_REQUEST:
+      console.log('[PlayerReducer] Начало загрузки аватарки');
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          avatarUploading: true,
+          avatarError: null
+        }
+      };
+
+    case ACTION_TYPES.UPLOAD_AVATAR_SUCCESS:
+      console.log('[PlayerReducer] Аватарка успешно загружена:', action.payload);
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          avatar: action.payload,
+          avatarUploading: false,
+          avatarError: null
+        }
+      };
+
+    case ACTION_TYPES.UPLOAD_AVATAR_FAILURE:
+      console.log('[PlayerReducer] Ошибка загрузки аватарки:', action.payload);
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          avatarUploading: false,
+          avatarError: action.payload
+        }
+      };
+
+    case ACTION_TYPES.SET_AVATAR:
+      console.log('[PlayerReducer] Установка аватарки:', action.payload);
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          avatar: action.payload
+        }
+      };
+
+    case ACTION_TYPES.CLEAR_AVATAR:
+      console.log('[PlayerReducer] Очистка аватарки');
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          avatar: null,
+          avatarError: null
+        }
+      };
       
     default:
       return state;

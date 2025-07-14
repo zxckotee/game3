@@ -565,6 +565,116 @@ class CharacterProfileService {
       throw error;
     }
   }
+
+  /**
+   * Обновление аватарки персонажа
+   * @param {number} userId - ID пользователя
+   * @param {string} avatarPath - Путь к файлу аватарки
+   * @returns {Promise<Object>} - Обновленный профиль персонажа
+   */
+  static async updateAvatar(userId, avatarPath) {
+    try {
+      if (isBrowser) {
+        // В браузере используем объект в памяти
+        const profile = browserProfileData[userId];
+        
+        if (!profile) {
+          throw new Error('Профиль персонажа не найден');
+        }
+        
+        // Обновляем аватарку
+        profile.avatar = avatarPath;
+        
+        // Возвращаем обновленный профиль
+        return {
+          name: profile.name,
+          gender: profile.gender,
+          region: profile.region,
+          background: profile.background,
+          description: profile.description,
+          avatar: profile.avatar,
+          level: profile.level,
+          experience: profile.experience,
+          currency: {
+            gold: profile.gold,
+            silver: profile.silver,
+            copper: profile.copper,
+            spiritStones: profile.spiritStones
+          },
+          reputation: profile.reputation,
+          relationships: profile.relationships
+        };
+      } else {
+        // На сервере используем базу данных
+        let profile = await CharacterProfile.findOne({
+          where: { user_id: userId }
+        });
+        
+        if (!profile) {
+          throw new Error('Профиль персонажа не найден');
+        }
+        
+        // Обновляем аватарку
+        await profile.update({
+          avatar: avatarPath
+        });
+        
+        // Получаем обновленный профиль
+        profile = await CharacterProfile.findOne({
+          where: { user_id: userId }
+        });
+        
+        // Возвращаем обновленный профиль
+        return {
+          name: profile.name,
+          gender: profile.gender,
+          region: profile.region,
+          background: profile.background,
+          description: profile.description,
+          avatar: profile.avatar,
+          level: profile.level,
+          experience: profile.experience,
+          currency: {
+            gold: profile.gold,
+            silver: profile.silver,
+            copper: profile.copper,
+            spiritStones: profile.spiritStones,
+          },
+          reputation: profile.reputation,
+          relationships: profile.relationships
+        };
+      }
+    } catch (error) {
+      console.error('Ошибка при обновлении аватарки персонажа:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение аватарки персонажа
+   * @param {number} userId - ID пользователя
+   * @returns {Promise<string|null>} - Путь к аватарке или null
+   */
+  static async getAvatar(userId) {
+    try {
+      if (isBrowser) {
+        // В браузере используем объект в памяти
+        const profile = browserProfileData[userId];
+        return profile ? profile.avatar : null;
+      } else {
+        // На сервере используем базу данных
+        const profile = await CharacterProfile.findOne({
+          where: { user_id: userId },
+          attributes: ['avatar']
+        });
+        
+        return profile ? profile.avatar : null;
+      }
+    } catch (error) {
+      console.error('Ошибка при получении аватарки персонажа:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = CharacterProfileService;
@@ -578,3 +688,5 @@ module.exports.updateCurrency = CharacterProfileService.updateCurrency;
 module.exports.updateRelationships = CharacterProfileService.updateRelationships;
 module.exports.createInitialProfile = CharacterProfileService.createInitialProfile;
 module.exports.addRelationshipEvent = CharacterProfileService.addRelationshipEvent;
+module.exports.updateAvatar = CharacterProfileService.updateAvatar;
+module.exports.getAvatar = CharacterProfileService.getAvatar;

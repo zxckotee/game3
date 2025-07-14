@@ -459,6 +459,89 @@ class CharacterProfileServiceAPI {
       throw error;
     }
   }
+
+  /**
+   * Загрузка аватарки персонажа
+   * @param {number} userId - ID пользователя
+   * @param {File} file - Файл аватарки
+   * @returns {Promise<Object>} - Результат загрузки
+   */
+  static async uploadAvatar(userId, file) {
+    try {
+      console.log(`[CharacterProfileServiceAPI] Загрузка аватарки для пользователя ${userId}`);
+      
+      // Создаем FormData для отправки файла
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      const response = await fetch(`/api/users/${userId}/avatar`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`[CharacterProfileServiceAPI] Аватарка успешно загружена:`, result);
+        
+        // Обновляем localStorage
+        const profiles = getProfilesFromStorage();
+        if (profiles[userId]) {
+          profiles[userId].avatar = result.avatar;
+          saveProfilesToStorage(profiles);
+        }
+        
+        return result;
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Ошибка загрузки аватарки');
+      }
+    } catch (error) {
+      console.error(`[CharacterProfileServiceAPI] Ошибка при загрузке аватарки:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение аватарки персонажа
+   * @param {number} userId - ID пользователя
+   * @returns {Promise<string|null>} - Путь к аватарке или null
+   */
+  static async getAvatar(userId) {
+    try {
+      console.log(`[CharacterProfileServiceAPI] Получение аватарки для пользователя ${userId}`);
+      
+      // Сначала пробуем получить из API
+      try {
+        const response = await fetch(`/api/users/${userId}/avatar`);
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`[CharacterProfileServiceAPI] Аватарка получена из API:`, result.avatar);
+          return result.avatar;
+        } else if (response.status === 404) {
+          console.log(`[CharacterProfileServiceAPI] Аватарка не найдена в API`);
+          return null;
+        }
+      } catch (apiError) {
+        console.warn(`[CharacterProfileServiceAPI] Ошибка API при получении аватарки:`, apiError);
+      }
+      
+      // Если API не сработал, пробуем localStorage
+      const profiles = getProfilesFromStorage();
+      const profile = profiles[userId];
+      
+      if (profile && profile.avatar) {
+        console.log(`[CharacterProfileServiceAPI] Аватарка получена из localStorage:`, profile.avatar);
+        return profile.avatar;
+      }
+      
+      console.log(`[CharacterProfileServiceAPI] Аватарка не найдена`);
+      return null;
+    } catch (error) {
+      console.error(`[CharacterProfileServiceAPI] Ошибка при получении аватарки:`, error);
+      return null;
+    }
+  }
 }
 
 // Экспортируем класс через CommonJS
@@ -470,6 +553,8 @@ module.exports.updateCharacterProfile = CharacterProfileServiceAPI.updateCharact
 module.exports.isCharacterCreated = CharacterProfileServiceAPI.isCharacterCreated;
 module.exports.updateCurrency = CharacterProfileServiceAPI.updateCurrency;
 module.exports.updateRelationships = CharacterProfileServiceAPI.updateRelationships;
+module.exports.uploadAvatar = CharacterProfileServiceAPI.uploadAvatar;
+module.exports.getAvatar = CharacterProfileServiceAPI.getAvatar;
 /**
  * Обработка взаимодействия с NPC
  * @param {number} characterId - ID персонажа (NPC)
