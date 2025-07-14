@@ -2194,6 +2194,16 @@ export const playerReducer = (state, action) => {
       
       return state; // При ошибке состояние не меняется, предмет остается с базовыми данными
       
+    case ACTION_TYPES.UPDATE_CHARACTER_STATS:
+      console.log('[PlayerReducer] Обновление характеристик персонажа:', action.payload);
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          characterStats: action.payload
+        }
+      };
+      
     default:
       return state;
   }

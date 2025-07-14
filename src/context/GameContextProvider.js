@@ -3,6 +3,7 @@ import apiService from '../services/api';
 import SectService from '../services/sect-api';
 import InventoryServiceAPI from '../services/inventory-api';
 import CharacterProfileServiceAPI from '../services/character-profile-service-api';
+import CharacterStatsServiceAPI from '../services/character-stats-api';
 import InventoryService from '../services/inventory-adapter';
 import initialState from './state/initialState';
 import { rootReducer } from './reducers/rootReducer';
@@ -337,6 +338,30 @@ const actions = {
         dispatch({ type: ACTION_TYPES.UPDATE_INVENTORY, payload: items });
       } catch (error) {
         console.error('Ошибка при обновлении инвентаря из API:', error);
+      }
+    },
+    
+    // Действие для загрузки характеристик персонажа
+    loadCharacterStats: async (userIdToLoad) => {
+      const currentUserId = userIdToLoad || state.player?.id;
+      if (!currentUserId) {
+        console.warn('[GameContext] loadCharacterStats: userId не предоставлен и не найден в state.');
+        return;
+      }
+      console.log(`[GameContext] Загрузка характеристик персонажа для userId: ${currentUserId}`);
+      try {
+        const characterStats = await CharacterStatsServiceAPI.getCombinedCharacterState(currentUserId);
+        dispatch({ type: ACTION_TYPES.UPDATE_CHARACTER_STATS, payload: characterStats });
+        console.log(`[GameContext] Характеристики персонажа успешно загружены для userId: ${currentUserId}`);
+      } catch (error) {
+        console.error(`[GameContext] Ошибка при загрузке характеристик персонажа для userId ${currentUserId}:`, error);
+        dispatch({
+          type: ACTION_TYPES.ADD_NOTIFICATION,
+          payload: {
+            message: `Ошибка загрузки характеристик: ${error.message}`,
+            type: 'error'
+          }
+        });
       }
     },
     

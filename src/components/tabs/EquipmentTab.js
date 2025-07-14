@@ -305,6 +305,42 @@ const determineArmorType = (item) => {
   return 'body';
 };
 
+// Функция для получения русского названия характеристики
+const getStatDisplayName = (statKey) => {
+  const statNames = {
+    // Базовые характеристики
+    strength: 'Сила',
+    intellect: 'Интеллект',
+    spirit: 'Дух',
+    agility: 'Ловкость',
+    health: 'Здоровье',
+    luck: 'Удача',
+    
+    // Вторичные характеристики
+    physicalDefense: 'Физическая защита',
+    spiritualDefense: 'Магическая защита',
+    attackSpeed: 'Скорость атаки',
+    criticalChance: 'Шанс крит. удара',
+    movementSpeed: 'Скорость передвижения'
+  };
+  
+  return statNames[statKey] || statKey;
+};
+
+// Функция для определения, нужно ли отображать значение как процент
+const isPercentageStat = (statKey) => {
+  const percentageStats = ['attackSpeed', 'criticalChance', 'movementSpeed'];
+  return percentageStats.includes(statKey);
+};
+
+// Функция для форматирования значения характеристики
+const formatStatValue = (statKey, value) => {
+  if (isPercentageStat(statKey)) {
+    return `${value}%`;
+  }
+  return value.toString();
+};
+
 function EquipmentTab() {
   const { state, actions } = useGame();
   const [equipped, setEquipped] = useState({
@@ -341,6 +377,12 @@ function EquipmentTab() {
         if (userId && actions.loadInventoryData) {
           console.log('[EquipmentTab] Загрузка данных инвентаря...');
           await actions.loadInventoryData(userId);
+        }
+        
+        // Загружаем характеристики персонажа
+        if (userId && actions.loadCharacterStats) {
+          console.log('[EquipmentTab] Загрузка характеристик персонажа...');
+          await actions.loadCharacterStats(userId);
         }
         
         // Загружаем экипированные предметы уже из обновленного state
@@ -515,6 +557,10 @@ function EquipmentTab() {
         if (actions.loadInventoryData) {
           await actions.loadInventoryData(userId); // Перезагружаем инвентарь
         }
+        // Перезагружаем характеристики персонажа
+        if (actions.loadCharacterStats) {
+          await actions.loadCharacterStats(userId);
+        }
         // Сбрасываем состояния после успешной операции и обновления данных
         setSelectedEquippedItem(null);
         setSelectedSlot(null);
@@ -600,6 +646,10 @@ function EquipmentTab() {
           const userId = state.player?.id;
           if (userId && actions.loadInventoryData) {
             actions.loadInventoryData(userId);
+          }
+          // Перезагружаем характеристики персонажа
+          if (userId && actions.loadCharacterStats) {
+            actions.loadCharacterStats(userId);
           }
           // updateEquippedItems() будет вызван автоматически через useEffect после обновления глобального состояния
         } else {
@@ -846,7 +896,7 @@ function EquipmentTab() {
       </div>
       
       <StatsPanel>
-        <SectionTitle>Бонусы экипировки</SectionTitle>
+        <SectionTitle>Характеристики персонажа</SectionTitle>
         
         {/* Панель управления выбранным предметом */}
         {selectedEquippedItem && (
@@ -875,52 +925,53 @@ function EquipmentTab() {
           </div>
         )}
         
-        {state.player.equipmentBonuses && (
+        {state.player.characterStats && state.player.characterStats.modified && (
           <>
-            {/* Бонусы характеристик */}
+            {/* Базовые характеристики (отображаем модифицированные значения) */}
             <div>
               <h4>Базовые характеристики</h4>
               <StatGrid>
-                {Object.entries(state.player.equipmentBonuses.stats || {}).map(([stat, value]) => (
-                  <StatItem key={stat} value={value}>
-                    <span>
-                      {stat === 'strength' ? 'Сила' :
-                       stat === 'dexterity' ? 'Ловкость' :
-                       stat === 'vitality' ? 'Выносливость' :
-                       stat === 'intelligence' ? 'Интеллект' :
-                       stat === 'perception' ? 'Восприятие' :
-                       stat === 'luck' ? 'Удача' : stat}
-                    </span>
-                    <span>{value > 0 ? '+' : ''}{value}</span>
-                  </StatItem>
-                ))}
+                {['strength', 'intellect', 'spirit', 'agility', 'health', 'luck'].map(stat => {
+                  const value = state.player.characterStats.modified[stat];
+                  if (value !== undefined) {
+                    return (
+                      <StatItem key={stat} value={0}>
+                        <span>{getStatDisplayName(stat)}</span>
+                        <span>{formatStatValue(stat, value)}</span>
+                      </StatItem>
+                    );
+                  }
+                  return null;
+                })}
               </StatGrid>
             </div>
             
-            {/* Боевые характеристики */}
+            {/* Вторичные характеристики */}
             <div>
-              <h4>Боевые характеристики</h4>
+              <h4>Вторичные характеристики</h4>
               <StatGrid>
-                {Object.entries(state.player.equipmentBonuses.combat || {}).map(([stat, value]) => (
-                  <StatItem key={stat} value={value}>
-                    <span>
-                      {stat === 'physicalDamage' ? 'Физический урон' :
-                       stat === 'magicDamage' ? 'Магический урон' :
-                       stat === 'physicalDefense' ? 'Физическая защита' :
-                       stat === 'magicDefense' ? 'Магическая защита' :
-                       stat === 'critChance' ? 'Шанс крит. удара' :
-                       stat === 'critDamage' ? 'Урон от крит. удара' :
-                       stat === 'dodgeChance' ? 'Шанс уклонения' : stat}
-                    </span>
-                    <span>
-                      {value > 0 ? '+' : ''}{value}
-                      {['critChance', 'critDamage', 'dodgeChance'].includes(stat) ? '%' : ''}
-                    </span>
-                  </StatItem>
-                ))}
+                {['physicalDefense', 'spiritualDefense', 'attackSpeed', 'criticalChance', 'movementSpeed'].map(stat => {
+                  const value = state.player.characterStats.secondary?.[stat];
+                  if (value !== undefined) {
+                    return (
+                      <StatItem key={stat} value={0}>
+                        <span>{getStatDisplayName(stat)}</span>
+                        <span>{formatStatValue(stat, value)}</span>
+                      </StatItem>
+                    );
+                  }
+                  return null;
+                })}
               </StatGrid>
             </div>
           </>
+        )}
+        
+        {/* Показываем сообщение, если характеристики не загружены */}
+        {!state.player.characterStats && (
+          <div style={{ color: '#aaa', textAlign: 'center', padding: '20px' }}>
+            Загрузка характеристик...
+          </div>
         )}
       </StatsPanel>
     </Container>

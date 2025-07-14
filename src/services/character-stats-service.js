@@ -403,7 +403,6 @@ class CharacterStatsService {
       
       // 4. Расчет вторичных характеристик
       const secondaryStats = this.calculateSecondaryStats(modifiedState, modifiedState);
-
       // 5. Возврат результата
       return {
         base: baseState,

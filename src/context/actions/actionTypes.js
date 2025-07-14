@@ -163,7 +163,11 @@ const ACTION_TYPES = {
   
   // Действие для полного сброса состояния (для решения проблемы с валютой при новой регистрации)
   RESET_STATE: 'RESET_STATE',
-  UPDATE_PLAYER_BENEFITS: 'UPDATE_PLAYER_BENEFITS'
+  UPDATE_PLAYER_BENEFITS: 'UPDATE_PLAYER_BENEFITS',
+  
+  // Действия для характеристик персонажа
+  LOAD_CHARACTER_STATS: 'LOAD_CHARACTER_STATS',
+  UPDATE_CHARACTER_STATS: 'UPDATE_CHARACTER_STATS'
 };
 
 export default ACTION_TYPES;

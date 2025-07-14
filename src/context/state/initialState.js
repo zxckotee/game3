@@ -92,7 +92,14 @@ const initialState = {
     },
     
     // История боев
-    combatHistory: [] // Сохраняет результаты всех завершенных боев
+    combatHistory: [], // Сохраняет результаты всех завершенных боев
+    
+    // Характеристики персонажа из API
+    characterStats: {
+      base: null,
+      modified: null,
+      secondary: null
+    }
   },
   
   // Состояние игрового мира
