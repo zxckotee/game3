@@ -45,7 +45,7 @@ const ResourceManager = () => {
       
       return resourcesData;
     } catch (error) {
-      console.error('Ошибка при получении ресурсов:', error);
+      // Подавляем ошибки получения ресурсов
       return resources; // Возвращаем текущие ресурсы из состояния в случае ошибки
     }
   }, [resources]);
@@ -69,12 +69,9 @@ const ResourceManager = () => {
       const resource = await ResourceService.getResourceById(resourceId);
       return resource;
     } catch (error) {
-      console.error(`Ошибка при получении ресурса с ID ${resourceId}:`, error);
-      
       // Проверяем, есть ли ресурс в кэше для повторной попытки
       const cachedResource = resources.find(resource => resource.id === resourceId);
       if (cachedResource) {
-        console.log(`Использование кэшированного ресурса с ID ${resourceId} после ошибки API`);
         return cachedResource;
       }
       
@@ -101,8 +98,6 @@ const ResourceManager = () => {
       const filteredResources = await ResourceService.getResourcesByType(type);
       return filteredResources;
     } catch (error) {
-      console.error(`Ошибка при получении ресурсов типа ${type}:`, error);
-      
       // В случае ошибки, фильтруем локальные данные
       return resources.filter(resource => resource.type === type);
     }
@@ -127,8 +122,6 @@ const ResourceManager = () => {
       const filteredResources = await ResourceService.getResourcesByRarity(rarity);
       return filteredResources;
     } catch (error) {
-      console.error(`Ошибка при получении ресурсов редкости ${rarity}:`, error);
-      
       // В случае ошибки, фильтруем локальные данные
       return resources.filter(resource => resource.rarity === rarity);
     }
@@ -165,7 +158,6 @@ const ResourceManager = () => {
         resourcesDetailed: requiredResourcesDetailed
       };
     } catch (error) {
-      console.error('Ошибка при получении ресурсов для прорыва:', error);
       return {
         resourcesMap: {},
         resourcesDetailed: {}

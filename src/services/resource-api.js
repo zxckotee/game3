@@ -4,7 +4,47 @@
  */
 
 // Импортируем базовый API клиент для отправки запросов
-const { api } = require('./api');
+const { apiRequest } = require('./api');
+
+// Создаем объект api с методами для HTTP запросов
+const api = {
+  get: async (url) => {
+    try {
+      const response = await apiRequest('GET', url);
+      return { data: response };
+    } catch (error) {
+      console.warn(`API GET запрос к ${url} не удался:`, error.message);
+      return { data: [] };
+    }
+  },
+  post: async (url, data) => {
+    try {
+      const response = await apiRequest('POST', url, data);
+      return { data: response };
+    } catch (error) {
+      console.warn(`API POST запрос к ${url} не удался:`, error.message);
+      return { data: {} };
+    }
+  },
+  put: async (url, data) => {
+    try {
+      const response = await apiRequest('PUT', url, data);
+      return { data: response };
+    } catch (error) {
+      console.warn(`API PUT запрос к ${url} не удался:`, error.message);
+      return { data: {} };
+    }
+  },
+  delete: async (url) => {
+    try {
+      const response = await apiRequest('DELETE', url);
+      return { data: response };
+    } catch (error) {
+      console.warn(`API DELETE запрос к ${url} не удался:`, error.message);
+      return { data: { success: false } };
+    }
+  }
+};
 
 /**
  * Получает все ресурсы с сервера
