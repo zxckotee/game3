@@ -260,7 +260,26 @@ const SlotName = styled.div`
   background-clip: text;
 `;
 
-const ItemIcon = styled.div`
+const ItemImage = styled.img`
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+`;
+
+const ItemIconFallback = styled.div`
   width: 48px;
   height: 48px;
   background: ${props => props.type === 'weapon' ? 'linear-gradient(135deg, #f44336, #d32f2f)' :
@@ -276,6 +295,11 @@ const ItemIcon = styled.div`
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   position: relative;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
   
   &::before {
     content: '';
@@ -300,6 +324,41 @@ const ItemIcon = styled.div`
       inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
 `;
+
+// Компонент для отображения иконки предмета с fallback
+const ItemIcon = ({ item, type }) => {
+  const getTypeIcon = (itemType) => {
+    switch(itemType) {
+      case 'weapon': return '⚔️';
+      case 'armor': return '🛡️';
+      case 'accessory': return '💍';
+      case 'artifact': return '🔮';
+      case 'material': return '🧱';
+      case 'book': return '📚';
+      default: return '❓';
+    }
+  };
+
+  if (item && item.image_url) {
+    return (
+      <ItemImage
+        src={item.image_url}
+        alt={item.name || 'Предмет'}
+        onError={(e) => {
+          // Если изображение не загрузилось, показываем fallback
+          e.target.style.display = 'none';
+          e.target.nextSibling.style.display = 'flex';
+        }}
+      />
+    );
+  }
+  
+  return (
+    <ItemIconFallback type={type}>
+      {getTypeIcon(type)}
+    </ItemIconFallback>
+  );
+};
 
 const ItemName = styled.div`
   color: ${props => props.rarity === 'common' ? '#ffffff' :
@@ -1039,7 +1098,7 @@ function EquipmentTab() {
             <SlotName>Голова</SlotName>
             {equipped.headArmor ? (
               <>
-                <ItemIcon type="armor" />
+                <ItemIcon item={equipped.headArmor} type="armor" />
                 <ItemName rarity={equipped.headArmor.rarity}>{equipped.headArmor.name}</ItemName>
               </>
             ) : (
@@ -1055,7 +1114,7 @@ function EquipmentTab() {
             <SlotName>Оружие</SlotName>
             {equipped.weapon ? (
               <>
-                <ItemIcon type="weapon" />
+                <ItemIcon item={equipped.weapon} type="weapon" />
                 <ItemName rarity={equipped.weapon.rarity}>{equipped.weapon.name}</ItemName>
               </>
             ) : (
@@ -1071,7 +1130,7 @@ function EquipmentTab() {
             <SlotName>Тело</SlotName>
             {equipped.bodyArmor ? (
               <>
-                <ItemIcon type="armor" />
+                <ItemIcon item={equipped.bodyArmor} type="armor" />
                 <ItemName rarity={equipped.bodyArmor.rarity}>{equipped.bodyArmor.name}</ItemName>
               </>
             ) : (
@@ -1096,7 +1155,7 @@ function EquipmentTab() {
             <SlotName>Руки</SlotName>
             {equipped.handArmor ? (
               <>
-                <ItemIcon type="armor" />
+                <ItemIcon item={equipped.handArmor} type="armor" />
                 <ItemName rarity={equipped.handArmor.rarity}>{equipped.handArmor.name}</ItemName>
               </>
             ) : (
@@ -1112,7 +1171,7 @@ function EquipmentTab() {
             <SlotName>Ноги</SlotName>
             {equipped.legArmor ? (
               <>
-                <ItemIcon type="armor" />
+                <ItemIcon item={equipped.legArmor} type="armor" />
                 <ItemName rarity={equipped.legArmor.rarity}>{equipped.legArmor.name}</ItemName>
               </>
             ) : (
@@ -1128,7 +1187,7 @@ function EquipmentTab() {
             <SlotName>Аксессуар 1</SlotName>
             {equipped.accessory1 ? (
               <>
-                <ItemIcon type="accessory" />
+                <ItemIcon item={equipped.accessory1} type="accessory" />
                 <ItemName rarity={equipped.accessory1.rarity}>{equipped.accessory1.name}</ItemName>
               </>
             ) : (
@@ -1144,7 +1203,7 @@ function EquipmentTab() {
             <SlotName>Аксессуар 2</SlotName>
             {equipped.accessory2 ? (
               <>
-                <ItemIcon type="accessory" />
+                <ItemIcon item={equipped.accessory2} type="accessory" />
                 <ItemName rarity={equipped.accessory2.rarity}>{equipped.accessory2.name}</ItemName>
               </>
             ) : (
@@ -1160,7 +1219,7 @@ function EquipmentTab() {
             <SlotName>Артефакт 1</SlotName>
             {equipped.artifact1 ? (
               <>
-                <ItemIcon type="artifact" />
+                <ItemIcon item={equipped.artifact1} type="artifact" />
                 <ItemName rarity={equipped.artifact1.rarity}>{equipped.artifact1.name}</ItemName>
               </>
             ) : (
@@ -1176,7 +1235,7 @@ function EquipmentTab() {
             <SlotName>Артефакт 2</SlotName>
             {equipped.artifact2 ? (
               <>
-                <ItemIcon type="artifact" />
+                <ItemIcon item={equipped.artifact2} type="artifact" />
                 <ItemName rarity={equipped.artifact2.rarity}>{equipped.artifact2.name}</ItemName>
               </>
             ) : (
