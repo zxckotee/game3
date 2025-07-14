@@ -6,6 +6,7 @@
 // Импортируем connectionProvider и инициализатор моделей
 const connectionProvider = require('../utils/connection-provider');
 const { initializeModels, waitForInitialization } = require('../models/initializeModels');
+const modelRegistry = require('../models/registry'); // не трогай, это я исправил импорт
 
 // Константы для типов врагов
 const enemyRanks = {
@@ -171,38 +172,52 @@ exports.getTimeOfDaySpawnModifiers = async function() {
       return timeModifiersCache;
     }
     
-    // Сначала дожидаемся инициализации всех моделей
-    await waitForInitialization();
+    console.log('Модификаторы времени суток отключены, возвращаем значения по умолчанию');
     
-    // Получаем экземпляр Sequelize через connectionProvider
-    const { db } = await connectionProvider.getSequelizeInstance();
-    
-    try {
-      // Получаем модели напрямую через Sequelize
-      const EnemyTimeModifier = db.model('EnemyTimeModifier');
-    
-    // Получаем все модификаторы из базы данных
-    const modifiers = await EnemyTimeModifier.findAll();
-    
-    // Преобразуем в удобный формат для клиента
-    const formattedModifiers = {};
-    
-    modifiers.forEach(mod => {
-      if (!formattedModifiers[mod.timeOfDay]) {
-        formattedModifiers[mod.timeOfDay] = {};
+    // Возвращаем значения по умолчанию без обращения к базе данных
+    const defaultModifiers = {
+      'рассвет': {
+        'spirit_beast': 1.2,
+        'bandit': 0.8,
+        'undead': 0.5,
+        'elemental': 1.1
+      },
+      'утро': {
+        'spirit_beast': 1.1,
+        'bandit': 1.0,
+        'undead': 0.3,
+        'elemental': 1.0
+      },
+      'полдень': {
+        'spirit_beast': 1.0,
+        'bandit': 1.2,
+        'undead': 0.2,
+        'elemental': 0.9
+      },
+      'день': {
+        'spirit_beast': 1.0,
+        'bandit': 1.2,
+        'undead': 0.1,
+        'elemental': 0.8
+      },
+      'вечер': {
+        'spirit_beast': 1.1,
+        'bandit': 1.0,
+        'undead': 0.7,
+        'elemental': 1.0
+      },
+      'ночь': {
+        'spirit_beast': 0.8,
+        'bandit': 0.6,
+        'undead': 1.5,
+        'elemental': 1.2
       }
-      
-      formattedModifiers[mod.timeOfDay][mod.category] = parseFloat(mod.modifier);
-    });
+    };
     
     // Обновляем кэш
-    timeModifiersCache = formattedModifiers;
+    timeModifiersCache = defaultModifiers;
     
-    return formattedModifiers;
-    } catch (modelError) {
-      console.error('Ошибка при получении моделей:', modelError);
-      throw modelError;
-    }
+    return defaultModifiers;
   } catch (error) {
     console.error('Ошибка при получении модификаторов времени суток:', error);
     
@@ -264,38 +279,56 @@ exports.getWeatherSpawnModifiers = async function() {
       return weatherModifiersCache;
     }
     
-    // Сначала дожидаемся инициализации всех моделей
-    await waitForInitialization();
+    console.log('Модификаторы погоды отключены, возвращаем значения по умолчанию');
     
-    // Получаем экземпляр Sequelize через connectionProvider
-    const { db } = await connectionProvider.getSequelizeInstance();
-    
-    try {
-      // Получаем модели напрямую через Sequelize
-      const EnemyWeatherModifier = db.model('EnemyWeatherModifier');
-    
-    // Получаем все модификаторы из базы данных
-    const modifiers = await EnemyWeatherModifier.findAll();
-    
-    // Преобразуем в удобный формат для клиента
-    const formattedModifiers = {};
-    
-    modifiers.forEach(mod => {
-      if (!formattedModifiers[mod.weatherType]) {
-        formattedModifiers[mod.weatherType] = {};
+    // Возвращаем значения по умолчанию без обращения к базе данных
+    const defaultModifiers = {
+      'Ясно': {
+        'spirit_beast': 1.0,
+        'bandit': 1.1,
+        'undead': 0.9,
+        'elemental': 1.0
+      },
+      'Облачно': {
+        'spirit_beast': 1.0,
+        'bandit': 1.0,
+        'undead': 1.0,
+        'elemental': 1.0
+      },
+      'Дождь': {
+        'spirit_beast': 0.8,
+        'bandit': 0.7,
+        'undead': 1.0,
+        'elemental': 1.2,
+        'water_elemental': 1.5
+      },
+      'Гроза': {
+        'spirit_beast': 0.6,
+        'bandit': 0.5,
+        'undead': 1.1,
+        'elemental': 1.3,
+        'lightning_elemental': 2.0
+      },
+      'Туман': {
+        'spirit_beast': 0.9,
+        'bandit': 1.1,
+        'undead': 1.3,
+        'elemental': 0.8,
+        'ghost': 1.6
+      },
+      'Снег': {
+        'spirit_beast': 0.7,
+        'bandit': 0.6,
+        'undead': 0.9,
+        'elemental': 1.1,
+        'ice_elemental': 1.8
       }
-      
-      formattedModifiers[mod.weatherType][mod.category] = parseFloat(mod.modifier);
-    });
+    };
     
     // Обновляем кэш
-    weatherModifiersCache = formattedModifiers;
+    weatherModifiersCache = defaultModifiers;
     
-    return formattedModifiers;
-    } catch (modelError) {
-      console.error('Ошибка при получении моделей:', modelError);
-      throw modelError;
-    }
+    return defaultModifiers;
   } catch (error) {
     console.error('Ошибка при получении модификаторов погоды:', error);
     
@@ -357,22 +390,27 @@ exports.getWeatherSpawnModifiers = async function() {
  */
 exports.getEnemiesByLocation = async function(locationId) {
   try {
-    // Сначала дожидаемся инициализации всех моделей
-    await waitForInitialization();
+    console.log(`Запрос на получение врагов для локации: ${locationId}`);
     
-    // Получаем экземпляр Sequelize через connectionProvider
-    const { db } = await connectionProvider.getSequelizeInstance();
+    // Инициализируем реестр моделей, если он еще не инициализирован
+    await modelRegistry.initializeRegistry();
     
-    try {
-      // Получаем модели напрямую через Sequelize
-      const Enemy = db.model('Enemy');
-      const EnemyStats = db.model('EnemyStats');
-      const EnemySpawn = db.model('EnemySpawn');
+    // Получаем модели через реестр
+    const Enemy = modelRegistry.getModel('Enemy');
+    const EnemyStats = modelRegistry.getModel('EnemyStats');
+    const EnemySpawn = modelRegistry.getModel('EnemySpawn');
+    
+    if (!Enemy || !EnemyStats || !EnemySpawn) {
+      console.error('Не удалось получить модели Enemy, EnemyStats или EnemySpawn из реестра');
+      return [];
+    }
     
     // Загружаем точки появления врагов для указанной локации
     const spawns = await EnemySpawn.findAll({
       where: { location_id: locationId }
     });
+    
+    console.log(`Найдено ${spawns.length} точек появления для локации ${locationId}`);
     
     // Если точек появления нет, возвращаем пустой массив
     if (!spawns || spawns.length === 0) {
@@ -381,6 +419,7 @@ exports.getEnemiesByLocation = async function(locationId) {
     
     // Собираем ID врагов
     const enemyIds = spawns.map(spawn => spawn.enemy_id);
+    console.log(`ID врагов для локации ${locationId}:`, enemyIds);
     
     // Загружаем врагов с их связями
     const enemies = await Enemy.findAll({
@@ -390,18 +429,18 @@ exports.getEnemiesByLocation = async function(locationId) {
       ]
     });
     
+    console.log(`Загружено ${enemies.length} врагов для локации ${locationId}`);
+    
     // Преобразуем в удобный формат для клиента и добавляем шансы появления
-    return enemies.map(enemy => {
+    const formattedEnemies = enemies.map(enemy => {
       const spawn = spawns.find(s => s.enemy_id === enemy.id);
       return {
         ...formatEnemy(enemy),
         spawnChance: spawn ? spawn.spawn_chance : 0
       };
     });
-    } catch (modelError) {
-      console.error('Ошибка при получении моделей:', modelError);
-      throw modelError;
-    }
+    
+    return formattedEnemies;
   } catch (error) {
     console.error(`Ошибка при получении врагов для локации ${locationId}:`, error);
     return [];

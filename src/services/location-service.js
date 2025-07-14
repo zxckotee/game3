@@ -5,6 +5,7 @@
 
 // Импортируем реестр моделей вместо прямого использования connectionProvider
 const modelRegistry = require('../models/registry');
+const enemyService = require('./enemy-service');
 
 // Кэш для хранения локаций (для оптимизации)
 let locationsCache = [];
@@ -45,20 +46,34 @@ exports.getAllLocations = async function() {
     
     console.log(`Загружено ${locations.length} локаций из базы данных`);
     
-    // Преобразуем в нужный формат для клиента
-    const formattedLocations = locations.map(location => ({
-      id: location.id,
-      name: location.name,
-      description: location.description,
-      type: location.type,
-      energyCost: location.energyCost || 0,
-      backgroundImage: location.backgroundImage,
-      enemies: location.enemies || [],
-      coordinates: location.coordinates || { x: 0, y: 0 },
-      // Добавляем координаты для совместимости с фронтендом
-      x: location.coordinates?.x || 0,
-      y: location.coordinates?.y || 0
-    }));
+    // Загружаем полные объекты врагов для каждой локации
+    const formattedLocations = await Promise.all(
+      locations.map(async (location) => {
+        let enemies = [];
+        try {
+          // Получаем полные объекты врагов для локации
+          enemies = await enemyService.getEnemiesByLocation(location.id);
+        } catch (error) {
+          console.error(`Ошибка при загрузке врагов для локации ${location.id}:`, error);
+          // В случае ошибки возвращаем пустой массив
+          enemies = [];
+        }
+        
+        return {
+          id: location.id,
+          name: location.name,
+          description: location.description,
+          type: location.type,
+          energyCost: location.energyCost || 0,
+          backgroundImage: location.backgroundImage,
+          enemies: enemies, // Теперь это полные объекты врагов
+          coordinates: location.coordinates || { x: 0, y: 0 },
+          // Добавляем координаты для совместимости с фронтендом
+          x: location.coordinates?.x || 0,
+          y: location.coordinates?.y || 0
+        };
+      })
+    );
     
     // Обновляем кэш
     locationsCache = formattedLocations;
@@ -103,6 +118,15 @@ exports.getLocationById = async function(locationId) {
       return null;
     }
     
+    // Загружаем полные объекты врагов для локации
+    let enemies = [];
+    try {
+      enemies = await enemyService.getEnemiesByLocation(location.id);
+    } catch (error) {
+      console.error(`Ошибка при загрузке врагов для локации ${location.id}:`, error);
+      enemies = [];
+    }
+    
     // Преобразуем в нужный формат для клиента
     const formattedLocation = {
       id: location.id,
@@ -111,7 +135,7 @@ exports.getLocationById = async function(locationId) {
       type: location.type,
       energyCost: location.energyCost || 0,
       backgroundImage: location.backgroundImage,
-      enemies: location.enemies || [],
+      enemies: enemies, // Теперь это полные объекты врагов
       coordinates: location.coordinates || { x: 0, y: 0 },
       // Добавляем координаты для совместимости с фронтендом
       x: location.coordinates?.x || 0,

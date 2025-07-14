@@ -610,6 +610,78 @@ const BackButton = styled(ActionButton)`
   }
 `;
 
+const EnemiesSection = styled.div`
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+`;
+
+const EnemiesSectionTitle = styled.h4`
+  color: #d4af37;
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  padding-bottom: 8px;
+`;
+
+const EnemiesList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const EnemyCard = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(212, 175, 55, 0.3);
+  }
+`;
+
+const EnemyInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const EnemyName = styled.span`
+  color: #f0f0f0;
+  font-size: 0.9rem;
+  font-weight: 500;
+`;
+
+const EnemyDetails = styled.span`
+  color: #aaa;
+  font-size: 0.8rem;
+`;
+
+const EnemyLevel = styled.span`
+  color: #d4af37;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  background: rgba(212, 175, 55, 0.2);
+  border-radius: 3px;
+`;
+
+const NoEnemiesMessage = styled.div`
+  color: #aaa;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 10px;
+  font-style: italic;
+`;
+
 // Fallback данные для карты, если API недоступен
 const defaultLocations = [
   {
@@ -1205,6 +1277,39 @@ function MapTab() {
                   </div>
                 )}
               </div>
+            )}
+            
+            {/* Секция отображения врагов */}
+            {selectedLocation.enemies && (
+              <EnemiesSection>
+                <EnemiesSectionTitle>Враги в локации</EnemiesSectionTitle>
+                {selectedLocation.enemies.length > 0 ? (
+                  <EnemiesList>
+                    {selectedLocation.enemies.map((enemy, index) => (
+                      <EnemyCard key={enemy.id || index}>
+                        <EnemyInfo>
+                          <EnemyName>{enemy.name || enemy.id}</EnemyName>
+                          <EnemyDetails>
+                            {enemy.description && enemy.description.length > 50
+                              ? `${enemy.description.substring(0, 50)}...`
+                              : enemy.description || 'Описание отсутствует'}
+                          </EnemyDetails>
+                          {enemy.spawnChance && (
+                            <EnemyDetails>Шанс появления: {Math.round(enemy.spawnChance * 100)}%</EnemyDetails>
+                          )}
+                        </EnemyInfo>
+                        <EnemyLevel>
+                          Ур. {enemy.level || '?'}
+                        </EnemyLevel>
+                      </EnemyCard>
+                    ))}
+                  </EnemiesList>
+                ) : (
+                  <NoEnemiesMessage>
+                    В этой локации пока нет врагов
+                  </NoEnemiesMessage>
+                )}
+              </EnemiesSection>
             )}
             
             {selectedLocation.x !== playerLocation.x ||
