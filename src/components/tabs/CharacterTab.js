@@ -1,65 +1,183 @@
 import React, { useEffect } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
+
+// Анимации
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const shimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+`;
+
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+`;
 
 const Container = styled.div`
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  animation: ${fadeIn} 0.6s ease-out;
 `;
 
 const CharacterPanel = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
 `;
 
 const Avatar = styled.div`
   width: 200px;
   height: 200px;
-  margin: 0 auto 20px;
-  background: #2c2c2c;
-  border: 2px solid #d4af37;
+  margin: 0 auto 24px;
+  background: linear-gradient(145deg, #2c2c2c 0%, #1a1a1a 100%);
+  border: 3px solid transparent;
+  background-clip: padding-box;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3rem;
+  font-size: 4rem;
+  font-weight: bold;
   color: #d4af37;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 50%;
+    padding: 3px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+  }
 `;
 
 const CharacterInfo = styled.div`
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 `;
 
 const CharacterName = styled.h2`
-  color: #d4af37;
-  margin: 0 0 5px;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 8px;
+  font-size: 1.8rem;
+  font-weight: bold;
 `;
 
 const CharacterTitle = styled.div`
   color: #aaa;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  font-style: italic;
 `;
 
 const CultivationRealm = styled.div`
-  color: #f0f0f0;
-  font-size: 1.1rem;
-  margin-bottom: 20px;
+  background: linear-gradient(45deg, #f0f0f0, #d4af37);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 24px;
 `;
 
 const StatsPanel = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
 `;
 
 const StatGroup = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 32px;
+  animation: ${fadeIn} 0.6s ease-out;
+  animation-delay: ${props => props.delay || '0s'};
+  animation-fill-mode: both;
   
   &:last-child {
     margin-bottom: 0;
@@ -67,134 +185,201 @@ const StatGroup = styled.div`
 `;
 
 const StatGroupTitle = styled.h3`
-  color: #d4af37;
-  margin: 0 0 10px;
-  font-size: 1.1rem;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-  padding-bottom: 5px;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 16px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 8px;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+  }
 `;
 
 const StatGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+`;
+
+const StatCard = styled.div`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.15);
+    animation: ${pulse} 2s infinite;
+    
+    &::before {
+      left: 100%;
+    }
+  }
 `;
 
 const StatItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 10px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
 `;
 
-const StatControls = styled.div`
+const StatLabel = styled.span`
+  color: #bbb;
+  font-size: 0.95rem;
+  font-weight: 500;
+`;
+
+const StatValue = styled.span`
+  color: #f0f0f0;
+  font-size: 1.1rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   gap: 8px;
 `;
 
-const StatButton = styled.button`
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(212, 175, 55, 0.2);
-  color: #d4af37;
-  border: 1px solid #d4af37;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background: rgba(212, 175, 55, 0.4);
-  }
-  
-  &:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-`;
-
-const UnassignedPoints = styled.div`
-  margin-top: 10px;
-  padding: 10px;
-  background: rgba(212, 175, 55, 0.1);
-  border-radius: 4px;
-  text-align: center;
-  color: #d4af37;
+const StatBonus = styled.span`
+  color: #4caf50;
+  font-size: 0.9rem;
   font-weight: bold;
 `;
 
-const StatLabel = styled.span`
-  color: #aaa;
-`;
-
-const StatValue = styled.span`
-  color: #f0f0f0;
-`;
-
 const BackgroundInfo = styled.div`
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid rgba(212, 175, 55, 0.2);
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+  }
 `;
 
 const BackgroundTitle = styled.h3`
-  color: #d4af37;
-  margin: 0 0 10px;
-  font-size: 1.1rem;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+  font-weight: bold;
 `;
 
 const BackgroundText = styled.p`
   color: #f0f0f0;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.95rem;
+  line-height: 1.6;
   margin: 0;
+  text-align: justify;
+`;
+
+const LoadingSpinner = styled.div`
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 50%;
+  border-top-color: #d4af37;
+  animation: spin 1s ease-in-out infinite;
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 `;
 
 function CharacterTab() {
   const { state, actions } = useGame();
   const player = state?.player || {};
   const cultivation = player?.cultivation || {};
-  const stats = player?.stats || {};
-  const derivedStats = player?.secondaryStats || {};
-  const unassignedPoints = stats.unassignedPoints || 0;
+  const characterStats = player?.characterStats || { base: null, modified: null, secondary: null };
   
-  // Эффект для загрузки статистики персонажа при монтировании компонента
+  // Загрузка статистики персонажа при монтировании компонента
   useEffect(() => {
     if (player && player.id) {
       console.log('CharacterTab: Загружаем статистику персонажа из API');
-      
-      // Делаем запрос к API для получения статистики
-      fetch(`/api/users/${player.id}/stats`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        }
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Ошибка при получении статистики персонажа');
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('CharacterTab: Получены данные статистики:', data);
-        
-        // Обновляем статистику в состоянии Redux
-        if (data) {
-          actions.updatePlayerStats(data);
-        }
-      })
-      .catch(error => {
-        console.error('Ошибка при загрузке статистики персонажа:', error);
-      });
+      actions.loadCharacterStats(player.id);
     }
-  }, [player.id]); // Зависимость от ID игрока
+  }, [player.id, actions]);
+  
+  // Helper функции (аналогичные EquipmentTab)
+  const getStatDisplayName = (statKey) => {
+    const statNames = {
+      // Базовые характеристики
+      strength: 'Сила',
+      dexterity: 'Ловкость',
+      vitality: 'Здоровье',
+      intelligence: 'Интеллект',
+      perception: 'Дух',
+      luck: 'Удача',
+      
+      // Вторичные характеристики
+      physicalDamage: 'Физ. атака',
+      magicalDamage: 'Маг. атака',
+      physicalDefense: 'Физ. защита',
+      magicalDefense: 'Маг. защита',
+      accuracy: 'Точность',
+      evasion: 'Уклонение',
+      criticalChance: 'Шанс крита',
+      criticalDamage: 'Урон крита',
+      attackSpeed: 'Скорость атаки',
+      movementSpeed: 'Скорость движения',
+      healthRegeneration: 'Регенерация HP',
+      manaRegeneration: 'Регенерация MP'
+    };
+    return statNames[statKey] || statKey;
+  };
+  
+  const isPercentageStat = (statKey) => {
+    return ['criticalChance', 'attackSpeed', 'movementSpeed'].includes(statKey);
+  };
+  
+  const formatStatValue = (value, statKey) => {
+    if (value === null || value === undefined) return '0';
+    
+    if (isPercentageStat(statKey)) {
+      return `${value}%`;
+    }
+    
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k`;
+    }
+    
+    return value.toString();
+  };
   
   // Функция для получения названия стадии развития
   const getCultivationStageName = (level) => {
@@ -207,33 +392,15 @@ function CharacterTab() {
     return 'Бессмертный';
   };
   
-  // Функция для форматирования значения характеристики
-  const formatStat = (value) => {
-    value = value || 0;
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}k`;
-    }
-    return value.toString();
+  // Функция для вычисления бонуса экипировки
+  const getEquipmentBonus = (statKey) => {
+    if (!characterStats.base || !characterStats.modified) return 0;
+    return (characterStats.modified[statKey] || 0) - (characterStats.base[statKey] || 0);
   };
   
-  // Функция для увеличения характеристики
-  const increaseStat = (statName) => {
-    if (unassignedPoints <= 0) return;
-    
-    const newStats = {
-      ...stats,
-      [statName]: (stats[statName] || 0) + 1,
-      unassignedPoints: unassignedPoints - 1
-    };
-    
-    actions.updatePlayerStats(newStats);
-  };
-  
-  // Добавляем отладочный вывод для проверки структуры данных
+  // Отладочный вывод
   console.log('DEBUG - CharacterTab - Состояние игрока:', state.player);
-  console.log('DEBUG - CharacterTab - Бонусы экипировки:', player.equipmentBonuses);
-  console.log('DEBUG - CharacterTab - Характеристики:', stats);
-  console.log('DEBUG - CharacterTab - Вторичные характеристики:', derivedStats);
+  console.log('DEBUG - CharacterTab - Характеристики:', characterStats);
   
   return (
     <Container>
@@ -259,200 +426,92 @@ function CharacterTab() {
       </CharacterPanel>
       
       <StatsPanel>
-        <StatGroup>
+        <StatGroup delay="0.1s">
           <StatGroupTitle>Основные характеристики</StatGroupTitle>
-          {unassignedPoints > 0 && (
-            <UnassignedPoints>
-              Нераспределенные очки: {unassignedPoints}
-            </UnassignedPoints>
-          )}
           <StatGrid>
-            <StatItem>
-              <StatLabel>Сила</StatLabel>
-              <StatControls>
-                <StatValue>
-                  {formatStat(stats.strength)}
-                  {/* Для силы сохраняем тот же ключ */}
-                  {player.equipmentBonuses?.stats?.strength > 0 && (
-                    <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                      +{player.equipmentBonuses.stats.strength}
-                    </span>
-                  )}
-                </StatValue>
-                {unassignedPoints > 0 && (
-                  <StatButton onClick={() => increaseStat('strength')}>+</StatButton>
-                )}
-              </StatControls>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Ловкость</StatLabel>
-              <StatControls>
-                <StatValue>
-                  {formatStat(stats.agility)}
-                  {/* Для agility отображаем dexterity из бонусов */}
-                  {player.equipmentBonuses?.stats?.dexterity > 0 && (
-                    <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                      +{player.equipmentBonuses.stats.dexterity}
-                    </span>
-                  )}
-                </StatValue>
-                {unassignedPoints > 0 && (
-                  <StatButton onClick={() => increaseStat('agility')}>+</StatButton>
-                )}
-              </StatControls>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Здоровье</StatLabel>
-              <StatControls>
-                <StatValue>
-                  {formatStat(stats.health)}
-                  {/* Для health отображаем vitality из бонусов */}
-                  {player.equipmentBonuses?.stats?.vitality > 0 && (
-                    <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                      +{player.equipmentBonuses.stats.vitality}
-                    </span>
-                  )}
-                </StatValue>
-                {unassignedPoints > 0 && (
-                  <StatButton onClick={() => increaseStat('health')}>+</StatButton>
-                )}
-              </StatControls>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Интеллект</StatLabel>
-              <StatControls>
-                <StatValue>
-                  {formatStat(stats.intellect)}
-                  {/* Для intellect отображаем intelligence из бонусов */}
-                  {player.equipmentBonuses?.stats?.intelligence > 0 && (
-                    <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                      +{player.equipmentBonuses.stats.intelligence}
-                    </span>
-                  )}
-                </StatValue>
-                {unassignedPoints > 0 && (
-                  <StatButton onClick={() => increaseStat('intellect')}>+</StatButton>
-                )}
-              </StatControls>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Дух</StatLabel>
-              <StatControls>
-                <StatValue>
-                  {formatStat(stats.spirit)}
-                  {/* Для spirit отображаем perception из бонусов */}
-                  {player.equipmentBonuses?.stats?.perception > 0 && (
-                    <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                      +{player.equipmentBonuses.stats.perception}
-                    </span>
-                  )}
-                </StatValue>
-                {unassignedPoints > 0 && (
-                  <StatButton onClick={() => increaseStat('spirit')}>+</StatButton>
-                )}
-              </StatControls>
-            </StatItem>
-            {/* Добавляем отображение для удачи, если нужно */}
-            {player.equipmentBonuses?.stats?.luck > 0 && (
-              <StatItem>
-                <StatLabel>Удача</StatLabel>
-                <StatControls>
-                  <StatValue>
-                    {0}
-                    <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                      +{player.equipmentBonuses.stats.luck}
-                    </span>
-                  </StatValue>
-                </StatControls>
-              </StatItem>
+            {characterStats.modified ? (
+              ['strength', 'dexterity', 'vitality', 'intelligence', 'perception', 'luck'].map(statKey => {
+                const baseValue = characterStats.modified[statKey] || 0;
+                const bonus = getEquipmentBonus(statKey);
+                
+                // Показываем только если есть базовое значение или бонус
+                if (baseValue === 0 && bonus === 0) return null;
+                
+                return (
+                  <StatCard key={statKey}>
+                    <StatItem>
+                      <StatLabel>{getStatDisplayName(statKey)}</StatLabel>
+                      <StatValue>
+                        {formatStatValue(baseValue, statKey)}
+                        {bonus > 0 && (
+                          <StatBonus>+{formatStatValue(bonus, statKey)}</StatBonus>
+                        )}
+                      </StatValue>
+                    </StatItem>
+                  </StatCard>
+                );
+              })
+            ) : (
+              <StatCard>
+                <StatItem>
+                  <StatLabel>Загрузка...</StatLabel>
+                  <StatValue><LoadingSpinner /></StatValue>
+                </StatItem>
+              </StatCard>
             )}
           </StatGrid>
         </StatGroup>
         
-        <StatGroup>
-          <StatGroupTitle>Боевые характеристики</StatGroupTitle>
+        <StatGroup delay="0.2s">
+          <StatGroupTitle>Вторичные характеристики</StatGroupTitle>
           <StatGrid>
-            <StatItem>
-              <StatLabel>Физ. атака</StatLabel>
-              <StatValue>
-                {formatStat(stats.strength)}
-                {player.equipmentBonuses?.combat?.physicalDamage > 0 && (
-                  <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                    +{player.equipmentBonuses.combat.physicalDamage}
-                  </span>
-                )}
-              </StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Маг. атака</StatLabel>
-              <StatValue>
-                {formatStat(derivedStats.magicalAttack)}
-                {player.equipmentBonuses?.combat?.magicDamage > 0 && (
-                  <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                    +{player.equipmentBonuses.combat.magicDamage}
-                  </span>
-                )}
-              </StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Физ. защита</StatLabel>
-              <StatValue>
-                {formatStat(derivedStats.physicalDefense)}
-                {player.equipmentBonuses?.combat?.physicalDefense > 0 && (
-                  <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                    +{player.equipmentBonuses.combat.physicalDefense}
-                  </span>
-                )}
-              </StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Маг. защита</StatLabel>
-              <StatValue>
-                {formatStat(derivedStats.magicalDefense)}
-                {player.equipmentBonuses?.combat?.magicDefense > 0 && (
-                  <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                    +{player.equipmentBonuses.combat.magicDefense}
-                  </span>
-                )}
-              </StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Уклонение</StatLabel>
-              <StatValue>
-                {formatStat(derivedStats.evasion)}
-                {player.equipmentBonuses?.combat?.dodgeChance > 0 && (
-                  <span style={{ color: '#4caf50', marginLeft: '5px' }}>
-                    +{player.equipmentBonuses.combat.dodgeChance}%
-                  </span>
-                )}
-              </StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Точность</StatLabel>
-              <StatValue>{formatStat(derivedStats.accuracy)}</StatValue>
-            </StatItem>
+            {characterStats.secondary ? (
+              Object.entries(characterStats.secondary).map(([statKey, value]) => (
+                <StatCard key={statKey}>
+                  <StatItem>
+                    <StatLabel>{getStatDisplayName(statKey)}</StatLabel>
+                    <StatValue>{formatStatValue(value, statKey)}</StatValue>
+                  </StatItem>
+                </StatCard>
+              ))
+            ) : (
+              <StatCard>
+                <StatItem>
+                  <StatLabel>Загрузка...</StatLabel>
+                  <StatValue><LoadingSpinner /></StatValue>
+                </StatItem>
+              </StatCard>
+            )}
           </StatGrid>
         </StatGroup>
         
-        <StatGroup>
+        <StatGroup delay="0.3s">
           <StatGroupTitle>Культивация</StatGroupTitle>
           <StatGrid>
-            <StatItem>
-              <StatLabel>Духовная энергия</StatLabel>
-              <StatValue>{cultivation.energy || 0}/{cultivation.maxEnergy || 100}</StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Опыт</StatLabel>
-              <StatValue>{cultivation.experience || 0}/{cultivation.experienceRequired || 100}</StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Понимание Дао</StatLabel>
-              <StatValue>{cultivation.daoUnderstanding || 0}%</StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Прорывы</StatLabel>
-              <StatValue>{cultivation.breakthroughs || 0}</StatValue>
-            </StatItem>
+            <StatCard>
+              <StatItem>
+                <StatLabel>Духовная энергия</StatLabel>
+                <StatValue>{cultivation.energy || 0}/{cultivation.maxEnergy || 100}</StatValue>
+              </StatItem>
+            </StatCard>
+            <StatCard>
+              <StatItem>
+                <StatLabel>Опыт</StatLabel>
+                <StatValue>{cultivation.experience || 0}/{cultivation.experienceRequired || 100}</StatValue>
+              </StatItem>
+            </StatCard>
+            <StatCard>
+              <StatItem>
+                <StatLabel>Понимание Дао</StatLabel>
+                <StatValue>{cultivation.daoUnderstanding || 0}%</StatValue>
+              </StatItem>
+            </StatCard>
+            <StatCard>
+              <StatItem>
+                <StatLabel>Прорывы</StatLabel>
+                <StatValue>{cultivation.breakthroughs || 0}</StatValue>
+              </StatItem>
+            </StatCard>
           </StatGrid>
         </StatGroup>
       </StatsPanel>
