@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS enemy_spawns CASCADE;
 DROP TABLE IF EXISTS enemy_time_modifiers CASCADE;
 DROP TABLE IF EXISTS enemy_weather_modifiers CASCADE;
 DROP TABLE IF EXISTS enemies CASCADE;
+DROP TABLE IF EXISTS locations CASCADE;
 
 -- Таблица врагов
 CREATE TABLE enemies (
@@ -264,13 +265,13 @@ CREATE TABLE locations (
 
 -- Заполнение таблицы locations
 INSERT INTO locations (id, name, description, type, energy_cost, background_image, enemies, coordinates, effects, requirements) VALUES
-('starting_valley', 'Долина Начала', 'Мирная долина, где начинают свой путь молодые культиваторы. Здесь растут базовые духовные травы и обитают слабые духовные звери.', 'forest', 0, '/assets/images/map/1.png', '["training_dummy", "weak_spirit_beast"]', '{"x": 1, "y": 1}', '[]', 'null'),
-('misty_swamps', 'Туманные Болота', 'Опасные болота, окутанные вечным туманом. Здесь скрываются ядовитые существа и блуждающие души.', 'swamp', 15, '/assets/images/map/2.png', '["swamp_wraith", "poison_toad", "mist_spirit"]', '{"x": 2, "y": 1}', '[{"type": "fog_bonus", "modifier": 20}]', 'null'),
-('crystal_caves', 'Кристальные Пещеры', 'Подземные пещеры, наполненные магическими кристаллами. Источник земной энергии и редких минералов.', 'cave', 25, '/assets/images/map/3.png', '["crystal_golem", "cave_bat", "earth_elemental"]', '{"x": 3, "y": 1}', '[{"type": "earth_cultivation_bonus", "modifier": 15}]', '{"cultivation": {"level": 5}}'),
-('burning_wastelands', 'Пылающие Пустоши', 'Выжженная пустыня с активными вулканами. Место силы для практиков огненного пути.', 'desert', 35, '/assets/images/map/4.png', '["fire_salamander", "lava_beast", "desert_scorpion"]', '{"x": 4, "y": 1}', '[{"type": "fire_cultivation_bonus", "modifier": 20}, {"type": "water_cultivation_penalty", "modifier": -10}]', '{"cultivation": {"level": 10}}'),
-('frozen_peaks', 'Ледяные Вершины', 'Заснеженные горные пики с ледяными ветрами. Испытание холодом для сильных культиваторов.', 'mountain', 45, '/assets/images/map/5.png', '["ice_wolf", "frost_giant", "blizzard_spirit"]', '{"x": 5, "y": 1}', '[{"type": "ice_cultivation_bonus", "modifier": 20}, {"type": "fire_cultivation_penalty", "modifier": -15}]', '{"cultivation": {"level": 15}}'),
-('ancient_forest', 'Древний Лес', 'Древний лес с могущественными духами природы. Место силы для друидов и натуралистов.', 'forest', 55, '/assets/images/map/6.png', '["treant_guardian", "forest_drake", "nature_spirit"]', '{"x": 6, "y": 1}', '[{"type": "nature_cultivation_bonus", "modifier": 25}, {"type": "herb_gathering_bonus", "modifier": 30}]', '{"cultivation": {"level": 20}}'),
-('celestial_observatory', 'Небесная Обсерватория', 'Мистическая башня, достигающая небес. Место изучения звездной магии и высших искусств.', 'tower', 70, '/assets/images/map/7.png', '["star_guardian", "void_wraith", "celestial_construct"]', '{"x": 7, "y": 1}', '[{"type": "astral_cultivation_bonus", "modifier": 30}, {"type": "technique_learning_bonus", "modifier": 20}]', '{"cultivation": {"level": 25}}');
+('starting_valley', 'Долина Начала', 'Мирная долина, где начинают свой путь молодые культиваторы. Здесь растут базовые духовные травы и обитают слабые духовные звери.', 'forest', 0, '/assets/images/map/starting_valley.png', '["training_dummy", "weak_spirit_beast"]', '{"x": 1, "y": 1}', '[]', 'null'),
+('misty_swamps', 'Туманные Болота', 'Опасные болота, окутанные вечным туманом. Здесь скрываются ядовитые существа и блуждающие души.', 'swamp', 15, '/assets/images/map/misty_swamps.png', '["swamp_wraith", "poison_toad", "mist_spirit"]', '{"x": 2, "y": 1}', '[{"type": "fog_bonus", "modifier": 20}]', 'null'),
+('crystal_caves', 'Кристальные Пещеры', 'Подземные пещеры, наполненные магическими кристаллами. Источник земной энергии и редких минералов.', 'cave', 25, '/assets/images/map/crystal_caves.png', '["crystal_golem", "cave_bat", "earth_elemental"]', '{"x": 3, "y": 1}', '[{"type": "earth_cultivation_bonus", "modifier": 15}]', '{"cultivation": {"level": 5}}'),
+('burning_wastelands', 'Пылающие Пустоши', 'Выжженная пустыня с активными вулканами. Место силы для практиков огненного пути.', 'desert', 35, '/assets/images/map/burning_wastelands.png', '["fire_salamander", "lava_beast", "desert_scorpion"]', '{"x": 4, "y": 1}', '[{"type": "fire_cultivation_bonus", "modifier": 20}, {"type": "water_cultivation_penalty", "modifier": -10}]', '{"cultivation": {"level": 10}}'),
+('frozen_peaks', 'Ледяные Вершины', 'Заснеженные горные пики с ледяными ветрами. Испытание холодом для сильных культиваторов.', 'mountain', 45, '/assets/images/map/frozen_peaks.png', '["ice_wolf", "frost_giant", "blizzard_spirit"]', '{"x": 5, "y": 1}', '[{"type": "ice_cultivation_bonus", "modifier": 20}, {"type": "fire_cultivation_penalty", "modifier": -15}]', '{"cultivation": {"level": 15}}'),
+('ancient_forest', 'Древний Лес', 'Древний лес с могущественными духами природы. Место силы для друидов и натуралистов.', 'forest', 55, '/assets/images/map/ancient_forest.png', '["treant_guardian", "forest_drake", "nature_spirit"]', '{"x": 6, "y": 1}', '[{"type": "nature_cultivation_bonus", "modifier": 25}, {"type": "herb_gathering_bonus", "modifier": 30}]', '{"cultivation": {"level": 20}}'),
+('celestial_observatory', 'Небесная Обсерватория', 'Мистическая башня, достигающая небес. Место изучения звездной магии и высших искусств.', 'tower', 70, '/assets/images/map/celestial_observatory.png', '["star_guardian", "void_wraith", "celestial_construct"]', '{"x": 7, "y": 1}', '[{"type": "astral_cultivation_bonus", "modifier": 30}, {"type": "technique_learning_bonus", "modifier": 20}]', '{"cultivation": {"level": 25}}');
 
 -- Новые враги для разнообразия в локациях
 INSERT INTO enemies (id, name, icon, description, level, category, experience) VALUES

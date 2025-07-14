@@ -482,7 +482,7 @@ const EventOverlay = styled.div`
 
 const MapGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: ${props => `repeat(${props.locationCount || 7}, 1fr)`};
   gap: 2px;
   width: 100%;
   height: 100%;
@@ -490,11 +490,20 @@ const MapGrid = styled.div`
 `;
 
 const MapCell = styled.div`
-  background: ${props => props.type === 'mountain' ? '#8B4513' :
-    props.type === 'forest' ? '#228B22' :
-    props.type === 'water' ? '#4682B4' :
-    props.type === 'city' ? '#DAA520' :
-    props.type === 'dungeon' ? '#800000' : '#556B2F'};
+  background: ${props => props.backgroundImage
+    ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${props.backgroundImage})`
+    : (props.type === 'mountain' ? '#8B4513' :
+       props.type === 'forest' ? '#228B22' :
+       props.type === 'water' ? '#4682B4' :
+       props.type === 'city' ? '#DAA520' :
+       props.type === 'dungeon' ? '#800000' :
+       props.type === 'swamp' ? '#556B2F' :
+       props.type === 'cave' ? '#4A4A4A' :
+       props.type === 'desert' ? '#CD853F' :
+       props.type === 'tower' ? '#9370DB' : '#556B2F')};
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   cursor: pointer;
@@ -517,6 +526,7 @@ const MapCell = styled.div`
       color: #fff;
       font-size: 1.2rem;
       text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+      z-index: 2;
     }
   `}
 `;
@@ -682,105 +692,6 @@ const NoEnemiesMessage = styled.div`
   font-style: italic;
 `;
 
-// Fallback данные для карты, если API недоступен
-const defaultLocations = [
-  {
-    id: 'starting_valley',
-    name: 'Долина Начала',
-    type: 'forest',
-    energyCost: 0,
-    backgroundImage: '/assets/images/map/1.png',
-    coordinates: { x: 1, y: 1 },
-    description: 'Мирная долина, где начинают свой путь молодые культиваторы. Здесь растут базовые духовные травы и обитают слабые духовные звери.',
-    enemies: ['training_dummy', 'weak_spirit_beast'],
-    effects: [],
-    requirements: null
-  },
-  {
-    id: 'misty_swamps',
-    name: 'Туманные Болота',
-    type: 'swamp',
-    energyCost: 15,
-    backgroundImage: '/assets/images/map/2.png',
-    coordinates: { x: 2, y: 1 },
-    description: 'Опасные болота, окутанные вечным туманом. Здесь скрываются ядовитые существа и блуждающие души.',
-    enemies: ['swamp_wraith', 'poison_toad', 'mist_spirit'],
-    effects: [{ type: 'fog_bonus', modifier: 20 }],
-    requirements: null
-  },
-  {
-    id: 'crystal_caves',
-    name: 'Кристальные Пещеры',
-    type: 'cave',
-    energyCost: 25,
-    backgroundImage: '/assets/images/map/3.png',
-    coordinates: { x: 3, y: 1 },
-    description: 'Подземные пещеры, наполненные магическими кристаллами. Источник земной энергии и редких минералов.',
-    enemies: ['crystal_golem', 'cave_bat', 'earth_elemental'],
-    effects: [{ type: 'earth_cultivation_bonus', modifier: 15 }],
-    requirements: { cultivation: { level: 5 } }
-  },
-  {
-    id: 'burning_wastelands',
-    name: 'Пылающие Пустоши',
-    type: 'desert',
-    energyCost: 35,
-    backgroundImage: '/assets/images/map/4.png',
-    coordinates: { x: 4, y: 1 },
-    description: 'Выжженная пустыня с активными вулканами. Место силы для практиков огненного пути.',
-    enemies: ['fire_salamander', 'lava_beast', 'desert_scorpion'],
-    effects: [
-      { type: 'fire_cultivation_bonus', modifier: 20 },
-      { type: 'water_cultivation_penalty', modifier: -10 }
-    ],
-    requirements: { cultivation: { level: 10 } }
-  },
-  {
-    id: 'frozen_peaks',
-    name: 'Ледяные Вершины',
-    type: 'mountain',
-    energyCost: 45,
-    backgroundImage: '/assets/images/map/5.png',
-    coordinates: { x: 5, y: 1 },
-    description: 'Заснеженные горные пики с ледяными ветрами. Испытание холодом для сильных культиваторов.',
-    enemies: ['ice_wolf', 'frost_giant', 'blizzard_spirit'],
-    effects: [
-      { type: 'ice_cultivation_bonus', modifier: 20 },
-      { type: 'fire_cultivation_penalty', modifier: -15 }
-    ],
-    requirements: { cultivation: { level: 15 } }
-  },
-  {
-    id: 'ancient_forest',
-    name: 'Древний Лес',
-    type: 'forest',
-    energyCost: 55,
-    backgroundImage: '/assets/images/map/6.png',
-    coordinates: { x: 6, y: 1 },
-    description: 'Древний лес с могущественными духами природы. Место силы для друидов и натуралистов.',
-    enemies: ['treant_guardian', 'forest_drake', 'nature_spirit'],
-    effects: [
-      { type: 'nature_cultivation_bonus', modifier: 25 },
-      { type: 'herb_gathering_bonus', modifier: 30 }
-    ],
-    requirements: { cultivation: { level: 20 } }
-  },
-  {
-    id: 'celestial_observatory',
-    name: 'Небесная Обсерватория',
-    type: 'tower',
-    energyCost: 70,
-    backgroundImage: '/assets/images/map/7.png',
-    coordinates: { x: 7, y: 1 },
-    description: 'Мистическая башня, достигающая небес. Место изучения звездной магии и высших искусств.',
-    enemies: ['star_guardian', 'void_wraith', 'celestial_construct'],
-    effects: [
-      { type: 'astral_cultivation_bonus', modifier: 30 },
-      { type: 'technique_learning_bonus', modifier: 20 }
-    ],
-    requirements: { cultivation: { level: 25 } }
-  }
-];
 
 // Соответствие типов локаций и ID областей для боя
 const locationTypeToAreaId = {
@@ -1048,7 +959,7 @@ function MapTab() {
     // Находим текущую локацию игрока
     const currentLocation = locations.find(loc =>
       loc.coordinates?.x === playerLocation.x && loc.coordinates?.y === playerLocation.y
-    ) || locations.find(loc => loc.id === 'starting_valley'); // Fallback на стартовую локацию
+    );
     
     // Определяем ID области для исследования
     let areaId;
@@ -1214,7 +1125,7 @@ function MapTab() {
           {/* Оверлей событий */}
           {activeEvent && <EventOverlay event={activeEvent} />}
           
-          <MapGrid>
+          <MapGrid locationCount={locations.length}>
             {locationsLoading ? (
               <div style={{
                 gridColumn: '1 / -1',
@@ -1242,6 +1153,7 @@ function MapTab() {
                   <MapCell
                     key={location.id}
                     type={location.type}
+                    backgroundImage={location.backgroundImage}
                     isPlayerLocation={
                       location.coordinates?.x === playerLocation.x &&
                       location.coordinates?.y === playerLocation.y
