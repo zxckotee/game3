@@ -666,6 +666,7 @@ const getStatDisplayName = (statKey) => {
     // Вторичные характеристики
     physicalDefense: 'Физическая защита',
     spiritualDefense: 'Магическая защита',
+    spiritualAttack: 'Духовная атака',
     attackSpeed: 'Скорость атаки',
     criticalChance: 'Шанс крит. удара',
     movementSpeed: 'Скорость передвижения'
@@ -1297,7 +1298,7 @@ function EquipmentTab() {
             <div>
               <h4>Вторичные характеристики</h4>
               <StatGrid>
-                {['physicalDefense', 'spiritualDefense', 'attackSpeed', 'criticalChance', 'movementSpeed'].map(stat => {
+                {['physicalDefense', 'spiritualDefense', 'spiritualAttack', 'attackSpeed', 'criticalChance', 'movementSpeed'].map(stat => {
                   const value = state.player.characterStats.secondary?.[stat];
                   if (value !== undefined) {
                     return (

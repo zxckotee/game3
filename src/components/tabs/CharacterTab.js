@@ -340,25 +340,19 @@ function CharacterTab() {
     const statNames = {
       // Базовые характеристики
       strength: 'Сила',
-      dexterity: 'Ловкость',
-      vitality: 'Здоровье',
-      intelligence: 'Интеллект',
-      perception: 'Дух',
+      intellect: 'Интеллект',
+      spirit: 'Дух',
+      agility: 'Ловкость',
+      health: 'Здоровье',
       luck: 'Удача',
       
       // Вторичные характеристики
-      physicalDamage: 'Физ. атака',
-      magicalDamage: 'Маг. атака',
-      physicalDefense: 'Физ. защита',
-      magicalDefense: 'Маг. защита',
-      accuracy: 'Точность',
-      evasion: 'Уклонение',
-      criticalChance: 'Шанс крита',
-      criticalDamage: 'Урон крита',
+      physicalDefense: 'Физическая защита',
+      spiritualDefense: 'Магическая защита',
+      spiritualAttack: 'Духовная атака',
       attackSpeed: 'Скорость атаки',
-      movementSpeed: 'Скорость движения',
-      healthRegeneration: 'Регенерация HP',
-      manaRegeneration: 'Регенерация MP'
+      criticalChance: 'Шанс крит. удара',
+      movementSpeed: 'Скорость передвижения'
     };
     return statNames[statKey] || statKey;
   };
@@ -430,7 +424,7 @@ function CharacterTab() {
           <StatGroupTitle>Основные характеристики</StatGroupTitle>
           <StatGrid>
             {characterStats.modified ? (
-              ['strength', 'dexterity', 'vitality', 'intelligence', 'perception', 'luck'].map(statKey => {
+              ['strength', 'intellect', 'spirit', 'agility', 'health', 'luck'].map(statKey => {
                 const baseValue = characterStats.modified[statKey] || 0;
                 const bonus = getEquipmentBonus(statKey);
                 
@@ -466,14 +460,20 @@ function CharacterTab() {
           <StatGroupTitle>Вторичные характеристики</StatGroupTitle>
           <StatGrid>
             {characterStats.secondary ? (
-              Object.entries(characterStats.secondary).map(([statKey, value]) => (
-                <StatCard key={statKey}>
-                  <StatItem>
-                    <StatLabel>{getStatDisplayName(statKey)}</StatLabel>
-                    <StatValue>{formatStatValue(value, statKey)}</StatValue>
-                  </StatItem>
-                </StatCard>
-              ))
+              ['physicalDefense', 'spiritualDefense', 'spiritualAttack', 'attackSpeed', 'criticalChance', 'movementSpeed'].map(statKey => {
+                const value = characterStats.secondary[statKey];
+                if (value !== undefined) {
+                  return (
+                    <StatCard key={statKey}>
+                      <StatItem>
+                        <StatLabel>{getStatDisplayName(statKey)}</StatLabel>
+                        <StatValue>{formatStatValue(value, statKey)}</StatValue>
+                      </StatItem>
+                    </StatCard>
+                  );
+                }
+                return null;
+              })
             ) : (
               <StatCard>
                 <StatItem>
