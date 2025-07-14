@@ -4,6 +4,9 @@ import { useGame } from '../../context/GameContext';
 import { debugEquipment } from '../../utils/equipmentDebug';
 import { ensureItemHasCalculatedBonuses } from '../../utils/equipmentBonusHelper';
 import EquipmentService from '../../services/equipment-service-adapter';
+import InventoryServiceAPI from '../../services/inventory-api';
+import InventoryAuthManager from '../../utils/InventoryAuthManager';
+import { useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
   display: grid;
@@ -261,8 +264,8 @@ const SlotName = styled.div`
 `;
 
 const ItemImage = styled.img`
-  width: 48px;
-  height: 48px;
+  width: ${props => props.size === 'large' ? '64px' : props.size === 'widget' ? '80px' : '48px'};
+  height: ${props => props.size === 'large' ? '64px' : props.size === 'widget' ? '80px' : '48px'};
   object-fit: cover;
   border-radius: 8px;
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -270,6 +273,7 @@ const ItemImage = styled.img`
     0 4px 12px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
+  display: block;
   
   &:hover {
     transform: scale(1.05);
@@ -280,8 +284,8 @@ const ItemImage = styled.img`
 `;
 
 const ItemIconFallback = styled.div`
-  width: 48px;
-  height: 48px;
+  width: ${props => props.size === 'large' ? '64px' : props.size === 'widget' ? '80px' : '48px'};
+  height: ${props => props.size === 'large' ? '64px' : props.size === 'widget' ? '80px' : '48px'};
   background: ${props => props.type === 'weapon' ? 'linear-gradient(135deg, #f44336, #d32f2f)' :
     props.type === 'armor' ? 'linear-gradient(135deg, #2196f3, #1976d2)' :
     props.type === 'accessory' ? 'linear-gradient(135deg, #9c27b0, #7b1fa2)' :
@@ -298,7 +302,7 @@ const ItemIconFallback = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: ${props => props.size === 'large' ? '2rem' : props.size === 'widget' ? '2.5rem' : '1.5rem'};
   color: rgba(255, 255, 255, 0.8);
   
   &::before {
@@ -326,7 +330,9 @@ const ItemIconFallback = styled.div`
 `;
 
 // Компонент для отображения иконки предмета с fallback
-const ItemIcon = ({ item, type }) => {
+const ItemIcon = ({ item, type, size = 'small' }) => {
+  const [imageError, setImageError] = React.useState(false);
+  
   const getTypeIcon = (itemType) => {
     switch(itemType) {
       case 'weapon': return '⚔️';
@@ -339,24 +345,26 @@ const ItemIcon = ({ item, type }) => {
     }
   };
 
-  if (item && item.image_url) {
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // Если есть ошибка загрузки изображения или нет URL, показываем fallback
+  if (!item?.image_url || imageError) {
     return (
-      <ItemImage
-        src={item.image_url}
-        alt={item.name || 'Предмет'}
-        onError={(e) => {
-          // Если изображение не загрузилось, показываем fallback
-          e.target.style.display = 'none';
-          e.target.nextSibling.style.display = 'flex';
-        }}
-      />
+      <ItemIconFallback type={type} size={size}>
+        {getTypeIcon(type)}
+      </ItemIconFallback>
     );
   }
-  
+
   return (
-    <ItemIconFallback type={type}>
-      {getTypeIcon(type)}
-    </ItemIconFallback>
+    <ItemImage
+      src={item.image_url}
+      alt={item.name || 'Предмет'}
+      size={size}
+      onError={handleImageError}
+    />
   );
 };
 
@@ -684,6 +692,301 @@ const ItemSlot = styled.div`
   }
 `;
 
+// Styled components для виджета выбранного предмета
+const SelectedItemWidget = styled.div`
+  background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 50%, #0f0f1f 100%);
+  border: 2px solid #4a4a6a;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: fadeInUp 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #6a6a8a, transparent);
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const ItemPreview = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+`;
+
+const ItemImageContainer = styled.div`
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #4a4a6a;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ItemInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const ItemWidgetName = styled.h3`
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #e0e0ff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+`;
+
+const ItemType = styled.div`
+  font-size: 14px;
+  color: #a0a0c0;
+  margin-bottom: 12px;
+  font-style: italic;
+`;
+
+const ItemStats = styled.div`
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #3a3a5a;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+`;
+
+const ItemStatsTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #c0c0e0;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ItemStatsList = styled.div`
+  display: grid;
+  gap: 4px;
+`;
+
+const ItemStat = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #b0b0d0;
+  padding: 2px 0;
+
+  .stat-name {
+    color: #a0a0c0;
+  }
+
+  .stat-value {
+    color: #70ff70;
+    font-weight: 500;
+  }
+`;
+
+const ItemActions = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+const ActionButton = styled.button`
+  flex: 1;
+  min-width: 120px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  &:hover::before {
+    left: 100%;
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+`;
+
+const UnequipActionButton = styled(ActionButton)`
+  background: linear-gradient(135deg, #4a6741 0%, #2d4025 100%);
+  color: #e0ffe0;
+  border: 1px solid #5a7751;
+  box-shadow: 0 4px 12px rgba(74, 103, 65, 0.3);
+
+  &:hover {
+    background: linear-gradient(135deg, #5a7751 0%, #3d5035 100%);
+    box-shadow: 0 6px 16px rgba(74, 103, 65, 0.4);
+    transform: translateY(-1px);
+  }
+`;
+
+const DropActionButton = styled(ActionButton)`
+  background: linear-gradient(135deg, #674141 0%, #402525 100%);
+  color: #ffe0e0;
+  border: 1px solid #775151;
+  box-shadow: 0 4px 12px rgba(103, 65, 65, 0.3);
+
+  &:hover {
+    background: linear-gradient(135deg, #775151 0%, #503535 100%);
+    box-shadow: 0 6px 16px rgba(103, 65, 65, 0.4);
+    transform: translateY(-1px);
+  }
+`;
+
+// Стилизованные компоненты для диалога подтверждения
+const ConfirmationOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`;
+
+const ConfirmationModal = styled.div`
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border: 2px solid #444;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: slideIn 0.3s ease-out;
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+`;
+
+const ConfirmationTitle = styled.h3`
+  color: #ff6b6b;
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+`;
+
+const ConfirmationMessage = styled.p`
+  color: #ccc;
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+`;
+
+const ConfirmationButtons = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+`;
+
+const ConfirmButton = styled.button`
+  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+  color: white;
+  border: 1px solid #dc3545;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+
+  &:hover {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const CancelButton = styled.button`
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  border: 1px solid #6c757d;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+
+  &:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 // Вспомогательная функция для определения типа брони на основе armorType и названия
 const determineArmorType = (item) => {
   if (!item) return null;
@@ -748,8 +1051,66 @@ const formatStatValue = (statKey, value) => {
   return value.toString();
 };
 
+// Функция для получения характеристик предмета
+const getItemStats = (item) => {
+  if (!item || !item.properties) return [];
+  
+  const stats = [];
+  const properties = item.properties;
+  
+  // Проверяем все возможные характеристики
+  const statKeys = [
+    'strength', 'intellect', 'spirit', 'agility', 'health', 'luck',
+    'physicalDefense', 'spiritualDefense', 'spiritualAttack',
+    'attackSpeed', 'criticalChance', 'movementSpeed'
+  ];
+  
+  statKeys.forEach(key => {
+    if (properties[key] && properties[key] !== 0) {
+      stats.push({
+        name: getStatDisplayName(key),
+        value: formatStatValue(key, properties[key])
+      });
+    }
+  });
+  
+  return stats;
+};
+
+// Функция для определения типа предмета на русском
+const getItemTypeDisplayName = (item) => {
+  if (!item) return 'Неизвестный предмет';
+  
+  const type = item.type;
+  const subtype = item.subtype;
+  
+  if (type === 'weapon') {
+    return 'Оружие';
+  } else if (type === 'armor') {
+    const armorType = determineArmorType(item);
+    switch (armorType) {
+      case 'head': return 'Шлем';
+      case 'body': return 'Броня';
+      case 'hands': return 'Перчатки';
+      case 'legs': return 'Обувь';
+      default: return 'Броня';
+    }
+  } else if (type === 'accessory') {
+    return 'Аксессуар';
+  } else if (type === 'artifact') {
+    return 'Артефакт';
+  } else if (type === 'material') {
+    return 'Материал';
+  } else if (type === 'book') {
+    return 'Книга';
+  }
+  
+  return 'Предмет';
+};
+
 function EquipmentTab() {
   const { state, actions } = useGame();
+  const navigate = useNavigate();
   const [equipped, setEquipped] = useState({
     weapon: null,
     headArmor: null,
@@ -766,6 +1127,7 @@ function EquipmentTab() {
   const [selectedEquippedItem, setSelectedEquippedItem] = useState(null);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showDropConfirmation, setShowDropConfirmation] = useState(false);
   
   // Загружаем экипированные предметы один раз при монтировании компонента
   const isMounted = React.useRef(false);
@@ -939,79 +1301,118 @@ function EquipmentTab() {
   
   // Функция для снятия экипировки
   const handleUnequipItem = async () => {
-    if (!selectedEquippedItem || !selectedEquippedItem.item) { // Проверяем наличие item в selectedEquippedItem
-      actions.addNotification({ message: 'Предмет для снятия не выбран или не содержит информации.', type: 'warning' });
+    if (!selectedEquippedItem) {
+      actions.addNotification({ message: 'Предмет для снятия не выбран.', type: 'warning' });
       return;
     }
 
-    const userId = state.player?.id;
-    // Убедимся, что selectedEquippedItem.item существует перед доступом к id
-    const itemId = selectedEquippedItem.item.id;
-
-    if (!userId || !itemId) {
-      actions.addNotification({ message: 'Ошибка: ID пользователя или предмета не найден для снятия.', type: 'error' });
+    const equipableTypes = ['weapon', 'armor', 'accessory', 'talisman'];
+    if (!equipableTypes.includes(selectedEquippedItem.type)) {
+      actions.addNotification({ message: `Предмет типа '${selectedEquippedItem.type}' нельзя снять.`, type: 'warning' });
       return;
     }
 
     try {
-      console.log(`[EquipmentTab] Попытка снять предмет API: ${itemId} для пользователя ${userId}`);
-      // Убедитесь, что EquipmentService.unequipItem определен и делает корректный API вызов.
-      // Этот метод должен возвращать объект с полем success: true/false.
-      const unequipResult = await EquipmentService.unequipItem(userId, itemId);
-
-      if (unequipResult && unequipResult.success) {
-        actions.addNotification({ message: `${selectedEquippedItem.item.name} успешно снят.`, type: 'success' });
-        if (actions.loadInventoryData) {
-          await actions.loadInventoryData(userId); // Перезагружаем инвентарь
-        }
-        // Перезагружаем характеристики персонажа
-        if (actions.loadCharacterStats) {
-          await actions.loadCharacterStats(userId);
-        }
-        // Сбрасываем состояния после успешной операции и обновления данных
-        setSelectedEquippedItem(null);
-        setSelectedSlot(null);
-      } else {
-        actions.addNotification({ message: `Не удалось снять ${selectedEquippedItem.item.name}. ${unequipResult?.message || 'Сервер не вернул причину.'}`, type: 'error' });
+      const userId = await InventoryAuthManager.ensureUserAuthorized(state, actions, navigate, false);
+      if (!userId) {
+        return;
       }
+
+      // Снимаем предмет (equipped = false)
+      await InventoryServiceAPI.toggleEquipItem(userId, selectedEquippedItem.id, false);
+
+      actions.addNotification({
+        message: `${selectedEquippedItem.name} снят.`,
+        type: 'success'
+      });
+
+      // Обновляем инвентарь и характеристики
+      if (actions.loadInventoryData) {
+        await actions.loadInventoryData(userId);
+      }
+      if (actions.loadCharacterStats) {
+        await actions.loadCharacterStats(userId);
+      }
+
+      // Сбрасываем состояния
+      setSelectedEquippedItem(null);
+      setSelectedSlot(null);
     } catch (error) {
-      console.error('[EquipmentTab] Ошибка при снятии предмета через API:', error);
-      actions.addNotification({ message: `Ошибка снятия предмета: ${error.message}`, type: 'error' });
+      console.error('[EquipmentTab] Ошибка при снятии предмета:', error);
+      actions.addNotification({ message: `Ошибка снятия предмета: ${error.message || 'Неизвестная ошибка'}`, type: 'error' });
     }
   };
   
   // Функция для выбрасывания предмета
-  const handleDropItem = () => {
-    if (selectedInventoryItem) {
-      console.log(`Выбрасывание предмета ${selectedInventoryItem.name}`);
-      
-      // Если предмет экипирован, сначала снимаем его
-      if (selectedInventoryItem.equipped) {
-        // Находим слот, в котором экипирован предмет
-        for (const [slot, item] of Object.entries(equipped)) {
-          if (item && item.id === selectedInventoryItem.id) {
-            console.log(`Сначала снимаем экипировку ${selectedInventoryItem.name} из слота ${slot}`);
-            actions.unequipItem(slot);
-            break;
-          }
-        }
+  const handleDropItem = async () => {
+    const itemToRemove = selectedInventoryItem || selectedEquippedItem;
+    
+    if (!itemToRemove) {
+      actions.addNotification({ message: 'Предмет для удаления не выбран.', type: 'warning' });
+      return;
+    }
+
+    try {
+      const userId = await InventoryAuthManager.ensureUserAuthorized(state, actions, navigate, false);
+      if (!userId) {
+        return;
       }
-      
-      // Выбрасываем предмет - обратите внимание, что reducer ожидает объект с id в качестве payload
-      const itemId = selectedInventoryItem.id || selectedInventoryItem.itemId;
-      actions.removeItem({ id: itemId }); // Исправление: передаем объект с id вместо самого id
-      
-      // Обновляем отображение экипировки
-      setTimeout(() => {
-        updateEquippedItems();
-        
-        // Сбрасываем выбранный предмет
-        setSelectedInventoryItem(null);
-      }, 100);
+
+      // Если предмет экипирован, сначала снимаем его
+      if (itemToRemove.equipped) {
+        await InventoryServiceAPI.toggleEquipItem(userId, itemToRemove.id, false);
+      }
+
+      // Удаляем предмет из инвентаря
+      await InventoryServiceAPI.removeInventoryItem(userId, itemToRemove.id, 1);
+
+      actions.addNotification({
+        message: `${itemToRemove.name} выброшен.`,
+        type: 'success'
+      });
+
+      // Обновляем инвентарь и характеристики
+      if (actions.loadInventoryData) {
+        await actions.loadInventoryData(userId);
+      }
+      if (actions.loadCharacterStats) {
+        await actions.loadCharacterStats(userId);
+      }
+
+      // Сбрасываем состояния
+      setSelectedInventoryItem(null);
+      setSelectedEquippedItem(null);
+      setSelectedSlot(null);
+    } catch (error) {
+      console.error('[EquipmentTab] Ошибка при удалении предмета:', error);
+      actions.addNotification({ message: `Ошибка удаления предмета: ${error.message || 'Неизвестная ошибка'}`, type: 'error' });
     }
   };
+
+  // Функция для показа диалога подтверждения удаления
+  const handleShowDropConfirmation = () => {
+    const itemToRemove = selectedInventoryItem || selectedEquippedItem;
+    
+    if (!itemToRemove) {
+      actions.addNotification({ message: 'Предмет для удаления не выбран.', type: 'warning' });
+      return;
+    }
+
+    setShowDropConfirmation(true);
+  };
+
+  // Функция для подтверждения удаления
+  const handleConfirmDrop = async () => {
+    setShowDropConfirmation(false);
+    await handleDropItem();
+  };
+
+  // Функция для отмены удаления
+  const handleCancelDrop = () => {
+    setShowDropConfirmation(false);
+  };
   
-  const handleItemClick = (item) => {
+  const handleItemClick = async (item) => {
     // Сохраняем выбранный предмет инвентаря
     setSelectedInventoryItem(item);
     
@@ -1028,60 +1429,41 @@ function EquipmentTab() {
         duration: 1000
       });
       
-      // Используем новый API-маршрут для проверки требований и экипировки предмета на сервере
-      fetch('/api/equipment/equip', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify({
-          userId: state.player.id,
-          itemId: item.id // ID предмета в инвентаре
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Предмет успешно экипирован
-          actions.addNotification({
-            message: data.message || 'Предмет успешно экипирован',
-            type: 'success'
-          });
-          
-          // Обновляем инвентарь через loadInventoryData
-          const userId = state.player?.id;
-          if (userId && actions.loadInventoryData) {
-            actions.loadInventoryData(userId);
-          }
-          // Перезагружаем характеристики персонажа
-          if (userId && actions.loadCharacterStats) {
-            actions.loadCharacterStats(userId);
-          }
-          // updateEquippedItems() будет вызван автоматически через useEffect после обновления глобального состояния
-        } else {
-          // Ошибка при экипировке
-          actions.addNotification({
-            message: data.message || 'Не удалось экипировать предмет',
-            type: 'error'
-          });
-          
-          // Показываем список невыполненных требований, если они есть
-          if (data.failedRequirements && data.failedRequirements.length > 0) {
-            actions.addNotification({
-              message: `Не выполнены требования: ${data.failedRequirements.join(', ')}`,
-              type: 'error'
-            });
-          }
+      try {
+        const userId = await InventoryAuthManager.ensureUserAuthorized(state, actions, navigate, false);
+        if (!userId) {
+          return;
         }
-      })
-      .catch(error => {
-        console.error('Ошибка при экипировке предмета:', error);
+
+        // Используем тот же API, что и InventoryTab
+        await InventoryServiceAPI.toggleEquipItem(userId, item.id, true);
+
         actions.addNotification({
-          message: 'Произошла ошибка при экипировке предмета',
+          message: `${item.name} экипирован.`,
+          type: 'success'
+        });
+        
+        // Обновляем инвентарь через loadInventoryData
+        if (userId && actions.loadInventoryData) {
+          actions.loadInventoryData(userId);
+        }
+        // Перезагружаем характеристики персонажа
+        if (userId && actions.loadCharacterStats) {
+          actions.loadCharacterStats(userId);
+        }
+        
+        // Сбрасываем состояния для закрытия виджета деталей предмета
+        setSelectedInventoryItem(null);
+        setSelectedSlot(null);
+        
+        // updateEquippedItems() будет вызван автоматически через useEffect после обновления глобального состояния
+      } catch (error) {
+        console.error('[EquipmentTab] Ошибка при экипировке предмета:', error);
+        actions.addNotification({
+          message: `Ошибка экипировки: ${error.message || 'Неизвестная ошибка'}`,
           type: 'error'
         });
-      });
+      }
     }
   };
   
@@ -1098,7 +1480,7 @@ function EquipmentTab() {
             <SlotName>Голова</SlotName>
             {equipped.headArmor ? (
               <>
-                <ItemIcon item={equipped.headArmor} type="armor" />
+                <ItemIcon item={equipped.headArmor} type="armor" size="large" />
                 <ItemName rarity={equipped.headArmor.rarity}>{equipped.headArmor.name}</ItemName>
               </>
             ) : (
@@ -1114,7 +1496,7 @@ function EquipmentTab() {
             <SlotName>Оружие</SlotName>
             {equipped.weapon ? (
               <>
-                <ItemIcon item={equipped.weapon} type="weapon" />
+                <ItemIcon item={equipped.weapon} type="weapon" size="large" />
                 <ItemName rarity={equipped.weapon.rarity}>{equipped.weapon.name}</ItemName>
               </>
             ) : (
@@ -1130,7 +1512,7 @@ function EquipmentTab() {
             <SlotName>Тело</SlotName>
             {equipped.bodyArmor ? (
               <>
-                <ItemIcon item={equipped.bodyArmor} type="armor" />
+                <ItemIcon item={equipped.bodyArmor} type="armor" size="large" />
                 <ItemName rarity={equipped.bodyArmor.rarity}>{equipped.bodyArmor.name}</ItemName>
               </>
             ) : (
@@ -1155,7 +1537,7 @@ function EquipmentTab() {
             <SlotName>Руки</SlotName>
             {equipped.handArmor ? (
               <>
-                <ItemIcon item={equipped.handArmor} type="armor" />
+                <ItemIcon item={equipped.handArmor} type="armor" size="large" />
                 <ItemName rarity={equipped.handArmor.rarity}>{equipped.handArmor.name}</ItemName>
               </>
             ) : (
@@ -1171,7 +1553,7 @@ function EquipmentTab() {
             <SlotName>Ноги</SlotName>
             {equipped.legArmor ? (
               <>
-                <ItemIcon item={equipped.legArmor} type="armor" />
+                <ItemIcon item={equipped.legArmor} type="armor" size="large" />
                 <ItemName rarity={equipped.legArmor.rarity}>{equipped.legArmor.name}</ItemName>
               </>
             ) : (
@@ -1187,7 +1569,7 @@ function EquipmentTab() {
             <SlotName>Аксессуар 1</SlotName>
             {equipped.accessory1 ? (
               <>
-                <ItemIcon item={equipped.accessory1} type="accessory" />
+                <ItemIcon item={equipped.accessory1} type="accessory" size="small" />
                 <ItemName rarity={equipped.accessory1.rarity}>{equipped.accessory1.name}</ItemName>
               </>
             ) : (
@@ -1203,7 +1585,7 @@ function EquipmentTab() {
             <SlotName>Аксессуар 2</SlotName>
             {equipped.accessory2 ? (
               <>
-                <ItemIcon item={equipped.accessory2} type="accessory" />
+                <ItemIcon item={equipped.accessory2} type="accessory" size="small" />
                 <ItemName rarity={equipped.accessory2.rarity}>{equipped.accessory2.name}</ItemName>
               </>
             ) : (
@@ -1219,7 +1601,7 @@ function EquipmentTab() {
             <SlotName>Артефакт 1</SlotName>
             {equipped.artifact1 ? (
               <>
-                <ItemIcon item={equipped.artifact1} type="artifact" />
+                <ItemIcon item={equipped.artifact1} type="artifact" size="small" />
                 <ItemName rarity={equipped.artifact1.rarity}>{equipped.artifact1.name}</ItemName>
               </>
             ) : (
@@ -1235,7 +1617,7 @@ function EquipmentTab() {
             <SlotName>Артефакт 2</SlotName>
             {equipped.artifact2 ? (
               <>
-                <ItemIcon item={equipped.artifact2} type="artifact" />
+                <ItemIcon item={equipped.artifact2} type="artifact" size="small" />
                 <ItemName rarity={equipped.artifact2.rarity}>{equipped.artifact2.name}</ItemName>
               </>
             ) : (
@@ -1294,7 +1676,7 @@ function EquipmentTab() {
                   className={item.equipped ? 'equipped' : ''}
                   onClick={() => handleItemClick(item)}
                 >
-                  <ItemIcon type={item.type || 'material'} />
+                  <ItemIcon item={item} type={item.type || 'material'} size="small" />
                   <ItemName rarity={item.rarity || 'common'}>{item.name}</ItemName>
                 </ItemSlot>
               ))}
@@ -1307,29 +1689,75 @@ function EquipmentTab() {
         
         {/* Панель управления выбранным предметом */}
         {selectedEquippedItem && (
-          <div>
-            <h4>Выбранный предмет: {selectedEquippedItem.name}</h4>
-            <UnequipButton onClick={handleUnequipItem}>
-              Снять предмет
-            </UnequipButton>
-            <div style={{ marginTop: '10px' }}>
-              <DropButton onClick={handleDropItem}>
+          <SelectedItemWidget>
+            <ItemPreview>
+              <ItemImageContainer>
+                <ItemIcon item={selectedEquippedItem} type={selectedEquippedItem.type} size="widget" />
+              </ItemImageContainer>
+              <ItemInfo>
+                <ItemWidgetName>{selectedEquippedItem.name}</ItemWidgetName>
+                <ItemType>{getItemTypeDisplayName(selectedEquippedItem)}</ItemType>
+              </ItemInfo>
+            </ItemPreview>
+            
+            {getItemStats(selectedEquippedItem).length > 0 && (
+              <ItemStats>
+                <ItemStatsTitle>Характеристики</ItemStatsTitle>
+                <ItemStatsList>
+                  {getItemStats(selectedEquippedItem).map((stat, index) => (
+                    <ItemStat key={index}>
+                      <span className="stat-name">{stat.name}:</span>
+                      <span className="stat-value">+{stat.value}</span>
+                    </ItemStat>
+                  ))}
+                </ItemStatsList>
+              </ItemStats>
+            )}
+            
+            <ItemActions>
+              <UnequipActionButton onClick={handleUnequipItem}>
+                Снять предмет
+              </UnequipActionButton>
+              <DropActionButton onClick={handleShowDropConfirmation}>
                 Выбросить
-              </DropButton>
-            </div>
-          </div>
+              </DropActionButton>
+            </ItemActions>
+          </SelectedItemWidget>
         )}
         
         {/* Отображаем информацию о выбранном предмете из инвентаря */}
         {selectedInventoryItem && !selectedInventoryItem.equipped && (
-          <div>
-            <h4>Выбранный предмет: {selectedInventoryItem.name}</h4>
-            <div style={{ marginTop: '10px' }}>
-              <DropButton onClick={handleDropItem}>
+          <SelectedItemWidget>
+            <ItemPreview>
+              <ItemImageContainer>
+                <ItemIcon item={selectedInventoryItem} type={selectedInventoryItem.type} size="widget" />
+              </ItemImageContainer>
+              <ItemInfo>
+                <ItemWidgetName>{selectedInventoryItem.name}</ItemWidgetName>
+                <ItemType>{getItemTypeDisplayName(selectedInventoryItem)}</ItemType>
+              </ItemInfo>
+            </ItemPreview>
+            
+            {getItemStats(selectedInventoryItem).length > 0 && (
+              <ItemStats>
+                <ItemStatsTitle>Характеристики</ItemStatsTitle>
+                <ItemStatsList>
+                  {getItemStats(selectedInventoryItem).map((stat, index) => (
+                    <ItemStat key={index}>
+                      <span className="stat-name">{stat.name}:</span>
+                      <span className="stat-value">+{stat.value}</span>
+                    </ItemStat>
+                  ))}
+                </ItemStatsList>
+              </ItemStats>
+            )}
+            
+            <ItemActions>
+              <DropActionButton onClick={handleShowDropConfirmation}>
                 Выбросить
-              </DropButton>
-            </div>
-          </div>
+              </DropActionButton>
+            </ItemActions>
+          </SelectedItemWidget>
         )}
         
         {state.player.characterStats && state.player.characterStats.modified && (
@@ -1381,6 +1809,26 @@ function EquipmentTab() {
           </div>
         )}
       </StatsPanel>
+
+      {/* Диалог подтверждения удаления предмета */}
+      {showDropConfirmation && (
+        <ConfirmationOverlay>
+          <ConfirmationModal>
+            <ConfirmationTitle>Подтверждение удаления</ConfirmationTitle>
+            <ConfirmationMessage>
+              Вы уверены, что хотите выбросить этот предмет? Это действие нельзя отменить.
+            </ConfirmationMessage>
+            <ConfirmationButtons>
+              <CancelButton onClick={handleCancelDrop}>
+                Отмена
+              </CancelButton>
+              <ConfirmButton onClick={handleConfirmDrop}>
+                Выбросить
+              </ConfirmButton>
+            </ConfirmationButtons>
+          </ConfirmationModal>
+        </ConfirmationOverlay>
+      )}
     </Container>
   );
 }

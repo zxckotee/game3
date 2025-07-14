@@ -24,7 +24,7 @@ router.get('/api/users/:userId/stats/combined', async (req, res) => {
   try {
     const userId = req.params.userId;
     const combinedState = await CharacterStatsService.getCombinedCharacterState(userId);
-    console.log(combinedState);
+    //console.log(combinedState);
     res.json(combinedState);
   } catch (error) {
     console.error('Ошибка при получении комбинированных характеристик персонажа:', error);

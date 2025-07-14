@@ -700,173 +700,17 @@ export const playerReducer = (state, action) => {
         // Убедимся, что предмет имеет предрассчитанные бонусы
         itemToEquip = ensureItemHasCalculatedBonuses(action.payload);
         
-        // ПОСЛЕДНЯЯ ЛИНИЯ ЗАЩИТЫ: Еще раз проверяем требования предмета прямо здесь
-        console.log('🔒 ПОСЛЕДНЯЯ ЛИНИЯ ЗАЩИТЫ: Проверка требований в редьюсере');
-        
-        // Проверяем, имеет ли предмет требования (используем другое имя переменной)
-        const finalRequirements = itemToEquip.requirements ||
-                              (itemToEquip.properties && itemToEquip.properties.requirements);
-        
-        if (finalRequirements && Object.keys(finalRequirements).length > 0) {
-          console.log('🔒 Предмет имеет требования:', JSON.stringify(itemRequirements));
-          
-          // Создаем объект пользователя для проверки
-          const userObj = {
-            level: state.player.level || 1,
-            cultivation: state.player.cultivation || {},
-            stats: { ...(state.player.stats || {}) },
-            strength: state.player.stats?.strength || 0,
-            intellect: state.player.stats?.intellect || 0,
-            agility: state.player.stats?.agility || 0,
-            spirit: state.player.stats?.spirit || 0,
-            health: state.player.stats?.health || 0,
-            intelligence: state.player.stats?.intellect || 0,
-            dexterity: state.player.stats?.agility || 0,
-            perception: state.player.stats?.spirit || 0,
-            vitality: state.player.stats?.health || 0
-          };
-          
-          // Используем EquipmentService для проверки
-          const checkResult = EquipmentService.checkItemRequirements(itemToEquip, userObj);
-          
-          console.log('🔒 Результат проверки в редьюсере:', JSON.stringify(checkResult));
-          
-          // Если требования не выполнены, возвращаем текущее состояние
-          if (!checkResult.canEquip) {
-            console.error('🔒 БЛОКИРОВКА ЭКИПИРОВКИ: Требования не выполнены:', checkResult.failedRequirements);
-            return {
-              ...state,
-              notifications: [...(state.notifications || []), {
-                id: Date.now(),
-                message: `Требования не выполнены: ${checkResult.failedRequirements.join(', ')}`,
-                type: 'error'
-              }]
-            };
-          }
-          
-          console.log('🔒 Требования выполнены, продолжаем экипировку');
-        }
+        // Фронтенд-проверки требований удалены - логика проверки теперь только на сервере
+        console.log('📦 Экипировка предмета:', itemToEquip?.name || itemToEquip?.id);
         
         if (DEBUG_EQUIPMENT) {
           console.log('📋 ОТЛАДКА ЭКИПИРОВКИ:');
           console.log('📦 Предмет для экипировки:', JSON.stringify(itemToEquip, null, 2));
           console.log('🔄 Тип предмета:', itemToEquip.type);
-          console.log('🔍 Требования предмета:', JSON.stringify(itemToEquip.requirements || (itemToEquip.properties && itemToEquip.properties.requirements), null, 2));
-        }
-        
-        // Получаем требования предмета (используем другое имя переменной)
-        const itemReqs = itemToEquip.requirements ||
-                              (itemToEquip.properties && itemToEquip.properties.requirements);
-        
-        // Если у предмета есть требования, проверяем их выполнение
-        if (itemReqs && Object.keys(itemReqs).length > 0) {
-          if (DEBUG_EQUIPMENT) {
-            console.log('⚠️ Предмет имеет требования, проверяем их выполнение...');
-          }
-          
-          // Сначала создаем объект пользователя для проверки требований
-          const userObj = {
-            // Основные сведения
-            level: state.player.level || 1,
-            
-            // ВАЖНО! Передаем данные культивации целиком
-            cultivation: state.player.cultivation,
-            
-            // Добавляем все характеристики напрямую для совместимости
-            // Используем РЕАЛЬНЫЕ имена характеристик из логов состояния
-            strength: state.player.stats?.strength || 0,
-            intellect: state.player.stats?.intellect || 0,
-            agility: state.player.stats?.agility || 0,
-            spirit: state.player.stats?.spirit || 0,
-            health: state.player.stats?.health || 0,
-            
-            // Добавляем также альтернативные имена для совместимости
-            intelligence: state.player.stats?.intellect || 0,
-            dexterity: state.player.stats?.agility || 0,
-            perception: state.player.stats?.spirit || 0,
-            vitality: state.player.stats?.health || 0,
-            
-            // Включаем оригинальный объект stats
-            stats: {
-              ...state.player.stats,
-              // И также добавляем альтернативные имена характеристик
-              intelligence: state.player.stats?.intellect || 0,
-              dexterity: state.player.stats?.agility || 0,
-              perception: state.player.stats?.spirit || 0,
-              vitality: state.player.stats?.health || 0
-            }
-          };
-          
-          if (DEBUG_EQUIPMENT) {
-            console.log('👤 Характеристики персонажа:', JSON.stringify(userObj.stats, null, 2));
-            console.log('📊 Уровень персонажа:', userObj.level);
-            console.log('🌀 Культивация:', JSON.stringify(userObj.cultivation, null, 2));
-          }
-          
-          // БОЛЬШЕ НЕ ПРОВЕРЯЕМ ЗДЕСЬ - вынесем проверку за пределы условия
-          console.log('👤 Пользователь сформирован, готов к проверке требований');
-        } else {
-          // Даже если у предмета нет требований - всё равно проверим через сервис
-          console.log('🔄 Предмет не имеет явных требований, но всё равно проверим');
-        }
-        
-        // --- ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА ТРЕБОВАНИЙ ВНЕ ЗАВИСИМОСТИ ОТ НАЛИЧИЯ ТРЕБОВАНИЙ ---
-        // Создаем объект пользователя для проверки требований всегда
-        // (даже если у предмета нет требований)
-        const userObj = {
-          level: state.player.level || 1,
-          cultivation: state.player.cultivation || {},
-          strength: state.player.stats?.strength || 0,
-          intellect: state.player.stats?.intellect || 0,
-          agility: state.player.stats?.agility || 0,
-          spirit: state.player.stats?.spirit || 0,
-          health: state.player.stats?.health || 0,
-          intelligence: state.player.stats?.intellect || 0,
-          dexterity: state.player.stats?.agility || 0,
-          perception: state.player.stats?.spirit || 0,
-          vitality: state.player.stats?.health || 0,
-          stats: {
-            ...state.player.stats,
-            intelligence: state.player.stats?.intellect || 0,
-            dexterity: state.player.stats?.agility || 0,
-            perception: state.player.stats?.spirit || 0,
-            vitality: state.player.stats?.health || 0
-          }
-        };
-        
-        // ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ
-        console.log('🛑 ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА ТРЕБОВАНИЙ ПРЕДМЕТА');
-        console.log('🛑 Предмет:', itemToEquip?.name || itemToEquip?.id);
-        console.log('🛑 Требования:', JSON.stringify(itemToEquip.requirements || (itemToEquip.properties && itemToEquip.properties.requirements)));
-        
-        // ВАЖНО! Используем ЯВНО импортированный EquipmentService, а не через require
-        // Проверяем выполнение требований
-        const checkResult = EquipmentService.checkItemRequirements(itemToEquip, userObj);
-        
-        // ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ результата
-        console.log('🛑 РЕЗУЛЬТАТ ПРОВЕРКИ ТРЕБОВАНИЙ:', JSON.stringify(checkResult, null, 2));
-        
-        // Проверяем, что результат не undefined и не null
-        if (!checkResult) {
-          console.error('❌ ОШИБКА: checkItemRequirements вернул пустой результат');
-          return state; // Возвращаем состояние без изменений
-        }
-        
-        // Проверяем, может ли предмет быть экипирован
-        if (!checkResult.canEquip) {
-          console.log('❌ ПРЕДМЕТ НЕ СООТВЕТСТВУЕТ ТРЕБОВАНИЯМ:', checkResult.failedRequirements);
-          // Выводим дополнительную информацию для отладки
-          console.log('📊 Характеристики игрока:', JSON.stringify(userObj.stats, null, 2));
-          console.log('📏 Уровень игрока:', userObj.level);
-          return state; // Возвращаем состояние без изменений
-        } else {
-          console.log('✅ ПРЕДМЕТ СООТВЕТСТВУЕТ ТРЕБОВАНИЯМ, продолжаем экипировку');
         }
       } catch (error) {
-        console.error('❌ Ошибка при проверке требований:', error);
+        console.error('❌ Ошибка при подготовке экипировки:', error);
         lastError = error;
-        // В случае ошибки, разрешаем экипировку предмета
-        // Это безопасный вариант для пользователя
       }
       
       // Если все проверки прошли успешно, и у нас есть действительный предмет для экипировки

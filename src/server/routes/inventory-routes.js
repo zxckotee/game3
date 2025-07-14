@@ -213,8 +213,8 @@ router.put('/api/users/:userId/inventory', async (req, res) => {
 });
 */
 
-// Новый маршрут для экипировки предмета с проверкой требований
-router.post('/api/equipment/equip', async (req, res) => {
+// Новый маршрут для экипировки предмета с проверкой требований --> пока не нужен, через сервис лучше
+/*router.post('/api/equipment/equip', async (req, res) => {
   console.log('[API] POST - запрос на экипировку');
   try {
     const { userId, itemId } = req.body;
@@ -396,7 +396,7 @@ router.post('/api/equipment/equip', async (req, res) => {
       error: error.message
     });
   }
-});
+});*/
 
 // API-эндпоинты для работы с инвентарем
 
