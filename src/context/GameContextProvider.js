@@ -110,27 +110,8 @@ export const GameContextProvider = ({ children }) => {
   useEffect(() => {
     const initializeGame = async () => {
       try {
-        // Пытаемся загрузить сохраненное состояние из localStorage
-        const savedState = localStorage.getItem('gameState');
-        
-        if (savedState) {
-          // Если есть сохраненное состояние, загружаем его
-          dispatch({
-            type: ACTION_TYPES.LOAD_GAME,
-            payload: JSON.parse(savedState)
-          });
-        } else {
-          // Если нет сохраненного состояния, инициализируем новую игру
-          // Здесь можно загрузить начальные данные с сервера, если нужно
-          const userData = await apiService.getCurrentUser();
-          
-          if (userData) {
-            dispatch({
-              type: ACTION_TYPES.UPDATE_PLAYER,
-              payload: userData
-            });
-          }
-        }
+        // ИСПРАВЛЕНО: Убираем загрузку из localStorage, которая вызывала проблемы
+        // Теперь состояние загружается только через GamePage при наличии токена авторизации
         
         // Устанавливаем флаг инициализации
         dispatch({
@@ -138,7 +119,7 @@ export const GameContextProvider = ({ children }) => {
           payload: true
         });
         
-        console.log('🔄 Инициализация игры завершена');
+        console.log('🔄 Инициализация игры завершена (без загрузки из localStorage)');
       } catch (error) {
         console.error('Ошибка при инициализации игры:', error);
         

@@ -196,20 +196,57 @@ function GamePage() {
   const [isSaving, setIsSaving] = useState(false);
   // Состояние для модальных окон
 
-  // Проверка наличия данных авторизации при загрузке страницы
+  // Проверка наличия данных авторизации и загрузка состояния при обновлении страницы
   useEffect(() => {
-    // Проверяем наличие всех необходимых данных авторизации
-    const authToken = localStorage.getItem('authToken');
-    const currentUser = localStorage.getItem('currentUser');
-    const userId = localStorage.getItem('userId');
+    const initializeGameState = async () => {
+      try {
+        // Проверяем наличие токена авторизации
+        const authToken = localStorage.getItem('authToken');
+        const currentUser = localStorage.getItem('currentUser');
+        
+        if (!authToken || !currentUser) {
+          console.log('Не найдены данные авторизации в localStorage, перенаправление на страницу входа');
+          navigate('/');
+          return;
+        }
+        
+        // Если токен есть, но состояние игры не инициализировано, загружаем его
+        if (!state.isInitialized || !state.player?.id) {
+          console.log('Токен найден, загружаем игровое состояние для:', currentUser);
+          
+          try {
+            // Загружаем игровое состояние с сервера
+            const gameState = await apiService.loadGameState();
+            
+            if (gameState) {
+              // Загружаем состояние в контекст
+              actions.loadGame(gameState);
+              console.log('Игровое состояние успешно загружено при обновлении страницы');
+            } else {
+              console.log('Игровое состояние не найдено, перенаправление на создание персонажа');
+              navigate('/character-creation');
+            }
+          } catch (error) {
+            console.error('Ошибка при загрузке игрового состояния:', error);
+            
+            // Очищаем поврежденные данные авторизации
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userId');
+            
+            // Перенаправляем на страницу входа
+            console.log('Перенаправление на LoginPage из-за ошибки загрузки состояния');
+            navigate('/');
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка при инициализации игрового состояния:', error);
+        navigate('/');
+      }
+    };
     
-    if (!authToken || !currentUser || !userId) {
-      console.log('Не найдены данные авторизации в localStorage, перенаправление на страницу входа');
-      // Используем window.location вместо navigate для перенаправления на абсолютный путь
-      window.location.href = '/login';
-      return; // Останавливаем выполнение useEffect после перенаправления
-    }
-  }, [navigate]);
+    initializeGameState();
+  }, []); // Пустой массив зависимостей - срабатывает только при монтировании компонента
   
   // Имитация получения уведомлений
   useEffect(() => {
