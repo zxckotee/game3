@@ -1,28 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import alchemyService from '../../services/alchemy-service-adapter';
+
+// Анимации
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const shimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+`;
+
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+`;
 
 // Стилизованные компоненты
 const TabContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px;
+  padding: 24px;
   color: #f0f0f0;
+  animation: ${fadeIn} 0.6s ease-out;
+  min-height: 100vh;
 `;
 
 const TabHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 32px;
+  text-align: center;
 `;
 
 const TabTitle = styled.h2`
-  font-size: 24px;
+  font-size: 28px;
   margin: 0;
-  color: #ffd700;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+    border-radius: 2px;
+  }
 `;
 
 const TabContent = styled.div`
@@ -33,42 +83,144 @@ const TabContent = styled.div`
 
 const LeftPanel = styled.div`
   flex: 1;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 5px;
-  padding: 15px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
 `;
 
 const RightPanel = styled.div`
   flex: 1;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 5px;
-  padding: 15px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
 `;
 
 const TabMenu = styled.div`
   display: flex;
-  margin-bottom: 15px;
-  border-bottom: 1px solid #444;
+  margin-bottom: 24px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+  gap: 4px;
 `;
 
 const TabButton = styled.button`
-  background: ${props => props.active ? 'rgba(255, 215, 0, 0.2)' : 'transparent'};
-  color: ${props => props.active ? '#ffd700' : '#ccc'};
-  border: none;
-  padding: 10px 15px;
+  background: ${props => props.active
+    ? 'linear-gradient(145deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 208, 63, 0.2) 100%)'
+    : 'linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%)'
+  };
+  color: ${props => props.active ? '#d4af37' : '#aaa'};
+  border: 1px solid ${props => props.active ? 'rgba(212, 175, 55, 0.4)' : 'rgba(100, 100, 100, 0.3)'};
+  border-radius: 12px 12px 0 0;
+  padding: 12px 20px;
   font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  border-bottom: ${props => props.active ? '2px solid #ffd700' : 'none'};
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
   
-  &:hover {
-    background: rgba(255, 215, 0, 0.1);
-    color: #ffd700;
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+    transition: left 0.5s ease;
   }
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.15) 0%, rgba(244, 208, 63, 0.15) 100%);
+    color: #d4af37;
+    border-color: rgba(212, 175, 55, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  ${props => props.active && `
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(45deg, #d4af37, #f4d03f);
+      border-radius: 2px 2px 0 0;
+    }
+  `}
 `;
 
 const RecipeList = styled.div`
@@ -81,29 +233,104 @@ const RecipeList = styled.div`
 
 const RecipeCard = styled.div`
   display: flex;
-  background: ${props => props.selected ? 'rgba(255, 215, 0, 0.1)' : 'rgba(30, 30, 30, 0.7)'};
-  border: 1px solid ${props => props.selected ? '#ffd700' : '#444'};
-  border-radius: 5px;
-  padding: 10px;
+  background: ${props => props.selected
+    ? 'linear-gradient(145deg, rgba(212, 175, 55, 0.15) 0%, rgba(244, 208, 63, 0.15) 100%)'
+    : 'linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%)'
+  };
+  border: 2px solid ${props => props.selected ? 'rgba(212, 175, 55, 0.6)' : 'rgba(100, 100, 100, 0.3)'};
+  border-radius: 12px;
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  animation: ${fadeIn} 0.4s ease-out;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    background: rgba(255, 215, 0, 0.05);
-    border-color: #ffd700;
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.1) 0%, rgba(244, 208, 63, 0.1) 100%);
+    border-color: rgba(212, 175, 55, 0.8);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.2);
+    animation: ${pulse} 2s infinite;
+    
+    &::before {
+      left: 100%;
+    }
   }
+  
+  ${props => props.selected && `
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(45deg, #d4af37, #f4d03f);
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+    }
+  `}
 `;
 
 const RecipeIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  background: #333;
-  border-radius: 5px;
-  margin-right: 10px;
+  width: 64px;
+  height: 64px;
+  background: ${props => props.src ? `url(${props.src}) center/cover` : '#333'};
+  border: 2px solid transparent;
+  border-radius: 12px;
+  margin-right: 16px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 24px;
+  color: #d4af37;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #b7950b, #d4af37);
+    border-radius: 12px;
+    z-index: -1;
+    animation: ${shimmer} 3s infinite;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+    border-radius: 8px;
+    z-index: -1;
+  }
+  
+  ${props => props.rarity && `
+    &::before {
+      background: linear-gradient(45deg,
+        ${props.rarity === 'legendary' ? '#ff6b35, #f7931e, #ff6b35' :
+          props.rarity === 'epic' ? '#9b59b6, #8e44ad, #9b59b6' :
+          props.rarity === 'rare' ? '#3498db, #2980b9, #3498db' :
+          '#d4af37, #f4d03f, #b7950b, #d4af37'}
+      );
+    }
+  `}
 `;
 
 const RecipeInfo = styled.div`
@@ -126,20 +353,66 @@ const RecipeName = styled.div`
 
 const RecipeDescription = styled.div`
   font-size: 14px;
-  color: #aaa;
-  margin-top: 5px;
+  color: rgba(212, 175, 55, 0.8);
+  margin-top: 8px;
+  font-style: italic;
 `;
 
 const RecipeDetails = styled.div`
-  padding: 15px;
-  background: rgba(30, 30, 30, 0.7);
-  border-radius: 5px;
-  margin-top: 15px;
+  padding: 20px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(40, 40, 40, 0.6) 100%);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+  animation: ${fadeIn} 0.4s ease-out;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #d4af37, #f4d03f, #b7950b);
+    border-radius: 12px 12px 0 0;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.05), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 4s infinite;
+    pointer-events: none;
+  }
 `;
 
 const DetailTitle = styled.h3`
-  margin: 0 0 10px 0;
-  color: #ffd700;
+  margin: 0 0 16px 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 18px;
+  font-weight: 600;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+    border-radius: 1px;
+  }
 `;
 
 const DetailRow = styled.div`
@@ -149,11 +422,13 @@ const DetailRow = styled.div`
 `;
 
 const DetailLabel = styled.div`
-  color: #aaa;
+  color: rgba(212, 175, 55, 0.7);
+  font-weight: 500;
 `;
 
 const DetailValue = styled.div`
   color: #fff;
+  font-weight: 600;
 `;
 
 const IngredientsList = styled.div`
@@ -163,66 +438,191 @@ const IngredientsList = styled.div`
 const IngredientItem = styled.div`
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
-  padding: 8px;
-  border-radius: 4px;
-  background: ${props => props.available ? 'rgba(0, 128, 0, 0.1)' : 'rgba(128, 0, 0, 0.1)'};
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: ${props => props.available
+    ? 'linear-gradient(145deg, rgba(46, 125, 50, 0.15) 0%, rgba(76, 175, 80, 0.15) 100%)'
+    : 'linear-gradient(145deg, rgba(183, 28, 28, 0.15) 0%, rgba(244, 67, 54, 0.15) 100%)'
+  };
+  border: 1px solid ${props => props.available
+    ? 'rgba(76, 175, 80, 0.3)'
+    : 'rgba(244, 67, 54, 0.3)'
+  };
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: ${props => props.available
+      ? 'linear-gradient(180deg, #4caf50, #66bb6a)'
+      : 'linear-gradient(180deg, #f44336, #ef5350)'
+    };
+    border-radius: 0 4px 4px 0;
+  }
+  
+  &:hover {
+    transform: translateX(4px);
+    box-shadow: ${props => props.available
+      ? '0 4px 12px rgba(76, 175, 80, 0.2)'
+      : '0 4px 12px rgba(244, 67, 54, 0.2)'
+    };
+  }
 `;
 
 const IngredientName = styled.div`
   flex: 1;
-  color: ${props => props.available ? '#5f5' : '#f55'};
+  color: ${props => props.available ? '#4caf50' : '#f44336'};
+  font-weight: 500;
+  font-size: 14px;
 `;
 
 const IngredientQuantity = styled.div`
-  color: ${props => props.available ? '#5f5' : '#f55'};
+  color: ${props => props.available ? '#4caf50' : '#f44336'};
+  font-weight: 600;
+  font-size: 14px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 `;
 
 const QuantityBadge = styled.span`
-  background: ${props => props.enough ? 'rgba(0, 128, 0, 0.3)' : 'rgba(128, 0, 0, 0.3)'};
-  color: ${props => props.enough ? '#5f5' : '#f55'};
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 0.8em;
+  background: ${props => props.enough
+    ? 'linear-gradient(145deg, rgba(76, 175, 80, 0.2) 0%, rgba(129, 199, 132, 0.2) 100%)'
+    : 'linear-gradient(145deg, rgba(244, 67, 54, 0.2) 0%, rgba(239, 83, 80, 0.2) 100%)'
+  };
+  color: ${props => props.enough ? '#4caf50' : '#f44336'};
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid ${props => props.enough
+    ? 'rgba(76, 175, 80, 0.3)'
+    : 'rgba(244, 67, 54, 0.3)'
+  };
+  min-width: 24px;
+  text-align: center;
 `;
 
 const ActionButton = styled.button`
-  background: ${props => props.primary ? 'rgba(255, 215, 0, 0.2)' : 'rgba(80, 80, 80, 0.3)'};
-  color: ${props => props.primary ? '#ffd700' : '#ccc'};
-  border: 1px solid ${props => props.primary ? '#ffd700' : '#444'};
-  border-radius: 5px;
-  padding: 10px 15px;
-  margin-top: 15px;
+  background: ${props => props.primary
+    ? 'linear-gradient(145deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 208, 63, 0.2) 100%)'
+    : 'linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(60, 60, 60, 0.5) 100%)'
+  };
+  color: ${props => props.primary ? '#d4af37' : '#ccc'};
+  border: 2px solid ${props => props.primary ? 'rgba(212, 175, 55, 0.4)' : 'rgba(100, 100, 100, 0.3)'};
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-top: 20px;
   font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
   
-  &:hover {
-    background: ${props => props.primary ? 'rgba(255, 215, 0, 0.3)' : 'rgba(80, 80, 80, 0.5)'};
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    background: ${props => props.primary
+      ? 'linear-gradient(145deg, rgba(212, 175, 55, 0.3) 0%, rgba(244, 208, 63, 0.3) 100%)'
+      : 'linear-gradient(145deg, rgba(60, 60, 60, 0.4) 0%, rgba(80, 80, 80, 0.6) 100%)'
+    };
+    border-color: ${props => props.primary ? 'rgba(212, 175, 55, 0.6)' : 'rgba(150, 150, 150, 0.5)'};
+    transform: translateY(-2px);
+    box-shadow: ${props => props.primary
+      ? '0 6px 20px rgba(212, 175, 55, 0.3)'
+      : '0 6px 20px rgba(0, 0, 0, 0.3)'
+    };
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: ${props => props.primary
+      ? '0 2px 8px rgba(212, 175, 55, 0.2)'
+      : '0 2px 8px rgba(0, 0, 0, 0.2)'
+    };
   }
   
   &:disabled {
-    background: rgba(50, 50, 50, 0.3);
+    background: linear-gradient(145deg, rgba(30, 30, 30, 0.3) 0%, rgba(50, 50, 50, 0.3) 100%);
     color: #666;
-    border-color: #333;
+    border-color: rgba(60, 60, 60, 0.3);
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    
+    &::before {
+      display: none;
+    }
   }
+  
+  ${props => props.primary && `
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.3), transparent);
+      transform: translate(-50%, -50%);
+      transition: width 0.3s ease, height 0.3s ease;
+    }
+    
+    &:hover:not(:disabled)::after {
+      width: 100%;
+      height: 100%;
+    }
+  `}
 `;
 
 const SearchBar = styled.input`
-  background: rgba(30, 30, 30, 0.7);
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(40, 40, 40, 0.6) 100%);
   color: #fff;
-  border: 1px solid #444;
-  border-radius: 5px;
-  padding: 10px;
-  margin-bottom: 15px;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
   font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  width: 100%;
   
   &::placeholder {
-    color: #777;
+    color: rgba(212, 175, 55, 0.6);
+    font-style: italic;
+  }
+  
+  &:focus {
+    outline: none;
+    border-color: rgba(212, 175, 55, 0.8);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+    background: linear-gradient(145deg, rgba(0, 0, 0, 0.5) 0%, rgba(40, 40, 40, 0.7) 100%);
+  }
+  
+  &:hover {
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.1);
   }
 `;
 
@@ -233,44 +633,161 @@ const FilterContainer = styled.div`
 `;
 
 const FilterSelect = styled.select`
-  background: rgba(30, 30, 30, 0.7);
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(40, 40, 40, 0.6) 100%);
   color: #fff;
-  border: 1px solid #444;
-  border-radius: 5px;
-  padding: 8px;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
   font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: rgba(212, 175, 55, 0.8);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+    background: linear-gradient(145deg, rgba(0, 0, 0, 0.5) 0%, rgba(40, 40, 40, 0.7) 100%);
+  }
+  
+  &:hover {
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.1);
+  }
+  
+  option {
+    background: rgba(20, 20, 20, 0.9);
+    color: #fff;
+    padding: 8px;
+  }
 `;
 
 const NoRecipesMessage = styled.div`
   text-align: center;
-  padding: 20px;
-  color: #777;
+  padding: 24px;
+  color: rgba(212, 175, 55, 0.6);
   font-style: italic;
+  font-size: 16px;
+  font-weight: 500;
 `;
 
 const ResultMessage = styled.div`
-  margin-top: 20px;
-  padding: 15px;
-  border-radius: 5px;
-  background: ${props => props.success ? 'rgba(0, 128, 0, 0.2)' : 'rgba(128, 0, 0, 0.2)'};
-  color: ${props => props.success ? '#5f5' : '#f55'};
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: ${props => props.success
+    ? 'linear-gradient(145deg, rgba(46, 125, 50, 0.2) 0%, rgba(76, 175, 80, 0.2) 100%)'
+    : 'linear-gradient(145deg, rgba(183, 28, 28, 0.2) 0%, rgba(244, 67, 54, 0.2) 100%)'
+  };
+  border: 2px solid ${props => props.success
+    ? 'rgba(76, 175, 80, 0.4)'
+    : 'rgba(244, 67, 54, 0.4)'
+  };
+  color: ${props => props.success ? '#4caf50' : '#f44336'};
   text-align: center;
+  font-weight: 600;
+  font-size: 16px;
+  position: relative;
+  overflow: hidden;
+  animation: ${fadeIn} 0.4s ease-out;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: ${props => props.success
+      ? 'linear-gradient(90deg, #4caf50, #66bb6a)'
+      : 'linear-gradient(90deg, #f44336, #ef5350)'
+    };
+    border-radius: 12px 12px 0 0;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: ${props => props.success
+      ? 'linear-gradient(45deg, transparent, rgba(76, 175, 80, 0.1), transparent)'
+      : 'linear-gradient(45deg, transparent, rgba(244, 67, 54, 0.1), transparent)'
+    };
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
 `;
 
 const CraftingProgress = styled.div`
-  margin-top: 20px;
-  height: 20px;
-  background: rgba(30, 30, 30, 0.7);
-  border-radius: 10px;
+  margin-top: 24px;
+  height: 24px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(40, 40, 40, 0.6) 100%);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
   overflow: hidden;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    animation: ${shimmer} 2s infinite;
+    pointer-events: none;
+  }
 `;
 
 const ProgressBar = styled.div`
   height: 100%;
   width: ${props => props.progress}%;
-  background: linear-gradient(to right, #ffd700, #ffaa00);
-  border-radius: 10px;
-  transition: width 0.1s linear;
+  background: linear-gradient(90deg, #d4af37 0%, #f4d03f 50%, #b7950b 100%);
+  border-radius: 8px;
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: ${shimmer} 1.5s infinite;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    background: linear-gradient(90deg,
+      rgba(212, 175, 55, 0.8) 0%,
+      rgba(244, 208, 63, 0.9) 50%,
+      rgba(183, 149, 11, 0.8) 100%
+    );
+    border-radius: 6px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  ${props => props.progress > 0 && `
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+  `}
+  
+  ${props => props.progress >= 100 && `
+    animation: ${pulse} 1s infinite;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+  `}
 `;
 
 /**
