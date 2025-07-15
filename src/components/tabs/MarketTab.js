@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useGame } from '../../context/GameContext';
-import styled from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import ACTION_TYPES from '../../context/actions/actionTypes';
 import { getAllMerchants } from '../../data/merchants-adapter';
 import { getEquipmentItemById } from '../../data/equipment-items-adapter';
@@ -15,13 +15,44 @@ import {
 } from '../../services/merchant-api';
 import InventoryServiceAPI from '../../services/inventory-api.js';
 
+// Анимации
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const shimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+`;
+
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+`;
+
 // Стилизованные компоненты
 const TabContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px;
+  padding: 24px;
   color: #f0f0f0;
+  animation: ${fadeIn} 0.6s ease-out;
 `;
 
 const TabHeader = styled.div`
@@ -34,7 +65,11 @@ const TabHeader = styled.div`
 const TabTitle = styled.h2`
   font-size: 24px;
   margin: 0;
-  color: #ffd700;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
 `;
 
 const TabContent = styled.div`
@@ -45,21 +80,46 @@ const TabContent = styled.div`
 
 const LeftPanel = styled.div`
   flex: 1;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 5px;
-  padding: 15px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
 `;
 
-const RightPanel = styled.div`
-  flex: 1;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 5px;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-`;
+const RightPanel = styled(LeftPanel)``;
 
 const TabMenu = styled.div`
   display: flex;
@@ -68,19 +128,54 @@ const TabMenu = styled.div`
 `;
 
 const TabButton = styled.button`
-  background: ${props => props.active ? 'rgba(255, 215, 0, 0.2)' : 'transparent'};
-  color: ${props => props.active ? '#ffd700' : '#ccc'};
-  border: none;
-  padding: 10px 15px;
+  background: ${props => props.active
+    ? 'linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2))'
+    : 'linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%)'};
+  color: ${props => props.active ? '#d4af37' : '#aaa'};
+  border: 1px solid ${props => props.active ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.2)'};
+  border-radius: 8px 8px 0 0;
+  padding: 12px 20px;
   font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  border-bottom: ${props => props.active ? '2px solid #ffd700' : 'none'};
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    background: rgba(255, 215, 0, 0.1);
-    color: #ffd700;
+    background: linear-gradient(45deg, rgba(212, 175, 55, 0.1), rgba(244, 208, 63, 0.1));
+    color: #d4af37;
+    transform: translateY(-1px);
+    
+    &::before {
+      left: 100%;
+    }
   }
+  
+  ${props => props.active && css`
+    border-bottom: 2px solid #d4af37;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(45deg, #d4af37, #f4d03f);
+    }
+  `}
 `;
 
 const ItemList = styled.div`
@@ -93,35 +188,65 @@ const ItemList = styled.div`
 
 const ItemCard = styled.div`
   display: flex;
-  background: ${props => props.selected ? 'rgba(255, 215, 0, 0.1)' : 'rgba(30, 30, 30, 0.7)'};
-  border: 1px solid ${props => props.selected ? '#ffd700' : '#444'};
-  border-radius: 5px;
-  padding: 10px;
+  background: ${props => props.selected
+    ? 'linear-gradient(145deg, rgba(212, 175, 55, 0.1) 0%, rgba(244, 208, 63, 0.05) 100%)'
+    : 'linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%)'};
+  border: 1px solid ${props => props.selected ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.2)'};
+  border-radius: 12px;
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    background: rgba(255, 215, 0, 0.05);
-    border-color: #ffd700;
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.05) 0%, rgba(244, 208, 63, 0.02) 100%);
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+    
+    &::before {
+      left: 100%;
+    }
   }
 `;
 
 const ItemIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  background: #333;
-  border-radius: 5px;
-  margin-right: 10px;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  margin-right: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 24px;
   overflow: hidden;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+  }
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 10px;
   }
 `;
 
@@ -162,15 +287,52 @@ const ItemDescription = styled.div`
 `;
 
 const ItemDetails = styled.div`
-  padding: 15px;
-  background: rgba(30, 30, 30, 0.7);
-  border-radius: 5px;
-  margin-top: 15px;
+  padding: 20px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
 `;
 
 const DetailTitle = styled.h3`
-  margin: 0 0 10px 0;
-  color: #ffd700;
+  margin: 0 0 16px 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 8px;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+  }
 `;
 
 const DetailRow = styled.div`
@@ -188,25 +350,51 @@ const DetailValue = styled.div`
 `;
 
 const ActionButton = styled.button`
-  background: ${props => props.primary ? 'rgba(255, 215, 0, 0.2)' : 'rgba(80, 80, 80, 0.3)'};
-  color: ${props => props.primary ? '#ffd700' : '#ccc'};
-  border: 1px solid ${props => props.primary ? '#ffd700' : '#444'};
-  border-radius: 5px;
-  padding: 10px 15px;
-  margin-top: 15px;
+  background: ${props => props.primary
+    ? 'linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2))'
+    : 'linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%)'};
+  color: ${props => props.primary ? '#d4af37' : '#aaa'};
+  border: 1px solid ${props => props.primary ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.2)'};
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-top: 16px;
   font-size: 16px;
+  font-weight: bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
   
-  &:hover {
-    background: ${props => props.primary ? 'rgba(255, 215, 0, 0.3)' : 'rgba(80, 80, 80, 0.5)'};
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    background: ${props => props.primary
+      ? 'linear-gradient(45deg, rgba(212, 175, 55, 0.3), rgba(244, 208, 63, 0.3))'
+      : 'linear-gradient(145deg, rgba(212, 175, 55, 0.1) 0%, rgba(244, 208, 63, 0.05) 100%)'};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    
+    &::before {
+      left: 100%;
+    }
   }
   
   &:disabled {
-    background: rgba(50, 50, 50, 0.3);
+    background: rgba(60, 60, 60, 0.3);
+    border-color: rgba(100, 100, 100, 0.3);
     color: #666;
-    border-color: #333;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 `;
 
@@ -217,26 +405,47 @@ const QuantityControl = styled.div`
 `;
 
 const QuantityButton = styled.button`
-  background: rgba(80, 80, 80, 0.3);
-  color: #ccc;
-  border: 1px solid #444;
-  border-radius: 5px;
-  width: 30px;
-  height: 30px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  color: #aaa;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  font-weight: bold;
   cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
   
-  &:hover {
-    background: rgba(80, 80, 80, 0.5);
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.1) 0%, rgba(244, 208, 63, 0.05) 100%);
+    border-color: rgba(212, 175, 55, 0.4);
+    color: #d4af37;
+    
+    &::before {
+      left: 100%;
+    }
   }
   
   &:disabled {
-    background: rgba(50, 50, 50, 0.3);
+    background: rgba(60, 60, 60, 0.3);
+    border-color: rgba(100, 100, 100, 0.3);
     color: #666;
-    border-color: #333;
     cursor: not-allowed;
   }
 `;
