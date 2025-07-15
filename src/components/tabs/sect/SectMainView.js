@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../../context/GameContext';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { SECT_RANKS } from '../../../utils/sectRanks';
 import SectHeader from './SectHeader';
 import SectStats from './SectStats';
@@ -9,12 +9,34 @@ import MembersList from './MembersList';
 import MemberDetail from './MemberDetail';
 import ActionPanel from './ActionPanel';
 
+// Анимации
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const shimmer = keyframes`
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+`;
+
 // Стили
 const Container = styled.div`
   display: grid;
   grid-template-columns: 320px 1fr;
   grid-template-rows: auto 1fr;
-  gap: 20px;
+  gap: 24px;
+  animation: ${fadeIn} 0.6s ease-out;
 `;
 
 const LeftColumn = styled.div`
@@ -36,12 +58,30 @@ const RightBottomSection = styled.div`
 `;
 
 const EmptySelectedMemberMessage = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 40px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(40, 40, 40, 0.6) 100%);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  padding: 48px;
   text-align: center;
-  color: #aaa;
+  color: rgba(212, 175, 55, 0.8);
+  font-size: 16px;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+  animation: ${fadeIn} 0.4s ease-out;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.05), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
 `;
 
 /**
