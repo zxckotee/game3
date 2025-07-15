@@ -9,10 +9,39 @@ import InventoryServiceAPI from '../../services/inventory-api.js'; // Прямо
 import CharacterProfileServiceAPI from '../../services/character-profile-service-api';
 import AlchemyServiceAPI from '../../services/alchemy-service-api'; // Импорт для использования предметов
 
-// Компоненты стилей (остаются без изменений)
+// Анимации
 const spin = keyframes`
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+`;
+
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const shimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+`;
+
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
 `;
 
 const SpinnerContainer = styled.div`
@@ -31,42 +60,98 @@ const LoadingSpinner = () => {
 
 const Container = styled.div`
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  animation: ${fadeIn} 0.6s ease-out;
 `;
 
 const InventoryGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 10px;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 24px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
 `;
 
 const ItemSlot = styled.div`
   width: 100%;
   aspect-ratio: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid ${props => props.quality === 'common' ? '#666' :
-    props.quality === 'uncommon' ? '#2196f3' :
-    props.quality === 'rare' ? '#9c27b0' :
-    props.quality === 'epic' ? '#ff9800' : '#d4af37'};
-  border-radius: 4px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.4)' :
+    props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.4)' :
+    props.quality === 'rare' ? 'rgba(156, 39, 176, 0.4)' :
+    props.quality === 'epic' ? 'rgba(255, 152, 0, 0.4)' : 'rgba(212, 175, 55, 0.4)'};
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.1)' :
+      props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.1)' :
+      props.quality === 'rare' ? 'rgba(156, 39, 176, 0.1)' :
+      props.quality === 'epic' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(212, 175, 55, 0.1)'}, transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 10px ${props => props.quality === 'common' ? '#666' :
-      props.quality === 'uncommon' ? '#2196f3' :
-      props.quality === 'rare' ? '#9c27b0' :
-      props.quality === 'epic' ? '#ff9800' : '#d4af37'};
+    transform: translateY(-2px) scale(1.05);
+    border-color: ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.6)' :
+      props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.6)' :
+      props.quality === 'rare' ? 'rgba(156, 39, 176, 0.6)' :
+      props.quality === 'epic' ? 'rgba(255, 152, 0, 0.6)' : 'rgba(212, 175, 55, 0.6)'};
+    box-shadow: 0 8px 25px ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.15)' :
+      props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.15)' :
+      props.quality === 'rare' ? 'rgba(156, 39, 176, 0.15)' :
+      props.quality === 'epic' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(212, 175, 55, 0.15)'};
+    animation: ${pulse} 2s infinite;
+    
+    &::before {
+      left: 100%;
+    }
   }
 `;
 
@@ -89,20 +174,63 @@ const ItemQuantity = styled.div`
 `;
 
 const ItemDetails = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
-  max-height: calc(100vh - 180px); // Примерная высота, чтобы вмещался скролл
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
+  max-height: calc(100vh - 180px);
   overflow-y: auto;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
 `;
 
 const ItemName = styled.h3`
-  color: ${props => props.quality === 'common' ? '#fff' :
-    props.quality === 'uncommon' ? '#2196f3' :
-    props.quality === 'rare' ? '#9c27b0' :
-    props.quality === 'epic' ? '#ff9800' : '#d4af37'};
-  margin: 0 0 10px 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 12px;
+  font-size: 1.5rem;
+  font-weight: bold;
+`;
+
+const SectionTitle = styled.h4`
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 16px 0 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 4px;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+  }
 `;
 
 const ItemType = styled.div`
@@ -120,46 +248,88 @@ const ItemDescription = styled.p`
 
 const ActionButton = styled.button`
   width: 100%;
-  padding: 10px;
-  background: rgba(212, 175, 55, 0.2);
-  border: 1px solid #d4af37;
-  border-radius: 4px;
+  padding: 12px;
+  background: linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 8px;
   color: #d4af37;
   font-size: 0.9rem;
+  font-weight: bold;
   cursor: pointer;
-  margin-bottom: 10px;
-  transition: all 0.2s ease;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    background: rgba(212, 175, 55, 0.3);
+    background: linear-gradient(45deg, rgba(212, 175, 55, 0.3), rgba(244, 208, 63, 0.3));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    
+    &::before {
+      left: 100%;
+    }
   }
   
   &:disabled {
-    background: #333;
-    border-color: #666;
+    background: rgba(60, 60, 60, 0.3);
+    border-color: rgba(100, 100, 100, 0.3);
     color: #666;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 `;
 
 const CurrencyInfo = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid rgba(212, 175, 55, 0.3);
 `;
 
-const CurrencyItem = styled.div`
+const CurrencyCard = styled.div`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 8px;
+  padding: 12px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: #aaa;
+  gap: 8px;
+  transition: all 0.3s ease;
   
-  span {
-    color: #d4af37;
+  &:hover {
+    transform: translateY(-1px);
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
   }
+`;
+
+const CurrencyLabel = styled.span`
+  color: #aaa;
+  font-size: 0.9rem;
+`;
+
+const CurrencyValue = styled.span`
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+  font-size: 1rem;
 `;
 
 function InventoryTab() {
@@ -446,7 +616,7 @@ function InventoryTab() {
 
                 {selectedItem.effects && selectedItem.effects.length > 0 && (
                   <div style={{ marginTop: '15px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Эффекты:</h4>
+                    <SectionTitle>Эффекты:</SectionTitle>
                     {selectedItem.effects.map((effect, index) => (
                       <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
                         - {effect.description || `${effect.target || 'Неизвестная характеристика'} ${effect.modifier === 'add' ? '+' : '*'}${formatEffectValue(effect.value)}`}
@@ -458,7 +628,7 @@ function InventoryTab() {
 
                 {selectedItem.requirements && Object.keys(selectedItem.requirements).length > 0 && (
                   <div style={{ marginTop: '15px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#d4af37', fontSize: '1rem' }}>Требования:</h4>
+                    <SectionTitle>Требования:</SectionTitle>
                     {Array.isArray(selectedItem.requirements) ? (
                       selectedItem.requirements.map((req, index) => (
                         <div key={index} style={{ fontSize: '0.85rem', color: '#ccc', marginLeft: '10px', marginBottom: '5px' }}>
@@ -512,10 +682,22 @@ function InventoryTab() {
         </div>
       )}
       <CurrencyInfo>
-        <CurrencyItem>Духовные камни: <span>{state.player.inventory.currency?.spiritStones || 0}</span></CurrencyItem>
-        <CurrencyItem>Медь: <span>{state.player.inventory.currency?.copper || 0}</span></CurrencyItem>
-        <CurrencyItem>Серебро: <span>{state.player.inventory.currency?.silver || 0}</span></CurrencyItem>
-        <CurrencyItem>Золото: <span>{state.player.inventory.currency?.gold || 0}</span></CurrencyItem>
+        <CurrencyCard>
+          <CurrencyLabel>Духовные камни:</CurrencyLabel>
+          <CurrencyValue>{state.player.inventory.currency?.spiritStones || 0}</CurrencyValue>
+        </CurrencyCard>
+        <CurrencyCard>
+          <CurrencyLabel>Медь:</CurrencyLabel>
+          <CurrencyValue>{state.player.inventory.currency?.copper || 0}</CurrencyValue>
+        </CurrencyCard>
+        <CurrencyCard>
+          <CurrencyLabel>Серебро:</CurrencyLabel>
+          <CurrencyValue>{state.player.inventory.currency?.silver || 0}</CurrencyValue>
+        </CurrencyCard>
+        <CurrencyCard>
+          <CurrencyLabel>Золото:</CurrencyLabel>
+          <CurrencyValue>{state.player.inventory.currency?.gold || 0}</CurrencyValue>
+        </CurrencyCard>
       </CurrencyInfo>
     </Container>
   );
