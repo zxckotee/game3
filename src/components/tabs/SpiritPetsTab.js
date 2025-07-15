@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import './SpiritPetsTab.css';
+import styled, { keyframes, css } from 'styled-components';
 
 // Импортируем функции из обновленного API-клиента
 import {
@@ -20,231 +20,666 @@ import {
 // Импортируем GameContext для получения userId
 import { GameContext } from '../../context/GameContext';
 
-// Компонент карточки питомца
-const PetCard = ({ pet, isActive, onActivate, onFeed, onTrain, onViewDetails, disabled }) => {
-  // Защита от undefined
-  if (!pet) {
-    console.error('PetCard: получен undefined вместо объекта питомца');
-    return (
-      <div className="pet-card pet-card-error" style={{
-        border: '2px solid #e74c3c',
-        padding: '10px',
-        borderRadius: '5px',
-        backgroundColor: 'rgba(231, 76, 60, 0.1)'
-      }}>
-        <div className="pet-card-error-message" style={{
-          color: '#e74c3c',
-          textAlign: 'center',
-          fontWeight: 'bold'
-        }}>
-          Ошибка загрузки питомца
-        </div>
-      </div>
-    );
+// Анимации
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
-  const getPetTypeColor = (type) => {
-    const typeColors = {
-      'fire': '#e74c3c',
-      'water': '#3498db',
-      'earth': '#8e44ad',
-      'wind': '#2ecc71',
-      'lightning': '#f1c40f',
-      'ice': '#3498db',
-      'light': '#f5f5f5',
-      'dark': '#34495e',
-      'void': '#2c3e50'
-    };
-    return typeColors[type] || '#bdc3c7';
-  };
+const shimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+`;
 
-  // Получаем данные из питомца с учетом возможных различий в форматах данных
-  const level = pet.level || 1;
-  const experience = pet.experience || 0;
-  
-  // Расчет процента опыта до следующего уровня
-  const expForCurrentLevel = level * 100; // Простая формула: level * 100
-  const expPercentage = (experience / expForCurrentLevel) * 100;
-  
-  // Преобразование данных из API в формат, понятный компоненту
-  // Учитываем разные форматы данных (API может вернуть структуру с petType или вложенным pet)
-  const petName = pet.customName || pet.petType?.name || pet.pet?.name || pet.name || 'Безымянный питомец';
-  const petType = pet.petType?.type || pet.pet?.type || pet.type || 'unknown';
-  const petElement = pet.petType?.element || pet.pet?.element || pet.element || 'unknown';
-  const petRarity = pet.petType?.rarity || pet.pet?.rarity || pet.rarity || 'common';
-  const petEvolutionStage = pet.petType?.evolutionStage || pet.pet?.evolution_stage || pet.evolutionStage || 'baby';
-  const petHunger = pet.hunger || 0;
-  const petLoyalty = pet.loyalty || 0;
-  const isActivePet = pet.isActive || pet.is_active || isActive;
-  
-  // Получаем названия для типов (эти данные должны быть доступны из API или констант)
-  const getTypeName = (type) => {
-    const typeNames = {
-      'beast': 'Зверь',
-      'mythical': 'Мифический',
-      'elemental': 'Элементаль',
-      'spirit': 'Дух',
-      'construct': 'Конструкт'
-    };
-    return typeNames[type] || type;
-  };
-  
-  const getElementName = (element) => {
-    const elementNames = {
-      'fire': 'Огонь',
-      'water': 'Вода',
-      'earth': 'Земля',
-      'air': 'Воздух',
-      'lightning': 'Молния',
-      'ice': 'Лёд',
-      'light': 'Свет',
-      'dark': 'Тьма',
-      'void': 'Пустота'
-    };
-    return elementNames[element] || element;
-  };
-  
-  const getRarityName = (rarity) => {
-    const rarityNames = {
-      'common': 'Обычный',
-      'uncommon': 'Необычный',
-      'rare': 'Редкий',
-      'epic': 'Эпический',
-      'legendary': 'Легендарный'
-    };
-    return rarityNames[rarity] || rarity;
-  };
-  
-  const getEvolutionStageName = (stage) => {
-    const stageNames = {
-      'baby': 'Детёныш',
-      'juvenile': 'Юный',
-      'adult': 'Взрослый',
-      'elder': 'Старейшина',
-      'ancient': 'Древний'
-    };
-    return stageNames[stage] || stage;
-  };
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+`;
 
-  return (
-    <div className={`pet-card ${isActivePet ? 'pet-card-active' : ''}`} style={{ borderColor: getPetTypeColor(petElement) }}>
-      <div className="pet-card-header" style={{ backgroundColor: getPetTypeColor(petElement) }}>
-        <h3 className="pet-name">{petName}</h3>
-        <div className="pet-type">
-          {getTypeName(petType)} 
-          <span className="pet-element">• {getElementName(petElement)}</span>
-        </div>
-        {isActivePet && <div className="pet-active-badge">Активный</div>}
-      </div>
-      
-      <div className="pet-card-body">
-        <div className="pet-info-row">
-          <div className="pet-level">Уровень {level}</div>
-          <div className="pet-evolution">Стадия: {getEvolutionStageName(petEvolutionStage)}</div>
-        </div>
-        
-        <div className="pet-exp-bar-container">
-          <div className="pet-exp-bar" style={{ width: `${expPercentage}%` }}></div>
-          <div className="pet-exp-text">{experience} / {expForCurrentLevel} опыта</div>
-        </div>
-        
-        <div className="pet-stats-container">
-          <div className="pet-stat">
-            <span className="stat-name">Сила:</span>
-            <span className="stat-value">{pet.strength || 0}</span>
-          </div>
-          <div className="pet-stat">
-            <span className="stat-name">Интеллект:</span>
-            <span className="stat-value">{pet.intelligence || 0}</span>
-          </div>
-          <div className="pet-stat">
-            <span className="stat-name">Ловкость:</span>
-            <span className="stat-value">{pet.agility || 0}</span>
-          </div>
-          <div className="pet-stat">
-            <span className="stat-name">Живучесть:</span>
-            <span className="stat-value">{pet.vitality || 0}</span>
-          </div>
-          <div className="pet-stat">
-            <span className="stat-name">Дух:</span>
-            <span className="stat-value">{pet.spirit || 0}</span>
-          </div>
-        </div>
-        
-        <div className="pet-indicators">
-          <div className="pet-indicator">
-            <span className="indicator-name">Сытость:</span>
-            <div className="indicator-bar-container">
-              <div className="indicator-bar" style={{
-                width: `${petHunger}%`,
-                backgroundColor: petHunger < 30 ? '#e74c3c' : '#2ecc71'
-              }}></div>
-            </div>
-            <span className="indicator-value">{petHunger}%</span>
-          </div>
-          <div className="pet-indicator">
-            <span className="indicator-name">Лояльность:</span>
-            <div className="indicator-bar-container">
-              <div className="indicator-bar" style={{
-                width: `${petLoyalty}%`,
-                backgroundColor: petLoyalty < 50 ? '#e74c3c' : '#2ecc71'
-              }}></div>
-            </div>
-            <span className="indicator-value">{petLoyalty}%</span>
-            {petLoyalty <= 50 && (
-              <div className="loyalty-warning" style={{
-                color: petLoyalty <= 25 ? '#e74c3c' : '#e67e22',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                marginTop: '5px',
-                textAlign: 'center',
-                padding: '3px',
-                border: `1px solid ${petLoyalty <= 25 ? '#e74c3c' : '#e67e22'}`,
-                borderRadius: '4px',
-                background: petLoyalty <= 25 ? 'rgba(231, 76, 60, 0.1)' : 'rgba(230, 126, 34, 0.1)'
-              }}>
-                {petLoyalty <= 25 ? '⚠️ Питомец может сбежать в бою!' : '⚠️ Лояльность снижается быстрее при использовании в бою!'}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="pet-card-buttons">
-          {!isActivePet && (
-            <button
-              className="pet-action-button activate-button"
-              onClick={() => onActivate && onActivate(pet.id)}
-              disabled={disabled}
-            >
-              Сделать активным
-            </button>
-          )}
-          <button
-            className="pet-action-button feed-button"
-            onClick={() => onFeed && onFeed(pet.id)}
-            disabled={disabled || petHunger >= 100}
-          >
-            Покормить
-          </button>
-          <button
-            className="pet-action-button train-button"
-            onClick={() => onTrain && onTrain(pet.id)}
-            disabled={disabled || petHunger < 30}
-          >
-            Тренировать
-          </button>
-          <button
-            className="pet-action-button details-button"
-            onClick={() => onViewDetails && onViewDetails(pet)}
-            disabled={disabled}
-          >
-            Подробности
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Styled Components
+const SpiritPetsContainer = styled.div`
+  padding: 24px;
+  color: #f0f0f0;
+  animation: ${fadeIn} 0.6s ease-out;
+  min-height: 100vh;
+`;
+
+const TabHeader = styled.div`
+  margin-bottom: 32px;
+  text-align: center;
+`;
+
+const TabTitle = styled.h2`
+  font-size: 28px;
+  margin: 0 0 16px 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+`;
+
+const TabDescription = styled.p`
+  font-size: 16px;
+  color: #aaa;
+  margin: 0;
+  max-width: 600px;
+  margin: 0 auto;
+`;
+
+const ErrorMessage = styled.div`
+  background: linear-gradient(145deg, rgba(231, 76, 60, 0.1) 0%, rgba(192, 57, 43, 0.1) 100%);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  color: #e74c3c;
+  text-align: center;
+`;
+
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: 40px;
+  color: #aaa;
+  font-size: 18px;
+`;
+
+const PetsSection = styled.div`
+  margin-bottom: 32px;
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 24px;
+  margin: 0 0 20px 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+`;
+
+const PetsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+`;
+
+const NoItemsMessage = styled.div`
+  text-align: center;
+  padding: 40px;
+  color: #777;
+  font-style: italic;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+`;
+
+// Styled Components для карточек питомцев
+const PetCardContainer = styled.div`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: ${shimmer} 3s infinite;
+    pointer-events: none;
+  }
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+    animation: ${pulse} 2s infinite;
+  }
+  
+  ${props => props.isActive && css`
+    border-color: rgba(212, 175, 55, 0.6);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+    
+    &::before {
+      background: linear-gradient(45deg, #f4d03f, #d4af37, #f4d03f);
+    }
+  `}
+`;
+
+const PetCardHeader = styled.div`
+  background: linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2));
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  position: relative;
+`;
+
+const PetName = styled.h3`
+  margin: 0 0 8px 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.4rem;
+  font-weight: bold;
+`;
+
+const PetType = styled.div`
+  color: #aaa;
+  font-size: 14px;
+`;
+
+const ActiveBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  color: #000;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+const PetStatsContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+`;
+
+const PetStat = styled.div`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+  }
+`;
+
+const StatName = styled.div`
+  color: #aaa;
+  font-size: 12px;
+  margin-bottom: 4px;
+`;
+
+const StatValue = styled.div`
+  color: #d4af37;
+  font-size: 18px;
+  font-weight: bold;
+`;
+
+const PetIndicators = styled.div`
+  margin: 16px 0;
+`;
+
+const PetIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+`;
+
+const IndicatorName = styled.span`
+  color: #aaa;
+  font-size: 14px;
+  min-width: 80px;
+`;
+
+const IndicatorBarContainer = styled.div`
+  flex: 1;
+  height: 8px;
+  background: rgba(40, 40, 40, 0.8);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+`;
+
+const IndicatorBar = styled.div`
+  height: 100%;
+  background: ${props => {
+    if (props.type === 'hunger') {
+      return props.value < 30
+        ? 'linear-gradient(45deg, #e74c3c, #c0392b)'
+        : 'linear-gradient(45deg, #2ecc71, #27ae60)';
+    }
+    if (props.type === 'loyalty') {
+      return props.value < 50
+        ? 'linear-gradient(45deg, #e74c3c, #c0392b)'
+        : 'linear-gradient(45deg, #2ecc71, #27ae60)';
+    }
+    return 'linear-gradient(45deg, #d4af37, #f4d03f)';
+  }};
+  width: ${props => props.value}%;
+  transition: width 0.3s ease;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: ${shimmer} 2s infinite;
+  }
+`;
+
+const IndicatorValue = styled.span`
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  min-width: 40px;
+  text-align: right;
+`;
+
+const PetActionButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+`;
+
+const PetActionButton = styled.button`
+  background: ${props => {
+    switch(props.variant) {
+      case 'activate':
+        return 'linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2))';
+      case 'feed':
+        return 'linear-gradient(45deg, rgba(46, 204, 113, 0.2), rgba(39, 174, 96, 0.2))';
+      case 'train':
+        return 'linear-gradient(45deg, rgba(52, 152, 219, 0.2), rgba(41, 128, 185, 0.2))';
+      case 'details':
+        return 'linear-gradient(45deg, rgba(155, 89, 182, 0.2), rgba(142, 68, 173, 0.2))';
+      default:
+        return 'linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%)';
+    }
+  }};
+  color: ${props => {
+    switch(props.variant) {
+      case 'activate': return '#d4af37';
+      case 'feed': return '#2ecc71';
+      case 'train': return '#3498db';
+      case 'details': return '#9b59b6';
+      default: return '#aaa';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch(props.variant) {
+      case 'activate': return 'rgba(212, 175, 55, 0.4)';
+      case 'feed': return 'rgba(46, 204, 113, 0.4)';
+      case 'train': return 'rgba(52, 152, 219, 0.4)';
+      case 'details': return 'rgba(155, 89, 182, 0.4)';
+      default: return 'rgba(212, 175, 55, 0.2)';
+    }
+  }};
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-width: 80px;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  &:disabled {
+    background: rgba(60, 60, 60, 0.3);
+    border-color: rgba(100, 100, 100, 0.3);
+    color: #666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`;
+
+
+// Styled Components для модальных окон
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: ${fadeIn} 0.3s ease-out;
+`;
+
+const ModalContent = styled.div`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.4rem;
+  font-weight: bold;
+`;
+
+const ModalCloseButton = styled.button`
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(212, 175, 55, 0.2);
+    color: #d4af37;
+  }
+`;
+
+const ModalBody = styled.div`
+  color: #f0f0f0;
+`;
+
+const AcquirePetSection = styled.div`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+`;
+
+const AcquirePetNote = styled.p`
+  color: #aaa;
+  font-size: 14px;
+  margin: 16px 0 0 0;
+  line-height: 1.4;
+`;
+
+const NoPetsMessage = styled.div`
+  text-align: center;
+  padding: 40px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  
+  p {
+    color: #aaa;
+    font-size: 18px;
+    margin-bottom: 24px;
+  }
+`;
+
+const PetsContainer = styled.div`
+  margin-bottom: 32px;
+`;
+
+const PetCardBody = styled.div`
+  padding: 0;
+`;
+
+const PetInfoRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+`;
+
+const PetLevel = styled.div`
+  color: #d4af37;
+  font-weight: bold;
+  font-size: 16px;
+`;
+
+const PetEvolution = styled.div`
+  color: #aaa;
+  font-size: 14px;
+`;
+
+const PetElement = styled.span`
+  color: #bbb;
+  margin-left: 8px;
+`;
+
+const ExpBarContainer = styled.div`
+  position: relative;
+  background: rgba(40, 40, 40, 0.8);
+  border-radius: 8px;
+  height: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+`;
+
+const ExpBar = styled.div`
+  height: 100%;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  width: ${props => props.width}%;
+  transition: width 0.3s ease;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: ${shimmer} 2s infinite;
+  }
+`;
+
+const ExpText = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+`;
+
+const StatsContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+`;
+
+const StatItem = styled.div`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-2px);
+  }
+`;
+
+const IndicatorsContainer = styled.div`
+  margin-bottom: 16px;
+`;
+
+const IndicatorItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+`;
+
+const LoyaltyWarning = styled.div`
+  color: ${props => props.isLow ? '#e74c3c' : '#e67e22'};
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 8px;
+  text-align: center;
+  padding: 6px;
+  border: 1px solid ${props => props.isLow ? '#e74c3c' : '#e67e22'};
+  border-radius: 4px;
+  background: ${props => props.isLow ? 'rgba(231, 76, 60, 0.1)' : 'rgba(230, 126, 34, 0.1)'};
+`;
+
+const ButtonsContainer = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const AcquirePetButton = styled.button`
+  background: linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2));
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(45deg, rgba(212, 175, 55, 0.3), rgba(244, 208, 63, 0.3));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  &:disabled {
+    background: rgba(60, 60, 60, 0.3);
+    border-color: rgba(100, 100, 100, 0.3);
+    color: #666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`;
 
 // Компонент модального окна для кормления питомца
 const PetFeedingModal = ({ pet, onClose, onSelect, petFood = [], loading = false }) => {
@@ -998,111 +1433,325 @@ const SpiritPetsTab = () => {
   
   // Рендеринг компонента
   return (
-    <div className="spirit-pets-tab">
-      <div className="pets-tab-header">
-        <h2>Духовные питомцы</h2>
-        <p className="pets-tab-description">
+    <SpiritPetsContainer>
+      <TabHeader>
+        <TabTitle>Духовные питомцы</TabTitle>
+        <TabDescription>
           Духовные питомцы - это сущности, которые могут помочь вам в развитии и битвах.
           Заботьтесь о них, и они ответят вам верностью и поддержкой.
-        </p>
-      </div>
+        </TabDescription>
+      </TabHeader>
       
       {error && (
-        <div className="pets-error-message">
+        <ErrorMessage>
           {error}
-        </div>
+        </ErrorMessage>
       )}
       
       {loading ? (
-        <div className="pets-loading">
+        <LoadingMessage>
           <p>Загрузка питомцев...</p>
-        </div>
+        </LoadingMessage>
       ) : pets.length > 0 ? (
-        <div className="pets-container">
-          <h3>Ваши питомцы</h3>
-          <div className="pets-grid">
-            {pets.map(pet => (
-              <PetCard
-                key={pet.id}
-                pet={pet}
-                isActive={pet.id === activePetId}
-                onActivate={handleActivatePet}
-                onFeed={handleOpenFeedingModal}
-                onTrain={handleOpenTraining}
-                onViewDetails={handleViewDetails}
-                disabled={
-                  operationLoading.activate ||
-                  operationLoading.feed ||
-                  operationLoading.train ||
-                  operationLoading.acquire
-                }
-              />
-            ))}
-          </div>
+        <PetsContainer>
+          <SectionTitle>Ваши питомцы</SectionTitle>
+          <PetsGrid>
+            {pets.map(pet => {
+              // Получаем данные из питомца с учетом возможных различий в форматах данных
+              const level = pet.level || 1;
+              const experience = pet.experience || 0;
+              const expForCurrentLevel = level * 100;
+              const expPercentage = (experience / expForCurrentLevel) * 100;
+              
+              const petName = pet.customName || pet.petType?.name || pet.pet?.name || pet.name || 'Безымянный питомец';
+              const petType = pet.petType?.type || pet.pet?.type || pet.type || 'unknown';
+              const petElement = pet.petType?.element || pet.pet?.element || pet.element || 'unknown';
+              const petEvolutionStage = pet.petType?.evolutionStage || pet.pet?.evolution_stage || pet.evolutionStage || 'baby';
+              const petHunger = pet.hunger || 0;
+              const petLoyalty = pet.loyalty || 0;
+              const isActivePet = pet.isActive || pet.is_active || (pet.id === activePetId);
+
+              const getPetTypeColor = (type) => {
+                const typeColors = {
+                  'fire': '#e74c3c',
+                  'water': '#3498db',
+                  'earth': '#8e44ad',
+                  'wind': '#2ecc71',
+                  'lightning': '#f1c40f',
+                  'ice': '#3498db',
+                  'light': '#f5f5f5',
+                  'dark': '#34495e',
+                  'void': '#2c3e50'
+                };
+                return typeColors[type] || '#bdc3c7';
+              };
+
+              const getTypeName = (type) => {
+                const typeNames = {
+                  'beast': 'Зверь',
+                  'mythical': 'Мифический',
+                  'elemental': 'Элементаль',
+                  'spirit': 'Дух',
+                  'construct': 'Конструкт'
+                };
+                return typeNames[type] || type;
+              };
+              
+              const getElementName = (element) => {
+                const elementNames = {
+                  'fire': 'Огонь',
+                  'water': 'Вода',
+                  'earth': 'Земля',
+                  'air': 'Воздух',
+                  'lightning': 'Молния',
+                  'ice': 'Лёд',
+                  'light': 'Свет',
+                  'dark': 'Тьма',
+                  'void': 'Пустота'
+                };
+                return elementNames[element] || element;
+              };
+              
+              const getEvolutionStageName = (stage) => {
+                const stageNames = {
+                  'baby': 'Детёныш',
+                  'juvenile': 'Юный',
+                  'adult': 'Взрослый',
+                  'elder': 'Старейшина',
+                  'ancient': 'Древний'
+                };
+                return stageNames[stage] || stage;
+              };
+
+              return (
+                <PetCardContainer key={pet.id} isActive={isActivePet} elementColor={getPetTypeColor(petElement)}>
+                  <PetCardHeader elementColor={getPetTypeColor(petElement)}>
+                    <PetName>{petName}</PetName>
+                    <PetType>
+                      {getTypeName(petType)}
+                      <PetElement>• {getElementName(petElement)}</PetElement>
+                    </PetType>
+                    {isActivePet && <ActiveBadge>Активный</ActiveBadge>}
+                  </PetCardHeader>
+                  
+                  <PetCardBody>
+                    <PetInfoRow>
+                      <PetLevel>Уровень {level}</PetLevel>
+                      <PetEvolution>Стадия: {getEvolutionStageName(petEvolutionStage)}</PetEvolution>
+                    </PetInfoRow>
+                    
+                    <ExpBarContainer>
+                      <ExpBar width={expPercentage} />
+                      <ExpText>{experience} / {expForCurrentLevel} опыта</ExpText>
+                    </ExpBarContainer>
+                    
+                    <StatsContainer>
+                      <StatItem>
+                        <StatName>Сила:</StatName>
+                        <StatValue>{pet.strength || 0}</StatValue>
+                      </StatItem>
+                      <StatItem>
+                        <StatName>Интеллект:</StatName>
+                        <StatValue>{pet.intelligence || 0}</StatValue>
+                      </StatItem>
+                      <StatItem>
+                        <StatName>Ловкость:</StatName>
+                        <StatValue>{pet.agility || 0}</StatValue>
+                      </StatItem>
+                      <StatItem>
+                        <StatName>Живучесть:</StatName>
+                        <StatValue>{pet.vitality || 0}</StatValue>
+                      </StatItem>
+                      <StatItem>
+                        <StatName>Дух:</StatName>
+                        <StatValue>{pet.spirit || 0}</StatValue>
+                      </StatItem>
+                    </StatsContainer>
+                    
+                    <IndicatorsContainer>
+                      <IndicatorItem>
+                        <IndicatorName>Сытость:</IndicatorName>
+                        <IndicatorBarContainer>
+                          <IndicatorBar
+                            value={petHunger}
+                            type="hunger"
+                          />
+                        </IndicatorBarContainer>
+                        <IndicatorValue>{petHunger}%</IndicatorValue>
+                      </IndicatorItem>
+                      <IndicatorItem>
+                        <IndicatorName>Лояльность:</IndicatorName>
+                        <IndicatorBarContainer>
+                          <IndicatorBar
+                            value={petLoyalty}
+                            type="loyalty"
+                          />
+                        </IndicatorBarContainer>
+                        <IndicatorValue>{petLoyalty}%</IndicatorValue>
+                        {petLoyalty <= 50 && (
+                          <LoyaltyWarning isLow={petLoyalty <= 25}>
+                            {petLoyalty <= 25 ? '⚠️ Питомец может сбежать в бою!' : '⚠️ Лояльность снижается быстрее при использовании в бою!'}
+                          </LoyaltyWarning>
+                        )}
+                      </IndicatorItem>
+                    </IndicatorsContainer>
+                    
+                    <ButtonsContainer>
+                      {!isActivePet && (
+                        <PetActionButton
+                          variant="activate"
+                          onClick={() => handleActivatePet(pet.id)}
+                          disabled={
+                            operationLoading.activate ||
+                            operationLoading.feed ||
+                            operationLoading.train ||
+                            operationLoading.acquire
+                          }
+                        >
+                          Сделать активным
+                        </PetActionButton>
+                      )}
+                      <PetActionButton
+                        variant="feed"
+                        onClick={() => handleOpenFeedingModal(pet.id)}
+                        disabled={
+                          operationLoading.activate ||
+                          operationLoading.feed ||
+                          operationLoading.train ||
+                          operationLoading.acquire ||
+                          petHunger >= 100
+                        }
+                      >
+                        Покормить
+                      </PetActionButton>
+                      <PetActionButton
+                        variant="train"
+                        onClick={() => handleOpenTraining(pet.id)}
+                        disabled={
+                          operationLoading.activate ||
+                          operationLoading.feed ||
+                          operationLoading.train ||
+                          operationLoading.acquire ||
+                          petHunger < 30
+                        }
+                      >
+                        Тренировать
+                      </PetActionButton>
+                      <PetActionButton
+                        variant="details"
+                        onClick={() => handleViewDetails(pet)}
+                        disabled={
+                          operationLoading.activate ||
+                          operationLoading.feed ||
+                          operationLoading.train ||
+                          operationLoading.acquire
+                        }
+                      >
+                        Подробности
+                      </PetActionButton>
+                    </ButtonsContainer>
+                  </PetCardBody>
+                </PetCardContainer>
+              );
+            })}
+          </PetsGrid>
           
-          <div className="acquire-pet-section">
-            <h3>Получить нового питомца</h3>
-            <button
-              className="acquire-pet-button"
+          <AcquirePetSection>
+            <SectionTitle>Получить нового питомца</SectionTitle>
+            <PetActionButton
+              variant="acquire"
               onClick={handleAcquirePet}
               disabled={operationLoading.acquire}
             >
               {operationLoading.acquire ? 'Поиск питомца...' : 'Найти питомца'}
-            </button>
-            <p className="acquire-pet-note">
+            </PetActionButton>
+            <AcquirePetNote>
               Вы можете найти новых питомцев во время исследования подземелий или приобрести их у торговцев духовными созданиями.
-            </p>
-          </div>
-        </div>
+            </AcquirePetNote>
+          </AcquirePetSection>
+        </PetsContainer>
       ) : (
-        <div className="no-pets-message">
+        <NoPetsMessage>
           <p>У вас пока нет духовных питомцев.</p>
-          <button
-            className="acquire-pet-button"
+          <PetActionButton
+            variant="acquire"
             onClick={handleAcquirePet}
             disabled={operationLoading.acquire}
           >
             {operationLoading.acquire ? 'Поиск питомца...' : 'Найти первого питомца'}
-          </button>
-        </div>
+          </PetActionButton>
+        </NoPetsMessage>
       )}
       
       {/* Модальные окна */}
       {feedingModalOpen && selectedPet && (
-        <PetFeedingModal
-          pet={selectedPet}
-          onClose={() => {
-            setFeedingModalOpen(false);
-            setSelectedPet(null);
-          }}
-          onSelect={handleFeedPet}
-          petFood={petFood}
-          loading={operationLoading.feed}
-        />
+        <ModalOverlay>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>Кормление питомца {selectedPet.customName || selectedPet.petType?.name || selectedPet.name}</ModalTitle>
+              <ModalCloseButton onClick={() => {
+                setFeedingModalOpen(false);
+                setSelectedPet(null);
+              }}>×</ModalCloseButton>
+            </ModalHeader>
+            <PetFeedingModal
+              pet={selectedPet}
+              onClose={() => {
+                setFeedingModalOpen(false);
+                setSelectedPet(null);
+              }}
+              onSelect={handleFeedPet}
+              petFood={petFood}
+              loading={operationLoading.feed}
+            />
+          </ModalContent>
+        </ModalOverlay>
       )}
       
       {trainingModalOpen && selectedPet && (
-        <PetTrainingModal
-          pet={selectedPet}
-          onClose={() => {
-            setTrainingModalOpen(false);
-            setSelectedPet(null);
-          }}
-          onTrain={handleTrainPet}
-          loading={operationLoading.train}
-        />
+        <ModalOverlay>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>Тренировка питомца {selectedPet.customName || selectedPet.petType?.name || selectedPet.name}</ModalTitle>
+              <ModalCloseButton onClick={() => {
+                setTrainingModalOpen(false);
+                setSelectedPet(null);
+              }}>×</ModalCloseButton>
+            </ModalHeader>
+            <PetTrainingModal
+              pet={selectedPet}
+              onClose={() => {
+                setTrainingModalOpen(false);
+                setSelectedPet(null);
+              }}
+              onTrain={handleTrainPet}
+              loading={operationLoading.train}
+            />
+          </ModalContent>
+        </ModalOverlay>
       )}
       
       {detailsModalOpen && selectedPet && (
-        <PetDetailsModal
-          pet={selectedPet}
-          onClose={() => {
-            setDetailsModalOpen(false);
-            setSelectedPet(null);
-          }}
-        />
+        <ModalOverlay>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>Подробности о питомце {selectedPet.customName || selectedPet.petType?.name || selectedPet.name}</ModalTitle>
+              <ModalCloseButton onClick={() => {
+                setDetailsModalOpen(false);
+                setSelectedPet(null);
+              }}>×</ModalCloseButton>
+            </ModalHeader>
+            <PetDetailsModal
+              pet={selectedPet}
+              onClose={() => {
+                setDetailsModalOpen(false);
+                setSelectedPet(null);
+              }}
+            />
+          </ModalContent>
+        </ModalOverlay>
       )}
-    </div>
+    </SpiritPetsContainer>
   );
 };
 
