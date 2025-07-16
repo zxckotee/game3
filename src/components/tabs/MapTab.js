@@ -8,9 +8,19 @@ import { getAllLocations } from '../../services/location-api';
 
 const Container = styled.div`
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
-  overflow-x: hidden; /* Предотвращает горизонтальную прокрутку */
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  overflow-x: hidden;
+  background: linear-gradient(135deg,
+    rgba(26, 35, 126, 0.1) 0%,
+    rgba(74, 20, 140, 0.1) 25%,
+    rgba(144, 19, 254, 0.05) 50%,
+    rgba(212, 175, 55, 0.1) 75%,
+    rgba(244, 208, 63, 0.05) 100%
+  );
+  min-height: 100vh;
+  padding: 20px;
+  border-radius: 16px;
 `;
 
 // Анимации
@@ -55,14 +65,36 @@ const thunderAnimation = keyframes`
 
 // Стилизованный контейнер для времени суток и погоды
 const TimeWeatherPanel = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(212, 175, 55, 0.05) 100%
+  );
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover::before {
+    left: 100%;
+  }
 `;
 
 // Компонент верхней строки с временем и погодой
@@ -81,23 +113,28 @@ const InfoColumn = styled.div`
 
 // Метка (заголовок)
 const InfoLabel = styled.div`
-  color: #aaa;
-  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 // Значение
 const InfoValue = styled.div`
-  color: #f0f0f0;
-  font-size: 1rem;
+  color: #f4d03f;
+  font-size: 1.1rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 `;
 
 // Анимированная иконка
 const AnimatedIcon = styled.div`
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   animation: ${fadeInOut} 3s infinite ease-in-out;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   animation: ${floatAnimation} 3s infinite ease-in-out;
 `;
 
@@ -318,13 +355,34 @@ const getWeatherIcon = (weatherType) => {
 
 // Стилизованная карта с эффектами погоды
 const MapArea = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(212, 175, 55, 0.03) 100%
+  );
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 20px;
+  padding: 24px;
   position: relative;
   overflow: hidden;
   transition: all 0.5s ease-in-out;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg,
+      rgba(212, 175, 55, 0.05) 0%,
+      transparent 50%,
+      rgba(244, 208, 63, 0.05) 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
   
   /* Эффект времени суток */
   ${props => {
@@ -483,213 +541,344 @@ const EventOverlay = styled.div`
 const MapGrid = styled.div`
   display: grid;
   grid-template-columns: ${props => `repeat(${props.locationCount || 7}, 1fr)`};
-  gap: 2px;
+  gap: 6px;
   width: 100%;
   height: 100%;
-  min-height: 500px;
+  min-height: 520px;
+  position: relative;
+  z-index: 2;
 `;
 
 const MapCell = styled.div`
   background: ${props => props.backgroundImage
-    ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${props.backgroundImage})`
-    : (props.type === 'mountain' ? '#8B4513' :
-       props.type === 'forest' ? '#228B22' :
-       props.type === 'water' ? '#4682B4' :
-       props.type === 'city' ? '#DAA520' :
-       props.type === 'dungeon' ? '#800000' :
-       props.type === 'swamp' ? '#556B2F' :
-       props.type === 'cave' ? '#4A4A4A' :
-       props.type === 'desert' ? '#CD853F' :
-       props.type === 'tower' ? '#9370DB' : '#556B2F')};
+    ? `linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)), url(${props.backgroundImage})`
+    : (props.type === 'mountain' ? 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)' :
+       props.type === 'forest' ? 'linear-gradient(135deg, #228B22 0%, #32CD32 100%)' :
+       props.type === 'water' ? 'linear-gradient(135deg, #4682B4 0%, #87CEEB 100%)' :
+       props.type === 'city' ? 'linear-gradient(135deg, #DAA520 0%, #FFD700 100%)' :
+       props.type === 'dungeon' ? 'linear-gradient(135deg, #800000 0%, #A52A2A 100%)' :
+       props.type === 'swamp' ? 'linear-gradient(135deg, #556B2F 0%, #6B8E23 100%)' :
+       props.type === 'cave' ? 'linear-gradient(135deg, #4A4A4A 0%, #696969 100%)' :
+       props.type === 'desert' ? 'linear-gradient(135deg, #CD853F 0%, #DEB887 100%)' :
+       props.type === 'tower' ? 'linear-gradient(135deg, #9370DB 0%, #BA55D3 100%)' : 'linear-gradient(135deg, #556B2F 0%, #6B8E23 100%)')};
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border: 2px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
   cursor: pointer;
   position: relative;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
   
-  &:hover {
-    transform: scale(1.05);
-    z-index: 1;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+    transition: left 0.5s ease;
   }
   
-  ${props => props.isPlayerLocation && `
+  &:hover {
+    transform: scale(1.08) translateY(-4px);
+    z-index: 10;
+    box-shadow: 0 12px 30px rgba(212, 175, 55, 0.3);
+    border-color: rgba(212, 175, 55, 0.6);
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  ${props => props.isPlayerLocation && css`
     &::after {
       content: '●';
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: #fff;
-      font-size: 1.2rem;
-      text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-      z-index: 2;
+      color: #f4d03f;
+      font-size: 1.4rem;
+      text-shadow: 0 0 8px rgba(244, 208, 63, 0.8);
+      z-index: 3;
+      animation: ${floatAnimation} 2s ease-in-out infinite;
     }
   `}
 `;
 
 const LocationInfo = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(212, 175, 55, 0.05) 100%
+  );
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover::before {
+    left: 100%;
+  }
 `;
 
 const LocationHeader = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  position: relative;
 `;
 
 const LocationName = styled.h2`
-  color: #d4af37;
-  margin: 0 0 5px;
+  background: linear-gradient(135deg, #f4d03f 0%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 `;
 
 const LocationType = styled.div`
-  color: #aaa;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const LocationDescription = styled.p`
-  color: #f0f0f0;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  margin: 0 0 20px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0 0 24px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const ResourcesList = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 24px;
 `;
 
 const ResourceItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 10px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(212, 175, 55, 0.1) 100%);
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-1px);
+  }
 `;
 
 const ResourceLabel = styled.span`
-  color: #aaa;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  font-size: 0.9rem;
 `;
 
 const ResourceValue = styled.span`
-  color: #f0f0f0;
+  color: #f4d03f;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const ActionButton = styled.button`
   width: 100%;
-  padding: 10px;
-  background: rgba(212, 175, 55, 0.2);
-  border: 1px solid #d4af37;
-  border-radius: 4px;
-  color: #d4af37;
-  font-size: 0.9rem;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 208, 63, 0.1) 100%);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 12px;
+  color: #f4d03f;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  margin-bottom: 10px;
-  transition: all 0.2s ease;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    background: rgba(212, 175, 55, 0.3);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(244, 208, 63, 0.2) 100%);
+    border-color: rgba(212, 175, 55, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.2);
+    
+    &::before {
+      left: 100%;
+    }
   }
   
   &:disabled {
-    background: #333;
-    border-color: #666;
-    color: #666;
+    background: linear-gradient(135deg, rgba(100, 100, 100, 0.2) 0%, rgba(80, 80, 80, 0.1) 100%);
+    border-color: rgba(150, 150, 150, 0.3);
+    color: rgba(150, 150, 150, 0.6);
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    
+    &::before {
+      display: none;
+    }
   }
 `;
 
 const BackButton = styled(ActionButton)`
-  background: rgba(150, 150, 150, 0.2);
-  border-color: #aaa;
-  color: #aaa;
+  background: linear-gradient(135deg, rgba(150, 150, 150, 0.2) 0%, rgba(120, 120, 120, 0.1) 100%);
+  border-color: rgba(170, 170, 170, 0.4);
+  color: rgba(200, 200, 200, 0.9);
   
   &:hover {
-    background: rgba(150, 150, 150, 0.3);
+    background: linear-gradient(135deg, rgba(150, 150, 150, 0.3) 0%, rgba(120, 120, 120, 0.2) 100%);
+    border-color: rgba(170, 170, 170, 0.6);
+    box-shadow: 0 6px 20px rgba(150, 150, 150, 0.2);
   }
 `;
 
 const EnemiesSection = styled.div`
-  margin: 20px 0;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
+  margin: 24px 0;
+  padding: 20px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(212, 175, 55, 0.03) 100%);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 8px;
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
 `;
 
 const EnemiesSectionTitle = styled.h4`
-  color: #d4af37;
-  margin: 0 0 15px 0;
-  font-size: 1rem;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-  padding-bottom: 8px;
+  background: linear-gradient(135deg, #f4d03f 0%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 18px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 `;
 
 const EnemiesList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 `;
 
 const EnemyCard = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    background: rgba(0, 0, 0, 0.4);
-    border-color: rgba(212, 175, 55, 0.3);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(212, 175, 55, 0.1) 100%);
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.15);
+    
+    &::before {
+      left: 100%;
+    }
   }
 `;
 
 const EnemyInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 `;
 
 const EnemyName = styled.span`
-  color: #f0f0f0;
-  font-size: 0.9rem;
-  font-weight: 500;
+  color: #f4d03f;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const EnemyDetails = styled.span`
-  color: #aaa;
-  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  font-weight: 500;
 `;
 
 const EnemyLevel = styled.span`
-  color: #d4af37;
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 2px 6px;
-  background: rgba(212, 175, 55, 0.2);
-  border-radius: 3px;
+  color: #f4d03f;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 208, 63, 0.1) 100%);
+  backdrop-filter: blur(3px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const NoEnemiesMessage = styled.div`
-  color: #aaa;
-  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
   text-align: center;
-  padding: 10px;
+  padding: 16px;
   font-style: italic;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 
