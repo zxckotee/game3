@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
 import { startCombat as startCombatAPI, performCombatAction, getCombatState } from '../../services/combat-api';
 const { getCultivationProgress } = require('../../services/cultivation-api');
@@ -8,11 +8,49 @@ import { enemies } from '../../data/enemies-adapter';
 import PveBattleInterface from '../battle/PveBattleInterface';
 import BattleResult from '../battle/BattleResult';
 
+// Анимации
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const shimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+`;
+
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+`;
+
 const Container = styled.div`
   position: relative;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: linear-gradient(135deg,
+    rgba(26, 35, 126, 0.1) 0%,
+    rgba(74, 20, 140, 0.1) 25%,
+    rgba(144, 19, 254, 0.05) 50%,
+    rgba(212, 175, 55, 0.1) 75%,
+    rgba(244, 208, 63, 0.05) 100%
+  );
+  overflow: hidden;
+  animation: fadeIn 0.6s ease-out;
 `;
 
 const WorldArea = styled.div`
@@ -22,63 +60,121 @@ const WorldArea = styled.div`
   display: flex;
   flex-direction: column;
   gap: 20px;
+  color: #f0f0f0;
+  box-sizing: border-box;
 `;
 
 
 
 const AreaInfo = styled.div`
-  background: rgba(30, 30, 30, 0.95);
-  border-radius: 8px;
-  padding: 20px;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(212, 175, 55, 0.05) 100%
+  );
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #d4af37, #f4d03f, #d4af37);
+  }
 `;
 
 const AreaTitle = styled.h2`
-  color: #d4af37;
-  margin: 0 0 10px 0;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: bold;
 `;
 
 const AreaDescription = styled.p`
-  color: #aaa;
+  color: rgba(240, 240, 240, 0.9);
   margin: 0;
   line-height: 1.6;
+  font-size: 16px;
 `;
 
 const EnemiesList = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 100%;
+  overflow: hidden;
 `;
 
 const EnemyCard = styled.div`
-  background: rgba(30, 30, 30, 0.95);
-  border-radius: 8px;
-  padding: 15px;
-  cursor: pointer;
+  background: linear-gradient(145deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(212, 175, 55, 0.05) 100%
+  );
+  backdrop-filter: blur(10px);
+  border: 1px solid ${props => props.available ? 'rgba(212, 175, 55, 0.3)' : 'rgba(150, 150, 150, 0.2)'};
+  border-radius: 16px;
+  padding: 20px;
+  cursor: ${props => props.available ? 'pointer' : 'not-allowed'};
   transition: all 0.3s ease;
-  border: 1px solid transparent;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   ${props => props.available && `
     &:hover {
-      border-color: #d4af37;
-      transform: translateY(-2px);
+      border-color: rgba(212, 175, 55, 0.6);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(212, 175, 55, 0.2);
+      
+      &::before {
+        left: 100%;
+      }
     }
   `}
   
   ${props => !props.available && `
-    opacity: 0.7;
-    cursor: not-allowed;
+    opacity: 0.6;
+    filter: grayscale(0.3);
   `}
 `;
 
 const EnemyHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 `;
 
 const EnemyIcon = styled.div`
   font-size: 2rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 8px;
 `;
 
 const EnemyInfo = styled.div`
@@ -86,50 +182,94 @@ const EnemyInfo = styled.div`
 `;
 
 const EnemyName = styled.h3`
-  color: #d4af37;
-  margin: 0;
-  font-size: 1.1rem;
+  background: linear-gradient(135deg, #f4d03f 0%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 `;
 
 const EnemyLevel = styled.div`
-  color: ${props => props.available ? '#aaa' : '#f44336'};
-  font-size: 0.9rem;
+  color: ${props => props.available ? 'rgba(255, 255, 255, 0.8)' : '#f44336'};
+  font-size: 13px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 `;
 
 const EnemyDescription = styled.p`
-  color: #aaa;
-  margin: 0 0 10px 0;
-  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const EnemyStats = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 5px;
-  font-size: 0.8rem;
-  color: #aaa;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
 `;
 
 const StatRow = styled.div`
   display: flex;
   justify-content: space-between;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+  backdrop-filter: blur(5px);
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  
+  span:first-child {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+  }
+  
+  span:last-child {
+    color: #f4d03f;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
 `;
 
 const RewardsList = styled.div`
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(212, 175, 55, 0.3);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.05) 0%, rgba(244, 208, 63, 0.02) 100%);
+  border-radius: 12px;
+  padding: 12px;
 `;
 
 const RewardItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.8rem;
-  color: #aaa;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(2px);
+  }
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
   
   span {
-    color: #d4af37;
+    color: #f4d03f;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
 `;
 
@@ -248,7 +388,7 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
     console.error('areaEnemies не является массивом:', areaEnemies);
   } else {
     try {
-      // API возвращает полные объекты врагов из базы данных
+      // API возвращает полные объекты врагов из базы данных, используем их напрямую
       availableEnemies = areaEnemies.map(enemy => {
         if (!enemy || typeof enemy !== 'object') {
           console.error('Некорректный объект enemy:', enemy);
@@ -261,12 +401,11 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
           return null;
         }
         
-        // Преобразуем данные врага в формат, ожидаемый CombatArea
+        // Используем данные напрямую из API с минимальными дополнениями
         const formattedEnemy = {
-          id: enemy.id,
-          name: enemy.name,
-          level: enemy.level || 1,
-          description: enemy.description || '',
+          ...enemy, // Используем все данные из API
+          // Добавляем только недостающие поля с fallback значениями
+          icon: enemy.icon || '👹',
           stats: enemy.stats || {
             health: 100,
             energy: 50,
@@ -274,10 +413,10 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
             spiritualDefense: 10
           },
           attacks: enemy.attacks || [],
-          experience: enemy.experience || 10,
           currency: enemy.currency || { min: 1, max: 5 },
           loot: enemy.loot || [],
-          available: state.player.cultivation.level >= (enemy.level || 1)
+          // Используем requiredLevel из API для проверки доступности
+          available: state.player.cultivation.level >= (enemy.requiredLevel || enemy.level || 1)
         };
         
         return formattedEnemy;
@@ -414,14 +553,10 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
       <WorldArea>
         <AreaInfo>
           <AreaTitle>
-            {areaId === 'starting_area' && 'Тренировочная площадка'}
-            {areaId === 'mountain_path' && 'Горная тропа'}
-            {areaId === 'ancient_ruins' && 'Древние руины'}
+            {locationData?.name || 'Неизвестная локация'}
           </AreaTitle>
           <AreaDescription>
-            {areaId === 'starting_area' && 'Безопасное место для начинающих культиваторов. Здесь обитают слабые духовные звери, идеально подходящие для тренировки.'}
-            {areaId === 'mountain_path' && 'Извилистая тропа, ведущая в горы. Здесь можно встретить более сильных противников и найти редкие ресурсы.'}
-            {areaId === 'ancient_ruins' && 'Загадочные руины древней цивилизации. В этом опасном месте обитают могущественные духи и хранятся древние сокровища.'}
+            {locationData?.description || 'Описание локации недоступно.'}
           </AreaDescription>
         </AreaInfo>
         

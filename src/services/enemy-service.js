@@ -407,7 +407,7 @@ exports.getEnemiesByLocation = async function(locationId) {
     
     // Загружаем точки появления врагов для указанной локации
     const spawns = await EnemySpawn.findAll({
-      where: { location_id: locationId }
+      where: { locationId: locationId }
     });
     
     console.log(`Найдено ${spawns.length} точек появления для локации ${locationId}`);
@@ -418,7 +418,7 @@ exports.getEnemiesByLocation = async function(locationId) {
     }
     
     // Собираем ID врагов
-    const enemyIds = spawns.map(spawn => spawn.enemy_id);
+    const enemyIds = spawns.map(spawn => spawn.enemyId);
     console.log(`ID врагов для локации ${locationId}:`, enemyIds);
     
     // Загружаем врагов с их связями
@@ -433,10 +433,11 @@ exports.getEnemiesByLocation = async function(locationId) {
     
     // Преобразуем в удобный формат для клиента и добавляем шансы появления
     const formattedEnemies = enemies.map(enemy => {
-      const spawn = spawns.find(s => s.enemy_id === enemy.id);
+      const spawn = spawns.find(s => s.enemyId === enemy.id);
       return {
         ...formatEnemy(enemy),
-        spawnChance: spawn ? spawn.spawn_chance : 0
+        spawnChance: spawn ? spawn.weight : 0, // Используем weight вместо spawn_chance
+        requiredLevel: spawn ? spawn.minLevel : enemy.level // Добавляем requiredLevel из minLevel точки появления
       };
     });
     
