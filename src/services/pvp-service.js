@@ -1974,6 +1974,7 @@ class PvPService {
       const PvPAction = modelRegistry.getModel('PvPAction');
       const User = modelRegistry.getModel('User');
       const PvPMode = modelRegistry.getModel('PvPMode');
+      const sequelize = PvPRoom.sequelize;
       
       // Получаем данные комнаты с ассоциациями
       const room = await PvPRoom.findByPk(roomId, {
@@ -2026,7 +2027,6 @@ class PvPService {
       });
       
       // Обновляем длительность эффектов для каждого участника
-      const sequelize = PvPParticipant.sequelize;
       await sequelize.transaction(async (transaction) => {
         for (const participant of participants) {
           // Обновляем длительность эффектов ПЕРЕД показом на фронтенде
@@ -2254,6 +2254,86 @@ class PvPService {
               cooldowns: updatedCooldowns
             });
           }
+        }
+      }
+      
+      // ИСПРАВЛЕНИЕ: Проверяем, не завершился ли бой после применения периодических эффектов
+      // Проверяем состояние команд после применения периодических эффектов
+      const teamStatus = await PvPParticipant.findAll({
+        where: { room_id: roomId },
+        attributes: [
+          'team',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'total'],
+          [
+            sequelize.fn(
+              'SUM',
+              sequelize.literal(`CASE WHEN current_hp <= 0 OR status = 'defeated' THEN 1 ELSE 0 END`)
+            ),
+            'defeated'
+          ]
+        ],
+        group: ['team']
+      });
+      
+      let battleCompleted = false;
+      let winnerTeam = null;
+      
+      // Проверяем каждую команду на полное поражение
+      for (const teamData of teamStatus) {
+        const teamInfo = teamData.get({ plain: true });
+        const total = parseInt(teamInfo.total) || 0;
+        const defeated = parseInt(teamInfo.defeated) || 0;
+        
+        console.log(`[PvP] Проверка команды ${teamInfo.team} после периодических эффектов: всего ${total}, побеждено ${defeated}`);
+        
+        // Если в команде есть участники и все они побеждены
+        if (total > 0 && defeated >= total) {
+          winnerTeam = teamInfo.team === 1 ? 2 : 1;
+          battleCompleted = true;
+          console.log(`[PvP] Все участники команды ${teamInfo.team} побеждены от периодических эффектов! Победила команда ${winnerTeam}`);
+          break;
+        }
+      }
+      
+      // Если бой завершен от периодических эффектов, обновляем статус комнаты
+      if (battleCompleted) {
+        console.log(`[PvP] Бой в комнате ${roomId} завершен от периодических эффектов. Победитель: команда ${winnerTeam}`);
+        
+        const room = await PvPRoom.findByPk(roomId);
+        if (room && room.status === 'in_progress') {
+          // Используем транзакцию для атомарного обновления
+          await sequelize.transaction(async (battleEndTransaction) => {
+            // Обновляем статус комнаты
+            await room.update({
+              status: 'completed',
+              end_time: new Date(),
+              winner_team: winnerTeam
+            }, { transaction: battleEndTransaction });
+            
+            // Устанавливаем статус всех участников на 'inactive'
+            await PvPParticipant.update(
+              { status: 'inactive' },
+              {
+                where: { room_id: roomId },
+                transaction: battleEndTransaction
+              }
+            );
+            
+            // Обновляем историю боёв и рейтинги участников
+            try {
+              await PvPService.updateBattleHistoryAndRatings(roomId, winnerTeam, battleEndTransaction);
+              console.log(`[PvP] Успешно обновлена история боя и рейтинги для комнаты ${roomId} (завершение от эффектов)`);
+            } catch (updateError) {
+              console.error(`[PvP] Ошибка при обновлении истории боя и рейтингов (завершение от эффектов):`, updateError);
+            }
+            
+            // Полностью распускаем комнату
+            await room.update({
+              status: 'dismissed'
+            }, { transaction: battleEndTransaction });
+            
+            console.log(`[PvP] Комната ${roomId} распущена после завершения боя от периодических эффектов`);
+          });
         }
       }
       
