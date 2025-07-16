@@ -14,11 +14,6 @@ const Container = styled.div`
   gap: 24px;
   padding: 20px;
   min-height: 100vh;
-  background: linear-gradient(135deg,
-    rgba(15, 15, 35, 0.95) 0%,
-    rgba(25, 25, 45, 0.9) 50%,
-    rgba(35, 35, 55, 0.85) 100%
-  );
   animation: fadeIn 0.6s ease-out;
   
   @keyframes fadeIn {
@@ -44,10 +39,11 @@ const Container = styled.div`
 
 const EquipmentDisplay = styled.div`
   background: linear-gradient(145deg,
-    rgba(20, 25, 45, 0.95) 0%,
-    rgba(30, 35, 55, 0.9) 50%,
-    rgba(25, 30, 50, 0.95) 100%
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(40, 30, 20, 0.4) 50%,
+    rgba(20, 15, 10, 0.6) 100%
   );
+  backdrop-filter: blur(15px);
   border: 2px solid transparent;
   background-clip: padding-box;
   border-radius: 16px;
@@ -86,49 +82,22 @@ const EquipmentDisplay = styled.div`
     left: -50%;
     width: 200%;
     height: 200%;
-    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.03), transparent);
     transform: rotate(45deg);
-    animation: shimmer 3s infinite;
+    animation: shimmer 4s infinite;
     pointer-events: none;
   }
   
-  &::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg,
-      #d4af37,
-      #f4d03f,
-      #d4af37,
-      #b7950b
-    );
-    border-radius: 16px;
-    z-index: -1;
-    animation: borderGlow 3s ease-in-out infinite alternate;
-  }
-  
-  @keyframes borderGlow {
-    0% {
-      opacity: 0.6;
-      filter: blur(0px);
-    }
-    100% {
-      opacity: 0.8;
-      filter: blur(1px);
-    }
-  }
 `;
 
 const EquipmentSlot = styled.div`
   background: linear-gradient(135deg,
-    rgba(40, 45, 65, 0.8) 0%,
-    rgba(30, 35, 55, 0.9) 50%,
-    rgba(35, 40, 60, 0.8) 100%
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(40, 30, 20, 0.3) 50%,
+    rgba(20, 15, 10, 0.5) 100%
   );
-  border: 2px solid rgba(100, 100, 120, 0.3);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(212, 175, 55, 0.2);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -150,7 +119,7 @@ const EquipmentSlot = styled.div`
     bottom: 0;
     background: linear-gradient(45deg,
       transparent 30%,
-      rgba(255, 255, 255, 0.05) 50%,
+      rgba(212, 175, 55, 0.1) 50%,
       transparent 70%
     );
     opacity: 0;
@@ -160,6 +129,11 @@ const EquipmentSlot = styled.div`
   &:hover {
     transform: translateY(-2px) scale(1.02);
     border-color: rgba(212, 175, 55, 0.6);
+    background: linear-gradient(135deg,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(40, 30, 20, 0.4) 50%,
+      rgba(20, 15, 10, 0.6) 100%
+    );
     box-shadow:
       0 8px 25px rgba(0, 0, 0, 0.3),
       0 0 20px rgba(212, 175, 55, 0.2),
@@ -308,19 +282,20 @@ const ItemImage = styled.img`
 const ItemIconFallback = styled.div`
   width: ${props => props.size === 'large' ? '64px' : props.size === 'widget' ? '80px' : '48px'};
   height: ${props => props.size === 'large' ? '64px' : props.size === 'widget' ? '80px' : '48px'};
-  background: ${props => props.type === 'weapon' ? 'linear-gradient(135deg, #f44336, #d32f2f)' :
-    props.type === 'armor' ? 'linear-gradient(135deg, #2196f3, #1976d2)' :
-    props.type === 'accessory' ? 'linear-gradient(135deg, #9c27b0, #7b1fa2)' :
-    props.type === 'artifact' ? 'linear-gradient(135deg, #ff9800, #f57c00)' :
-    props.type === 'material' ? 'linear-gradient(135deg, #4caf50, #388e3c)' :
-    props.type === 'book' ? 'linear-gradient(135deg, #795548, #5d4037)' : 'linear-gradient(135deg, #666, #424242)'};
+  background: ${props => props.type === 'weapon' ? 'linear-gradient(135deg, #d4af37, #b7950b)' :
+    props.type === 'armor' ? 'linear-gradient(135deg, #d4af37, #f4d03f)' :
+    props.type === 'accessory' ? 'linear-gradient(135deg, #f4d03f, #d4af37)' :
+    props.type === 'artifact' ? 'linear-gradient(135deg, #b7950b, #d4af37)' :
+    props.type === 'material' ? 'linear-gradient(135deg, #d4af37, #f4d03f)' :
+    props.type === 'book' ? 'linear-gradient(135deg, #b7950b, #d4af37)' : 'linear-gradient(135deg, #d4af37, #b7950b)'};
   border-radius: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(212, 175, 55, 0.3);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   position: relative;
   transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -392,9 +367,9 @@ const ItemIcon = ({ item, type, size = 'small' }) => {
 
 const ItemName = styled.div`
   color: ${props => props.rarity === 'common' ? '#ffffff' :
-    props.rarity === 'uncommon' ? '#64b5f6' :
-    props.rarity === 'rare' ? '#ba68c8' :
-    props.rarity === 'epic' ? '#ffb74d' : '#ffd54f'};
+    props.rarity === 'uncommon' ? '#f4d03f' :
+    props.rarity === 'rare' ? '#d4af37' :
+    props.rarity === 'epic' ? '#b7950b' : '#ffd54f'};
   font-size: 0.85rem;
   font-weight: 600;
   margin-top: 8px;
@@ -409,9 +384,9 @@ const ItemName = styled.div`
   
   ${props => props.rarity !== 'common' && `
     background: linear-gradient(45deg,
-      ${props.rarity === 'uncommon' ? '#2196f3, #64b5f6' :
-        props.rarity === 'rare' ? '#9c27b0, #ba68c8' :
-        props.rarity === 'epic' ? '#ff9800, #ffb74d' : '#d4af37, #ffd54f'}
+      ${props.rarity === 'uncommon' ? '#f4d03f, #d4af37' :
+        props.rarity === 'rare' ? '#d4af37, #b7950b' :
+        props.rarity === 'epic' ? '#b7950b, #d4af37' : '#d4af37, #ffd54f'}
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -422,12 +397,12 @@ const ItemName = styled.div`
 
 const StatsPanel = styled.div`
   background: linear-gradient(145deg,
-    rgba(20, 25, 45, 0.95) 0%,
-    rgba(30, 35, 55, 0.9) 50%,
-    rgba(25, 30, 50, 0.95) 100%
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(40, 30, 20, 0.3) 50%,
+    rgba(20, 15, 10, 0.5) 100%
   );
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(212, 175, 55, 0.3);
   border-radius: 16px;
   padding: 24px;
   display: flex;
@@ -436,7 +411,7 @@ const StatsPanel = styled.div`
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 0 1px rgba(212, 175, 55, 0.3);
+    0 0 20px rgba(212, 175, 55, 0.2);
   position: relative;
   overflow: hidden;
   
@@ -518,10 +493,10 @@ const UnequipButton = styled.button`
 const DropButton = styled.button`
   width: 100%;
   padding: 12px;
-  background: linear-gradient(45deg, rgba(156, 39, 176, 0.2), rgba(186, 104, 200, 0.2));
-  border: 1px solid rgba(156, 39, 176, 0.4);
+  background: linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2));
+  border: 1px solid rgba(212, 175, 55, 0.4);
   border-radius: 8px;
-  color: #9c27b0;
+  color: #d4af37;
   font-size: 0.9rem;
   font-weight: bold;
   cursor: pointer;
@@ -529,6 +504,7 @@ const DropButton = styled.button`
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(5px);
   
   &::before {
     content: '';
@@ -537,14 +513,15 @@ const DropButton = styled.button`
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(156, 39, 176, 0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
     transition: left 0.5s ease;
   }
   
   &:hover:not(:disabled) {
-    background: linear-gradient(45deg, rgba(156, 39, 176, 0.3), rgba(186, 104, 200, 0.3));
+    background: linear-gradient(45deg, rgba(212, 175, 55, 0.3), rgba(244, 208, 63, 0.3));
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(156, 39, 176, 0.2);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+    color: #f4d03f;
     
     &::before {
       left: 100%;
@@ -631,10 +608,11 @@ const StatItem = styled.div`
   justify-content: space-between;
   padding: 12px 16px;
   background: linear-gradient(135deg,
-    rgba(40, 45, 65, 0.6) 0%,
-    rgba(50, 55, 75, 0.4) 100%
+    rgba(0, 0, 0, 0.4) 0%,
+    rgba(40, 30, 20, 0.2) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
   border-radius: 8px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -649,7 +627,7 @@ const StatItem = styled.div`
     bottom: 0;
     background: linear-gradient(45deg,
       transparent 30%,
-      rgba(255, 255, 255, 0.05) 50%,
+      rgba(212, 175, 55, 0.1) 50%,
       transparent 70%
     );
     opacity: 0;
@@ -659,6 +637,10 @@ const StatItem = styled.div`
   &:hover {
     transform: translateY(-2px);
     border-color: rgba(212, 175, 55, 0.4);
+    background: linear-gradient(135deg,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(40, 30, 20, 0.3) 100%
+    );
     box-shadow:
       0 4px 12px rgba(0, 0, 0, 0.2),
       0 0 20px rgba(212, 175, 55, 0.1);
@@ -781,9 +763,9 @@ const ItemSlot = styled.div`
   aspect-ratio: 1;
   background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
   border: 1px solid ${props => props.rarity === 'common' ? 'rgba(102, 102, 102, 0.4)' :
-    props.rarity === 'uncommon' ? 'rgba(33, 150, 243, 0.4)' :
-    props.rarity === 'rare' ? 'rgba(156, 39, 176, 0.4)' :
-    props.rarity === 'epic' ? 'rgba(255, 152, 0, 0.4)' : 'rgba(212, 175, 55, 0.4)'};
+    props.rarity === 'uncommon' ? 'rgba(244, 208, 63, 0.4)' :
+    props.rarity === 'rare' ? 'rgba(212, 175, 55, 0.4)' :
+    props.rarity === 'epic' ? 'rgba(183, 149, 11, 0.4)' : 'rgba(212, 175, 55, 0.4)'};
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -793,6 +775,7 @@ const ItemSlot = styled.div`
   cursor: pointer;
   transition: all 0.3s ease;
   overflow: hidden;
+  backdrop-filter: blur(5px);
   
   &::before {
     content: '';
@@ -802,22 +785,22 @@ const ItemSlot = styled.div`
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, transparent, ${props => props.rarity === 'common' ? 'rgba(102, 102, 102, 0.1)' :
-      props.rarity === 'uncommon' ? 'rgba(33, 150, 243, 0.1)' :
-      props.rarity === 'rare' ? 'rgba(156, 39, 176, 0.1)' :
-      props.rarity === 'epic' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(212, 175, 55, 0.1)'}, transparent);
+      props.rarity === 'uncommon' ? 'rgba(244, 208, 63, 0.1)' :
+      props.rarity === 'rare' ? 'rgba(212, 175, 55, 0.1)' :
+      props.rarity === 'epic' ? 'rgba(183, 149, 11, 0.1)' : 'rgba(212, 175, 55, 0.1)'}, transparent);
     transition: left 0.5s ease;
   }
   
   &:hover {
     transform: translateY(-2px) scale(1.05);
     border-color: ${props => props.rarity === 'common' ? 'rgba(102, 102, 102, 0.6)' :
-      props.rarity === 'uncommon' ? 'rgba(33, 150, 243, 0.6)' :
-      props.rarity === 'rare' ? 'rgba(156, 39, 176, 0.6)' :
-      props.rarity === 'epic' ? 'rgba(255, 152, 0, 0.6)' : 'rgba(212, 175, 55, 0.6)'};
+      props.rarity === 'uncommon' ? 'rgba(244, 208, 63, 0.6)' :
+      props.rarity === 'rare' ? 'rgba(212, 175, 55, 0.6)' :
+      props.rarity === 'epic' ? 'rgba(183, 149, 11, 0.6)' : 'rgba(212, 175, 55, 0.6)'};
     box-shadow: 0 8px 25px ${props => props.rarity === 'common' ? 'rgba(102, 102, 102, 0.15)' :
-      props.rarity === 'uncommon' ? 'rgba(33, 150, 243, 0.15)' :
-      props.rarity === 'rare' ? 'rgba(156, 39, 176, 0.15)' :
-      props.rarity === 'epic' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(212, 175, 55, 0.15)'};
+      props.rarity === 'uncommon' ? 'rgba(244, 208, 63, 0.15)' :
+      props.rarity === 'rare' ? 'rgba(212, 175, 55, 0.15)' :
+      props.rarity === 'epic' ? 'rgba(183, 149, 11, 0.15)' : 'rgba(212, 175, 55, 0.15)'};
     
     &::before {
       left: 100%;
@@ -827,22 +810,28 @@ const ItemSlot = styled.div`
   &.equipped {
     border-width: 2px;
     box-shadow: 0 0 15px ${props => props.rarity === 'common' ? 'rgba(102, 102, 102, 0.3)' :
-      props.rarity === 'uncommon' ? 'rgba(33, 150, 243, 0.3)' :
-      props.rarity === 'rare' ? 'rgba(156, 39, 176, 0.3)' :
-      props.rarity === 'epic' ? 'rgba(255, 152, 0, 0.3)' : 'rgba(212, 175, 55, 0.3)'};
+      props.rarity === 'uncommon' ? 'rgba(244, 208, 63, 0.3)' :
+      props.rarity === 'rare' ? 'rgba(212, 175, 55, 0.3)' :
+      props.rarity === 'epic' ? 'rgba(183, 149, 11, 0.3)' : 'rgba(212, 175, 55, 0.3)'};
   }
 `;
 
 // Styled components для виджета выбранного предмета
 const SelectedItemWidget = styled.div`
-  background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 50%, #0f0f1f 100%);
-  border: 2px solid #4a4a6a;
+  background: linear-gradient(135deg,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(40, 30, 20, 0.3) 50%,
+    rgba(20, 15, 10, 0.5) 100%
+  );
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(212, 175, 55, 0.3);
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 20px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 20px rgba(212, 175, 55, 0.2);
   animation: fadeInUp 0.3s ease-out;
   position: relative;
   overflow: hidden;
@@ -854,7 +843,7 @@ const SelectedItemWidget = styled.div`
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, #6a6a8a, transparent);
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.6), transparent);
   }
 
   @keyframes fadeInUp {
@@ -882,8 +871,12 @@ const ItemImageContainer = styled.div`
   flex-shrink: 0;
   border-radius: 12px;
   overflow: hidden;
-  border: 2px solid #4a4a6a;
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border: 2px solid rgba(212, 175, 55, 0.4);
+  background: linear-gradient(135deg,
+    rgba(0, 0, 0, 0.4) 0%,
+    rgba(40, 30, 20, 0.2) 100%
+  );
+  backdrop-filter: blur(5px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
@@ -899,9 +892,13 @@ const ItemWidgetName = styled.h3`
   margin: 0 0 8px 0;
   font-size: 18px;
   font-weight: 600;
-  color: #e0e0ff;
+  color: #d4af37;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   line-height: 1.2;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const ItemType = styled.div`
@@ -912,8 +909,12 @@ const ItemType = styled.div`
 `;
 
 const ItemStats = styled.div`
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid #3a3a5a;
+  background: linear-gradient(135deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(40, 30, 20, 0.2) 100%
+  );
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
@@ -922,10 +923,14 @@ const ItemStats = styled.div`
 const ItemStatsTitle = styled.div`
   font-size: 14px;
   font-weight: 600;
-  color: #c0c0e0;
+  color: #d4af37;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const ItemStatsList = styled.div`
@@ -993,27 +998,30 @@ const ActionButton = styled.button`
 `;
 
 const UnequipActionButton = styled(ActionButton)`
-  background: linear-gradient(135deg, #4a6741 0%, #2d4025 100%);
-  color: #e0ffe0;
-  border: 1px solid #5a7751;
-  box-shadow: 0 4px 12px rgba(74, 103, 65, 0.3);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(183, 149, 11, 0.4) 100%);
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+  backdrop-filter: blur(5px);
 
   &:hover {
-    background: linear-gradient(135deg, #5a7751 0%, #3d5035 100%);
-    box-shadow: 0 6px 16px rgba(74, 103, 65, 0.4);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.4) 0%, rgba(183, 149, 11, 0.5) 100%);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.3);
+    color: #f4d03f;
     transform: translateY(-1px);
   }
 `;
 
 const DropActionButton = styled(ActionButton)`
-  background: linear-gradient(135deg, #674141 0%, #402525 100%);
-  color: #ffe0e0;
-  border: 1px solid #775151;
-  box-shadow: 0 4px 12px rgba(103, 65, 65, 0.3);
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.2) 0%, rgba(229, 115, 115, 0.3) 100%);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.4);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.2);
+  backdrop-filter: blur(5px);
 
   &:hover {
-    background: linear-gradient(135deg, #775151 0%, #503535 100%);
-    box-shadow: 0 6px 16px rgba(103, 65, 65, 0.4);
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.3) 0%, rgba(229, 115, 115, 0.4) 100%);
+    box-shadow: 0 6px 16px rgba(244, 67, 54, 0.3);
     transform: translateY(-1px);
   }
 `;
@@ -1039,13 +1047,19 @@ const ConfirmationOverlay = styled.div`
 `;
 
 const ConfirmationModal = styled.div`
-  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-  border: 2px solid #444;
+  background: linear-gradient(135deg,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(40, 30, 20, 0.4) 100%
+  );
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(212, 175, 55, 0.4);
   border-radius: 12px;
   padding: 24px;
   min-width: 320px;
   max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(212, 175, 55, 0.2);
   animation: slideIn 0.3s ease-out;
 
   @keyframes slideIn {
@@ -1061,11 +1075,15 @@ const ConfirmationModal = styled.div`
 `;
 
 const ConfirmationTitle = styled.h3`
-  color: #ff6b6b;
+  color: #d4af37;
   margin: 0 0 16px 0;
   font-size: 18px;
   font-weight: 600;
   text-align: center;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const ConfirmationMessage = styled.p`
@@ -1106,20 +1124,22 @@ const ConfirmButton = styled.button`
 `;
 
 const CancelButton = styled.button`
-  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-  color: white;
-  border: 1px solid #6c757d;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(183, 149, 11, 0.3) 100%);
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.4);
   border-radius: 6px;
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+  backdrop-filter: blur(5px);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
 
   &:hover {
-    background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
-    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(183, 149, 11, 0.4) 100%);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+    color: #f4d03f;
     transform: translateY(-1px);
   }
 
