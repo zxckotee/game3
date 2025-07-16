@@ -45,7 +45,7 @@ const sectReducer = (state = initialState, action) => {
   switch (action.type) {
     // Нормализация данных секты
     case ACTION_TYPES.NORMALIZE_SECT_DATA:
-      console.log('Выполняется нормализация данных секты');
+      //console.log('Выполняется нормализация данных секты');
       return normalizeSectData(safeState);
     // Установка информации о секте
     case ACTION_TYPES.SET_SECT:
@@ -198,7 +198,7 @@ const sectReducer = (state = initialState, action) => {
       // Используем функцию нормализации из sectUtils
       const normalizedBenefits = normalizeSectBenefits(action.payload);
       
-      console.log('Обновление бонусов секты. Нормализованные бонусы:', normalizedBenefits);
+     // console.log('Обновление бонусов секты. Нормализованные бонусы:', normalizedBenefits);
       
       // Обновляем также benefits в sect, если она существует
       const updatedSect = state.sect ? {
@@ -218,7 +218,7 @@ const sectReducer = (state = initialState, action) => {
       // Проводим полную нормализацию данных
       const normalizedState = normalizeSectData(newState);
       
-      console.log('Результат нормализации данных секты:', normalizedState);
+      //console.log('Результат нормализации данных секты:', normalizedState);
       
       return normalizedState;
     
@@ -251,11 +251,11 @@ const sectReducer = (state = initialState, action) => {
     // Обновление полных данных секты
     case ACTION_TYPES.UPDATE_SECT_DATA:
       if (!state.sect || !action.payload) {
-        console.warn('Попытка обновить данные секты, но секта не найдена или данные некорректны');
+        //console.warn('Попытка обновить данные секты, но секта не найдена или данные некорректны');
         return state;
       }
       
-      console.log('Обновление данных секты:', action.payload);
+      //console.log('Обновление данных секты:', action.payload);
       
       // Создаем копию данных с нормализованными бонусами, если они есть
       const dataWithNormalizedBenefits = action.payload.benefits 
@@ -280,14 +280,14 @@ const sectReducer = (state = initialState, action) => {
     // Одновременное обновление отношений и лояльности
     case ACTION_TYPES.UPDATE_RELATIONSHIP_AND_LOYALTY:
       if (!action.payload || !action.payload.name || action.payload.value === undefined) {
-        console.warn('⚠️ Невозможно обновить отношения и лояльность: неполные данные', action.payload);
+        //console.warn('⚠️ Невозможно обновить отношения и лояльность: неполные данные', action.payload);
         return state;
       }
       
       // Этот обработчик необходим, чтобы sectReducer тоже реагировал на действие
       // updateRelationshipAndLoyalty, хотя основная обработка происходит 
       // в playerReducer. Это позволяет уведомить оба редуктора об изменении.
-      console.log(`🔄 Получено уведомление об обновлении отношений с "${action.payload.name}" до уровня ${action.payload.value}`);
+      //console.log(`🔄 Получено уведомление об обновлении отношений с "${action.payload.name}" до уровня ${action.payload.value}`);
       
       // Возвращаем текущее состояние, т.к. обновление через playerReducer
       // также влияет на общее состояние приложения

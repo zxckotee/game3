@@ -27,13 +27,13 @@ const calculateSeason = (worldDay) => {
 export const worldReducer = (state, action) => {
   switch (action.type) {
     case ACTION_TYPES.UPDATE_TIME:
-      console.log('🔎🔎🔎 КРИТИЧЕСКАЯ ОТЛАДКА - ПОЛУЧЕН UPDATE_TIME:', {
+      /*console.log('🔎🔎🔎 КРИТИЧЕСКАЯ ОТЛАДКА - ПОЛУЧЕН UPDATE_TIME:', {
         raw_payload: action.payload, // Сырые данные из действия
         raw_day_value: action.payload.day, // Необработанное значение дня
         raw_day_type: typeof action.payload.day, // Тип значения дня
         raw_state_day: state.world?.time?.day, // Текущее значение дня в состоянии
         raw_state_day_type: typeof state.world?.time?.day, // Тип текущего значения дня 
-      });
+      });*/
       
       // world.time является основным источником правды о времени
       // Получаем и преобразуем все временные значения для надежности
@@ -46,7 +46,7 @@ export const worldReducer = (state, action) => {
       // Текущий день для логов
       const currentDay = state.world?.time?.day !== undefined ? Number(state.world.time.day) : 1;
       
-      console.log('🕒 UPDATE_TIME в редьюсере - ПОСЛЕ ПРЕОБРАЗОВАНИЯ:', {
+      /*console.log('🕒 UPDATE_TIME в редьюсере - ПОСЛЕ ПРЕОБРАЗОВАНИЯ:', {
         currentDay,
         newDay,
         parsedNewDay: Number(action.payload.day), // Явное преобразование
@@ -62,18 +62,18 @@ export const worldReducer = (state, action) => {
           after_parse_int: parseInt(action.payload.day),
           after_force_num_check: parseFloat(String(action.payload.day).replace(/[^0-9.-]+/g, ''))
         }
-      });
+      });*/
       
       // Расширенная проверка на смену дня с подробной информацией
       let dayChangedFlag = false;
       if (newDay > currentDay) {
-        console.log('📅📅📅 ДЕНЬ ИЗМЕНИЛСЯ: ' + currentDay + ' -> ' + newDay);
+        //console.log('📅📅📅 ДЕНЬ ИЗМЕНИЛСЯ: ' + currentDay + ' -> ' + newDay);
         dayChangedFlag = true;
       } else if (action.payload.day !== undefined && Number(action.payload.day) <= currentDay) {
-        console.log('⚠️ ВНИМАНИЕ: день не изменился или уменьшился:', {
+        /*console.log('⚠️ ВНИМАНИЕ: день не изменился или уменьшился:', {
           currentDay, 
           newDay: Number(action.payload.day)
-        });
+        });*/
       }
       
       // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Синхронизируем все значения, не только dayCount
@@ -87,12 +87,12 @@ export const worldReducer = (state, action) => {
         (newHour >= 17 && newHour < 20) ? 'вечер' :
         (newHour >= 20 && newHour < 23) ? 'ночь' : 'глубокая ночь';
       
-      console.log('🕒 ОБНОВЛЕНИЕ ВРЕМЕНИ:', {
+      /*console.log('🕒 ОБНОВЛЕНИЕ ВРЕМЕНИ:', {
         hour: newHour,
         minute: newMinute,
         day: newDay,
         season: newSeason
-      });
+      });*/
       
       // УЛУЧШЕННАЯ СИНХРОНИЗАЦИЯ СЕЗОННОГО ДНЯ С УЧЕТОМ ПЕРЕХОДА ЧЕРЕЗ МАКСИМАЛЬНУЮ ДЛИНУ СЕЗОНА
       
@@ -104,19 +104,19 @@ export const worldReducer = (state, action) => {
         calculatedSeasonDay = calculateSeasonDay(newDay);
         calculatedSeason = calculateSeason(newDay);
         
-        console.log('🌈 РАСЧЕТ СЕЗОНА ПРИ ПЕРЕХОДЕ ЧЕРЕЗ МАКСИМАЛЬНУЮ ДЛИНУ:', {
+        /*console.log('🌈 РАСЧЕТ СЕЗОНА ПРИ ПЕРЕХОДЕ ЧЕРЕЗ МАКСИМАЛЬНУЮ ДЛИНУ:', {
           мировой_день: newDay,
           вычисленный_день_сезона: calculatedSeasonDay,
           текущий_сезон: newSeason,
           вычисленный_сезон: calculatedSeason,
           длина_сезона: SEASON_LENGTH
-        });
+        });*/
         
         // Если день сезона вычислен корректно, используем его
         if (calculatedSeasonDay) {
           // Используем вычисленный сезон, если он отличается от текущего
           if (calculatedSeason !== newSeason) {
-            console.log(`🌈🌈 СМЕНА СЕЗОНА: ${newSeason} -> ${calculatedSeason} (день сезона: ${calculatedSeasonDay})`);
+            //console.log(`🌈🌈 СМЕНА СЕЗОНА: ${newSeason} -> ${calculatedSeason} (день сезона: ${calculatedSeasonDay})`);
             newSeason = calculatedSeason;
           }
         } else {
@@ -129,11 +129,11 @@ export const worldReducer = (state, action) => {
         calculatedSeasonDay = newDay;
       }
       
-      console.log('📅 ИТОГОВЫЕ ЗНАЧЕНИЯ ПОСЛЕ СИНХРОНИЗАЦИИ СЕЗОНА:', {
+      /*console.log('📅 ИТОГОВЫЕ ЗНАЧЕНИЯ ПОСЛЕ СИНХРОНИЗАЦИИ СЕЗОНА:', {
         мировой_день: newDay,
         день_сезона: calculatedSeasonDay,
         сезон: newSeason
-      });
+      });*/
       
       
       // Возвращаем обновленное состояние с синхронизированными значениями
@@ -157,11 +157,11 @@ export const worldReducer = (state, action) => {
     case 'DIRECT_ADD_GAME_HOURS':
       // Проверяем, что world.time существует
       if (!state.world?.time) {
-        console.error('❌ DIRECT_ADD_GAME_HOURS: state.world.time отсутствует');
+        //console.error('❌ DIRECT_ADD_GAME_HOURS: state.world.time отсутствует');
         return state;
       }
       
-      console.log(`🕒 DIRECT_ADD_GAME_HOURS: Добавление ${action.payload.hours} игровых часов`);
+      //console.log(`🕒 DIRECT_ADD_GAME_HOURS: Добавление ${action.payload.hours} игровых часов`);
       
       // Получаем текущие значения времени с приведением типов
       const gameCurrentHour = Number(state.world.time.hour);
@@ -193,7 +193,7 @@ export const worldReducer = (state, action) => {
       
       // Логируем изменение дня, если произошло
       if (gameNewDay > gameCurrentDay) {
-        console.log(`📅📅📅 ДЕНЬ ИЗМЕНИЛСЯ при добавлении часов: ${gameCurrentDay} -> ${gameNewDay}`);
+        //console.log(`📅📅📅 ДЕНЬ ИЗМЕНИЛСЯ при добавлении часов: ${gameCurrentDay} -> ${gameNewDay}`);
       }
       
       // Вычисляем правильный день сезона и сезон при добавлении часов
@@ -204,17 +204,17 @@ export const worldReducer = (state, action) => {
         gameCalculatedSeasonDay = calculateSeasonDay(gameNewDay);
         gameCalculatedSeason = calculateSeason(gameNewDay);
         
-        console.log('🌈 DIRECT_ADD_GAME_HOURS: РАСЧЕТ СЕЗОНА ПРИ ПЕРЕХОДЕ ЧЕРЕЗ МАКСИМАЛЬНУЮ ДЛИНУ:', {
+        /*console.log('🌈 DIRECT_ADD_GAME_HOURS: РАСЧЕТ СЕЗОНА ПРИ ПЕРЕХОДЕ ЧЕРЕЗ МАКСИМАЛЬНУЮ ДЛИНУ:', {
           мировой_день: gameNewDay,
           вычисленный_день_сезона: gameCalculatedSeasonDay,
           текущий_сезон: gameCurrentSeason,
           вычисленный_сезон: gameCalculatedSeason,
           длина_сезона: SEASON_LENGTH
-        });
+        });*/
         
         // Если вычисленный сезон отличается от текущего, логируем изменение
         if (gameCalculatedSeason !== gameCurrentSeason) {
-          console.log(`🌈🌈 DIRECT_ADD_GAME_HOURS: СМЕНА СЕЗОНА: ${gameCurrentSeason} -> ${gameCalculatedSeason}`);
+          //console.log(`🌈🌈 DIRECT_ADD_GAME_HOURS: СМЕНА СЕЗОНА: ${gameCurrentSeason} -> ${gameCalculatedSeason}`);
         }
       } else {
         // Если день в пределах длины сезона
@@ -230,13 +230,13 @@ export const worldReducer = (state, action) => {
         timeOfDay: gameTimeOfDayValue
       };
       
-      console.log('✅ DIRECT_ADD_GAME_HOURS: Новые значения времени:', {
+      /*console.log('✅ DIRECT_ADD_GAME_HOURS: Новые значения времени:', {
         час: gameNewHour,
         минута: gameNewMinute,
         день: gameNewDay,
         сезон: gameCalculatedSeason, // Используем вычисленный сезон для логов
         период_суток: gameTimeOfDayValue
-      });
+      });*/
       
       // Возвращаем обновленное состояние
       return {
@@ -275,10 +275,10 @@ export const worldReducer = (state, action) => {
       const { areaId, enemyId, enemy } = action.payload;
       const key = `${areaId}_${enemyId}`;
       
-      console.log(`🎮 Кэширование противника: ${key}`, {
+      /*console.log(`🎮 Кэширование противника: ${key}`, {
         уровень: enemy.level,
         requiredLevel: enemy.requiredLevel
-      });
+      });*/
       
       return {
         ...state,
