@@ -59,6 +59,22 @@ const Avatar = styled.div`
   justify-content: center;
   font-weight: bold;
   color: #000;
+  overflow: hidden;
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+    border-color: rgba(212, 175, 55, 0.6);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+  }
+`;
+
+const AvatarImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 `;
 
 const PlayerStats = styled.div`
@@ -677,7 +693,29 @@ function GamePage() {
       <TopBar>
         <PlayerInfo>
           <Avatar>
-            {state.player.name[0]}
+            {state.player.avatar ? (
+              <AvatarImage
+                src={state.player.avatar}
+                alt={state.player.name || 'Аватарка игрока'}
+                onError={(e) => {
+                  console.warn('Ошибка загрузки аватарки в шапке:', e.target.src);
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div style={{
+              display: state.player.avatar ? 'none' : 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%',
+              fontSize: '1.2rem',
+              fontWeight: 'bold',
+              color: '#000'
+            }}>
+              {(state.player.name || '?')[0].toUpperCase()}
+            </div>
           </Avatar>
           <PlayerStats>
             <PlayerName>{state.player.name}</PlayerName>

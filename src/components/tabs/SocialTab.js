@@ -1,25 +1,136 @@
 import React, { useState } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
 import CharacterProfileServiceAPI from '../../services/character-profile-service-api';
 
+// Анимации
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const shimmer = keyframes`
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+`;
+
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+`;
+
 const Container = styled.div`
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  padding: 24px;
+  height: 100%;
+  color: #f0f0f0;
+  animation: ${fadeIn} 0.6s ease-out;
 `;
 
 const RelationshipsList = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 10px;
-  height: 100%;
-  overflow-y: auto;
+  flex: 1;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+`;
+
+const CharacterAvatar = styled.div`
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  
+  &:hover {
+    transform: scale(1.05);
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+`;
+
+const PlayerAvatar = styled.div`
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 20px;
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  
+  &:hover {
+    transform: scale(1.05);
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.15);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 18px;
+  }
 `;
 
 const RelationshipCategory = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   
   &:last-child {
     margin-bottom: 0;
@@ -27,25 +138,68 @@ const RelationshipCategory = styled.div`
 `;
 
 const CategoryTitle = styled.h3`
-  color: #d4af37;
-  margin: 0 0 10px;
-  font-size: 1.1rem;
-  padding: 5px 10px;
-  background: rgba(212, 175, 55, 0.1);
-  border-radius: 4px;
+  font-size: 16px;
+  margin: 0 0 16px;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+  padding: 12px 16px;
+  background-color: rgba(212, 175, 55, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    animation: ${shimmer} 3s infinite;
+  }
 `;
 
 const RelationshipItem = styled.div`
-  padding: 10px;
-  margin-bottom: 5px;
-  background: ${props => props.isSelected ? 'rgba(212, 175, 55, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
-  border: 1px solid ${props => props.isSelected ? '#d4af37' : 'transparent'};
-  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: ${props => props.isSelected
+    ? 'linear-gradient(145deg, rgba(212, 175, 55, 0.15) 0%, rgba(244, 208, 63, 0.08) 100%)'
+    : 'linear-gradient(145deg, rgba(0, 0, 0, 0.2) 0%, rgba(20, 20, 20, 0.4) 100%)'};
+  border: 2px solid ${props => props.isSelected ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.1)'};
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  animation: ${fadeIn} 0.4s ease-out;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    background: rgba(212, 175, 55, 0.1);
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.08) 0%, rgba(244, 208, 63, 0.04) 100%);
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.1);
+    
+    &::before {
+      left: 100%;
+    }
   }
   
   &:last-child {
@@ -57,70 +211,169 @@ const CharacterInfo = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex: 1;
+`;
+
+const CharacterDetails = styled.div`
+  display: flex;
+  flex-direction: column;
 `;
 
 const CharacterName = styled.div`
   color: #f0f0f0;
-  margin-bottom: 5px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 `;
 
 const RelationType = styled.div`
   color: #aaa;
-  font-size: 0.8rem;
+  font-size: 12px;
+  opacity: 0.8;
 `;
 
 const RelationshipLevel = styled.div`
   color: ${props => props.level >= 75 ? '#4caf50' :
     props.level >= 50 ? '#d4af37' :
     props.level >= 25 ? '#ff9800' : '#f44336'};
+  font-weight: bold;
+  font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid ${props => props.level >= 75 ? '#4caf50' :
+    props.level >= 50 ? '#d4af37' :
+    props.level >= 25 ? '#ff9800' : '#f44336'}33;
 `;
 
 const InteractionPanel = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
+  flex: 1;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
+    border-radius: 16px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
 `;
 
 const CharacterHeader = styled.div`
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+    border-radius: 1px;
+  }
+`;
+
+const CharacterHeaderInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 `;
 
 const CharacterTitle = styled.h2`
-  color: #d4af37;
-  margin: 0 0 5px;
+  font-size: 24px;
+  margin: 0 0 8px;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
 `;
 
 const CharacterRole = styled.div`
   color: #aaa;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  opacity: 0.9;
 `;
 
 const RelationshipStats = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
 `;
 
 const StatItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 10px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  padding: 16px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+    
+    &::before {
+      left: 100%;
+    }
+  }
 `;
 
 const StatLabel = styled.span`
   color: #aaa;
+  font-size: 14px;
+  font-weight: 500;
 `;
 
 const StatValue = styled.span`
   color: #f0f0f0;
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 `;
 
 const InteractionsList = styled.div`
@@ -132,52 +385,123 @@ const InteractionsList = styled.div`
 
 const InteractionButton = styled.button`
   width: 100%;
-  padding: 10px;
-  background: rgba(212, 175, 55, 0.2);
-  border: 1px solid #d4af37;
-  border-radius: 4px;
+  padding: 14px 20px;
+  background: linear-gradient(145deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 208, 63, 0.15) 100%);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
   color: #d4af37;
-  font-size: 0.9rem;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   
-  &:hover {
-    background: rgba(212, 175, 55, 0.3);
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.3) 0%, rgba(244, 208, 63, 0.2) 100%);
+    border-color: rgba(212, 175, 55, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.2);
+    animation: ${pulse} 2s infinite;
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
   }
   
   &:disabled {
-    background: #333;
-    border-color: #666;
+    background: linear-gradient(145deg, rgba(60, 60, 60, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+    border-color: rgba(100, 100, 100, 0.3);
     color: #666;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    animation: none;
   }
 `;
 
 const EventLog = styled.div`
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid rgba(212, 175, 55, 0.2);
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+    border-radius: 1px;
+  }
 `;
 
 const EventTitle = styled.h3`
-  color: #d4af37;
-  margin: 0 0 10px;
+  font-size: 18px;
+  margin: 0 0 16px;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
 `;
 
 const EventList = styled.div`
   color: #f0f0f0;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.5;
   
   > div {
-    margin-bottom: 5px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(145deg, rgba(0, 0, 0, 0.2) 0%, rgba(20, 20, 20, 0.4) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.1);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.05), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    &:hover {
+      border-color: rgba(212, 175, 55, 0.2);
+      transform: translateX(4px);
+      
+      &::before {
+        left: 100%;
+      }
+    }
     
     &:last-child {
       margin-bottom: 0;
-      padding-bottom: 0;
-      border-bottom: none;
     }
   }
 `;
@@ -321,11 +645,18 @@ function SocialTab() {
                   isSelected={selectedCharacter && selectedCharacter.id === character.id}
                   onClick={() => handleCharacterClick(character)}
                 >
+                  <CharacterAvatar>
+                    {character.image ? (
+                      <img src={character.image} alt={character.name} />
+                    ) : (
+                      '👤'
+                    )}
+                  </CharacterAvatar>
                   <CharacterInfo>
-                    <div>
+                    <CharacterDetails>
                       <CharacterName>{character.name}</CharacterName>
                       <RelationType>{character.role}</RelationType>
-                    </div>
+                    </CharacterDetails>
                     <RelationshipLevel level={character.level}>
                       {character.level}
                     </RelationshipLevel>
@@ -341,8 +672,17 @@ function SocialTab() {
         {selectedCharacter ? (
           <>
             <CharacterHeader>
-              <CharacterTitle>{selectedCharacter.name}</CharacterTitle>
-              <CharacterRole>{selectedCharacter.role}</CharacterRole>
+              <PlayerAvatar>
+                {selectedCharacter.image ? (
+                  <img src={selectedCharacter.image} alt={selectedCharacter.name} />
+                ) : (
+                  '👤'
+                )}
+              </PlayerAvatar>
+              <CharacterHeaderInfo>
+                <CharacterTitle>{selectedCharacter.name}</CharacterTitle>
+                <CharacterRole>{selectedCharacter.role}</CharacterRole>
+              </CharacterHeaderInfo>
             </CharacterHeader>
             
             <RelationshipStats>
