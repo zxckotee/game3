@@ -68,7 +68,7 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
         userRelationships = null;
       }
     }
-    console.log(userRelationships);
+    //console.log(userRelationships);
 
     // Преобразуем в нужный формат для клиента с учетом relationships
     const formattedMerchants = merchants.map(merchant =>
@@ -588,10 +588,11 @@ exports.sellItemToMerchant = async function(merchantId, itemData, userId, quanti
     // MerchantReputation заменен на relationships в CharacterProfile
     
     // Проверяем существование торговца
-    const merchant = await Merchant.findByPk(merchantId);
+    /*const merchant = await Merchant.findByPk(merchantId);
     if (!merchant) {
       return { success: false, message: 'Торговец не найден' };
-    }
+    }*/
+
     
     // Получаем экземпляр sequelize из connectionProvider для гарантии инициализации
     const connection = await connectionProvider.getSequelizeInstance();
@@ -613,22 +614,45 @@ exports.sellItemToMerchant = async function(merchantId, itemData, userId, quanti
       // Цена продажи будет рассчитана ниже, после определения типа валюты
       const sellPrice = Math.floor((itemData.price || itemData.basePrice) * 0.5 * quantity);
       
-      // Увеличиваем репутацию пользователя с торговцем
-      if (userId) {
-        try {
-          console.log(`Начинаем обновление репутации при продаже: merchantId=${merchantId}, userId=${userId}, цена=${sellPrice}`);
-          await updateMerchantReputation(merchantId, userId, sellPrice * 0.01, transaction);
-        } catch (repError) {
-          console.error(`Ошибка при обновлении репутации: ${repError.message}`);
-          // Продолжаем выполнение, не прерывая основную транзакцию продажи
-        }
-      }
       
       // Удаляем предмет из инвентаря пользователя
       const removeResult = await InventoryService.removeInventoryItem(userId, itemId, quantity);
       if (!removeResult) {
         await transaction.rollback();
         return { success: false, message: 'Ошибка при удалении предмета из инвентаря' };
+      }
+
+      // Увеличиваем количество товара у торговца
+      try {
+        const MerchantInventory = modelRegistry.getModel('MerchantInventory');
+        const merchantItem = await MerchantInventory.findOne({
+          where: { itemId, userId }, //продажа ЛЮБОМУ торговцу. Потому что мы изначальноне выбираем, кому ПРОДАТЬ. findOne все делает за нас
+          transaction
+        });
+        
+        
+        if (merchantItem) {
+          // Увеличиваем количество существующего товара
+          await merchantItem.update({
+            quantity: merchantItem.quantity + quantity
+          }, { transaction });
+          console.log(`Увеличено количество товара ${itemId} у торговца ${merchantItem.merchantId} на ${quantity}`);
+          // Увеличиваем репутацию пользователя с торговцем
+          if (userId) {
+            try {
+              console.log(`Начинаем обновление репутации при продаже: merchantId=${merchantId}, userId=${userId}, цена=${sellPrice}`);
+              await updateMerchantReputation(merchantItem.merchantId, userId, sellPrice * 0.01, transaction);
+            } catch (repError) {
+              console.error(`Ошибка при обновлении репутации: ${repError.message}`);
+              // Продолжаем выполнение, не прерывая основную транзакцию продажи
+            }
+          }
+        } else {
+          console.warn(`Товар ${itemId} не найден у торговца ${merchantId} для пользователя ${userId}`);
+        }
+      } catch (updateError) {
+        console.error(`Ошибка при увеличении количества товара у торговца: ${updateError.message}`);
+        // Продолжаем выполнение, не прерывая транзакцию продажи
       }
 
       // --- Новая логика для начисления валюты ---
@@ -750,27 +774,10 @@ exports.updateMerchantItemQuantity = async function(merchantId, itemId, userId, 
           numericItemId = knownItems[itemId];
           console.log(`Найден предустановленный ID ${numericItemId} для строкового идентификатора ${itemId}`);
         } else {
-          // Получаем модель InventoryItem для поиска числового ID
-          const InventoryItem = modelRegistry.getModel('InventoryItem');
-        
-        if (InventoryItem) {
-          const item = await InventoryItem.findOne({
-            where: {
-              itemId: itemId // В InventoryItem это поле фактически строка, а не число
-            },
-            transaction
-          });
-          
-          if (item) {
-            numericItemId = item.id;
-            console.log(`Найден числовой ID ${numericItemId} для строкового идентификатора ${itemId}`);
-          } else {
-            console.log(`Не найден предмет с кодом ${itemId} в таблице InventoryItem`);
-          }
-        } else {
-          console.log('Модель InventoryItem недоступна для поиска числового ID');
+          // Для торговца используем строковый ID напрямую
+          numericItemId = itemId;
+          console.log(`Используем строковый ID напрямую: ${numericItemId}`);
         }
-      }
       
       // Находим запись в инвентаре торговца (без учета userId)
       // Преобразуем itemId в строковое значение для соответствия типу в базе данных
@@ -782,7 +789,8 @@ exports.updateMerchantItemQuantity = async function(merchantId, itemId, userId, 
       let inventoryItem = await MerchantInventory.findOne({
         where: {
           merchantId,
-          itemId: itemIdForDb
+          itemId: itemIdForDb,
+          userId: userId
         },
         transaction
       });
@@ -809,28 +817,8 @@ exports.updateMerchantItemQuantity = async function(merchantId, itemId, userId, 
           price: 100
         };
         
-        // Если у нас есть данные о предмете из InventoryItem, используем их
-        if (isStringItemId && InventoryItem) {
-          try {
-            const detailedItem = await InventoryItem.findOne({
-              where: { itemId: itemId },
-              transaction
-            });
-            
-            if (detailedItem) {
-              itemDetails = {
-                itemType: detailedItem.type || 'item',
-                name: detailedItem.name || `Item ${itemId}`,
-                description: detailedItem.description || 'No description',
-                rarity: detailedItem.rarity || 'common',
-                price: detailedItem.basePrice || detailedItem.price || 100
-              };
-              console.log(`Получены детали предмета для ${itemId}:`, itemDetails);
-            }
-          } catch (error) {
-            console.error(`Ошибка при получении деталей предмета ${itemId}:`, error);
-          }
-        }
+        // Для торговца используем базовые детали предмета
+        console.log(`Используем базовые детали для предмета ${itemId}`);
         
         // Если мы не смогли найти нормализованный ID для строкового идентификатора,
         // используем сам строковый идентификатор или создаем новый
@@ -920,7 +908,8 @@ exports.updateMerchantItemQuantity = async function(merchantId, itemId, userId, 
           const existingItem = await MerchantInventory.findOne({
             where: {
               merchantId: merchantId,
-              itemId: itemIdForDb
+              itemId: itemIdForDb,
+              userId: userId
             },
             transaction
           });
@@ -938,6 +927,7 @@ exports.updateMerchantItemQuantity = async function(merchantId, itemId, userId, 
               const newItem = await MerchantInventory.create({
                 merchantId,
                 itemId: itemIdForDb,  // Используем строковое представление ID
+                userId: userId,
                 ...itemDetails,
                 quantity: 0 // Начальное количество
               }, { transaction });
@@ -955,6 +945,7 @@ exports.updateMerchantItemQuantity = async function(merchantId, itemId, userId, 
               const fallbackItem = await MerchantInventory.create({
                 merchantId: merchantId,
                 itemId: itemIdForDb,  // Используем строковое представление ID
+                userId: userId,
                 itemType: 'item',
                 name: `Item ${finalItemId}`,
                 description: 'Auto-generated item',
