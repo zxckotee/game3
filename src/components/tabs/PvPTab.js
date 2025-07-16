@@ -12,6 +12,7 @@ import {
     leaveRoom, getUserPvPStatus, dismissRoom
 } from '../../services/pvp-service-api';
 import BattleInterface from '../battle/BattleInterface';
+import PvPBattleResult from '../battle/PvPBattleResult';
 
 // Стилизованные компоненты
 const TabContainer = styled.div`
@@ -403,6 +404,10 @@ const PvPTab = () => {
     const [loading, setLoading] = useState(false);
     const [silentLoading, setSilentLoading] = useState(false);
     const [initialLoad, setInitialLoad] = useState(true);
+    
+    // Состояние для показа наград
+    const [showRewards, setShowRewards] = useState(false);
+    const [battleRewards, setBattleRewards] = useState(null);
 
     // Проверка текущего статуса пользователя в PvP при загрузке
     useEffect(() => {
@@ -903,11 +908,21 @@ const PvPTab = () => {
     // Обновление состояния комнаты во время боя
     useEffect(() => {
         const updateBattleState = async () => {
+            console.log('[PvP UPDATE DEBUG] updateBattleState вызвана');
+            console.log('[PvP UPDATE DEBUG] selectedRoom:', selectedRoom, 'inBattle:', inBattle);
+            
             try {
-                if (!selectedRoom || !inBattle) return;
+                if (!selectedRoom || !inBattle) {
+                    console.log('[PvP UPDATE DEBUG] Выход из updateBattleState - нет комнаты или не в бою');
+                    return;
+                }
                 
+                console.log('[PvP UPDATE DEBUG] Запрашиваем состояние комнаты...');
                 const response = await getRoomState(selectedRoom, lastActionId);
+                console.log('[PvP UPDATE DEBUG] Получен ответ от getRoomState:', response);
+                
                 if (response.success) {
+                    console.log('[PvP UPDATE DEBUG] Ответ успешный, статус комнаты:', response.room?.status);
                     // Обрабатываем эффекты для всех участников
                     if (response.participants && Array.isArray(response.participants)) {
                         const updatedParticipants = response.participants.map(participant => {
@@ -933,15 +948,72 @@ const PvPTab = () => {
                     }
                     
                     // Если бой завершен, показываем результаты
-                    if (response.room.status === 'completed') {
+                    console.log('[PvP UPDATE DEBUG] Проверяем статус комнаты для завершения боя...');
+                    if (response.room.status === 'completed' || response.room.status === 'dismissed') {
+                        console.log('[PvP REWARDS DEBUG] ✅ Бой завершен! Статус:', response.room.status, 'Анализируем награды...');
+                        console.log('[PvP REWARDS DEBUG] Полный response:', JSON.stringify(response, null, 2));
+                        
                         const winnerTeam = response.room.winner_team;
                         const participant = response.participants.find(p => p.user_id === player.id);
                         const isWinner = participant && participant.team === winnerTeam;
                         
-                        showToast(
-                            `Бой завершен! ${isWinner ? 'Ваша команда победила!' : 'Ваша команда проиграла.'}`,
-                            isWinner ? 'success' : 'warning'
-                        );
+                        console.log('[PvP REWARDS DEBUG] Winner team:', winnerTeam);
+                        console.log('[PvP REWARDS DEBUG] Player participant:', participant);
+                        console.log('[PvP REWARDS DEBUG] Is winner:', isWinner);
+                        console.log('[PvP REWARDS DEBUG] Response.rewards:', response.rewards);
+                        
+                        // Получаем награды для текущего игрока
+                        // Проверяем разные возможные структуры данных
+                        let playerRewards = null;
+                        
+                        if (response.rewards) {
+                            // Вариант 1: награды в response.rewards[player.id]
+                            playerRewards = response.rewards[player.id];
+                            console.log('[PvP REWARDS DEBUG] Вариант 1 - rewards[player.id]:', playerRewards);
+                            
+                            // Вариант 2: награды напрямую в response.rewards (как в PvE)
+                            if (!playerRewards && typeof response.rewards === 'object' && !Array.isArray(response.rewards)) {
+                                playerRewards = response.rewards;
+                                console.log('[PvP REWARDS DEBUG] Вариант 2 - прямые rewards:', playerRewards);
+                            }
+                        }
+                        
+                        // Вариант 3: награды в response.room.rewards
+                        if (!playerRewards && response.room && response.room.rewards) {
+                            playerRewards = response.room.rewards[player.id] || response.room.rewards;
+                            console.log('[PvP REWARDS DEBUG] Вариант 3 - room.rewards:', playerRewards);
+                        }
+                        
+                        console.log('[PvP REWARDS DEBUG] Финальные playerRewards:', playerRewards);
+                        
+                        if (playerRewards) {
+                            console.log('[PvP REWARDS DEBUG] Показываем компонент с наградами');
+                            console.log('[PvP REWARDS DEBUG] playerRewards:', playerRewards);
+                            
+                            const battleRewardsData = {
+                                result: playerRewards.result || (isWinner ? 'victory' : 'defeat'), // Используем результат от backend
+                                rewards: playerRewards.rewards || playerRewards, // Поддерживаем разные форматы
+                                ratingChange: playerRewards.ratingChange || 0
+                            };
+                            
+                            console.log('[PvP REWARDS DEBUG] Устанавливаем battleRewards:', battleRewardsData);
+                            setBattleRewards(battleRewardsData);
+                            
+                            console.log('[PvP REWARDS DEBUG] Устанавливаем showRewards: true');
+                            setShowRewards(true);
+                            
+                            // Проверяем состояние после установки
+                            setTimeout(() => {
+                                console.log('[PvP REWARDS DEBUG] Состояние после установки - showRewards:', showRewards, 'battleRewards:', battleRewards);
+                            }, 100);
+                        } else {
+                            console.log('[PvP REWARDS DEBUG] Награды не найдены, показываем уведомление');
+                            // Если нет наград, показываем обычное уведомление
+                            showToast(
+                                `Бой завершен! ${isWinner ? 'Ваша команда победила!' : 'Ваша команда проиграла.'}`,
+                                isWinner ? 'success' : 'warning'
+                            );
+                        }
                         
                         // ИСПРАВЛЕНИЕ: Полный сброс состояний боя
                         setInBattle(false);
@@ -980,6 +1052,8 @@ const PvPTab = () => {
                         
                         // Обновляем триггер для обновления списка комнат
                         setRefreshTrigger(prev => prev + 1);
+                    } else {
+                        console.log('[PvP UPDATE DEBUG] ❌ Бой НЕ завершен, статус:', response.room.status, '(ожидаем completed или dismissed)');
                     }
                 }
             } catch (error) {
@@ -1820,6 +1894,14 @@ const PvPTab = () => {
         }
     };
 
+    // Функция для закрытия окна наград
+    const handleCloseRewards = () => {
+        setShowRewards(false);
+        setBattleRewards(null);
+        // После закрытия окна наград можно обновить данные игрока
+        // Это будет происходить автоматически при следующем обновлении состояния
+    };
+
     return (
         <TabContainer>
             <TabHeader>
@@ -2371,6 +2453,19 @@ const PvPTab = () => {
                     </ModalContent>
                 </ModalOverlay>
             )}
+            
+            {/* Компонент для показа наград PvP */}
+            {(() => {
+                console.log('[PvP RENDER DEBUG] showRewards:', showRewards, 'battleRewards:', battleRewards);
+                return showRewards && battleRewards && (
+                    <PvPBattleResult
+                        result={battleRewards.result}
+                        rewards={battleRewards.rewards}
+                        ratingChange={battleRewards.ratingChange}
+                        onClose={handleCloseRewards}
+                    />
+                );
+            })()}
         </TabContainer>
     );
 };

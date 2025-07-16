@@ -451,12 +451,16 @@ export const performAction = async (roomId, actionType, targetId, techniqueId) =
  */
 export const getRoomState = async (roomId, lastActionId = 0) => {
     try {
+        console.log(`[PvP API DEBUG] 🔄 Запрос getRoomState для комнаты ${roomId}, lastActionId: ${lastActionId}`);
+        
         // userId автоматически передается через authToken в apiRequest
         const response = await apiRequest('GET', `/api/pvp/rooms/${roomId}/state?lastActionId=${lastActionId}`);
         
+        console.log(`[PvP API DEBUG] 📥 Полный ответ getRoomState:`, JSON.stringify(response, null, 2));
+        
         // Если response пустой или не содержит поле success
         if (!response) {
-            console.error('[PvP API] Получен пустой ответ от сервера');
+            console.error('[PvP API DEBUG] ❌ Получен пустой ответ от сервера');
             return {
                 success: false,
                 message: 'Ошибка при получении состояния комнаты',
@@ -464,6 +468,22 @@ export const getRoomState = async (roomId, lastActionId = 0) => {
                 actions: [],
                 state: {}
             };
+        }
+        
+        // Детальное логирование ключевых полей
+        if (response.room) {
+            console.log(`[PvP API DEBUG] 🏠 Статус комнаты: "${response.room.status}"`);
+            console.log(`[PvP API DEBUG] 🏆 Команда-победитель: ${response.room.winner_team || 'не определена'}`);
+            console.log(`[PvP API DEBUG] 👥 Участники:`, response.participants?.length || 0);
+        }
+        
+        if (response.rewards) {
+            console.log(`[PvP API DEBUG] 🎁 Награды найдены:`, response.rewards);
+            Object.keys(response.rewards).forEach(playerId => {
+                console.log(`[PvP API DEBUG] 🎁 Награды для игрока ${playerId}:`, response.rewards[playerId]);
+            });
+        } else {
+            console.log(`[PvP API DEBUG] ❌ Награды отсутствуют в ответе`);
         }
         
         return response;

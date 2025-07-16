@@ -2171,8 +2171,13 @@ class PvPService {
           //console.log(`[PvP] Всего эффектов для участника ${participant.id}: ${participant.effects.length}`);
         }
         
-        // Применяем периодические эффекты для каждого участника
-        for (const participant of participants) {
+        // ИСПРАВЛЕНИЕ: Проверяем статус комнаты перед обработкой эффектов
+        // Если комната уже завершена, не обрабатываем эффекты
+        if (roomData.status === 'completed' || roomData.status === 'dismissed') {
+          console.log(`[PvP] Комната ${roomId} уже завершена (статус: ${roomData.status}), пропускаем обработку эффектов`);
+        } else {
+          // Применяем периодические эффекты для каждого участника только если комната активна
+          for (const participant of participants) {
           try {
             const localSequelize = PvPParticipant.sequelize;
             await localSequelize.transaction(async (localTransaction) => {
@@ -2255,7 +2260,7 @@ class PvPService {
             });
           }
         }
-      }
+      } // Закрываем условие проверки статуса комнаты
       
       // ИСПРАВЛЕНИЕ: Проверяем, не завершился ли бой после применения периодических эффектов
       // Проверяем состояние команд после применения периодических эффектов
@@ -2327,12 +2332,7 @@ class PvPService {
               console.error(`[PvP] Ошибка при обновлении истории боя и рейтингов (завершение от эффектов):`, updateError);
             }
             
-            // Полностью распускаем комнату
-            await room.update({
-              status: 'dismissed'
-            }, { transaction: battleEndTransaction });
-            
-            console.log(`[PvP] Комната ${roomId} распущена после завершения боя от периодических эффектов`);
+            console.log(`[PvP] Комната ${roomId} завершена после боя от периодических эффектов`);
           });
         }
       }
@@ -3837,8 +3837,6 @@ class PvPService {
    */
   static async getRoomState(roomId, userId = null, lastActionId = 0) {
     try {
-      console.log(`[PvP Backend DEBUG] 🔄 getRoomState вызвана для комнаты ${roomId}, userId: ${userId}, lastActionId: ${lastActionId}`);
-      
       // Если передан userId, обновляем характеристики игрока
       if (userId) {
         // Проверяем, является ли пользователь участником комнаты
@@ -3852,29 +3850,13 @@ class PvPService {
 
         // Если пользователь является участником, обновляем его характеристики
         if (participant) {
-          console.log(`[PvP Backend DEBUG] 👤 Обновление характеристик игрока ${userId} при получении состояния комнаты ${roomId}`);
+          //console.log(`[PvP] Обновление характеристик игрока ${userId} при получении состояния комнаты ${roomId}`);
           await this.savePlayerStats(userId, roomId);
         }
       }
       
       // Получаем детали комнаты
-      console.log(`[PvP Backend DEBUG] 🏠 Вызываем getRoomDetails для комнаты ${roomId}`);
-      const roomDetails = await this.getRoomDetails(roomId);
-      
-      console.log(`[PvP Backend DEBUG] 📋 Результат getRoomDetails:`, JSON.stringify(roomDetails, null, 2));
-      
-      if (roomDetails.room) {
-        console.log(`[PvP Backend DEBUG] 🏠 Статус комнаты: "${roomDetails.room.status}"`);
-        console.log(`[PvP Backend DEBUG] 🏆 Команда-победитель: ${roomDetails.room.winner_team || 'не определена'}`);
-      }
-      
-      if (roomDetails.rewards) {
-        console.log(`[PvP Backend DEBUG] 🎁 Награды в ответе:`, roomDetails.rewards);
-      } else {
-        console.log(`[PvP Backend DEBUG] ❌ Награды отсутствуют в getRoomDetails`);
-      }
-      
-      return roomDetails;
+      return await this.getRoomDetails(roomId);
     } catch (error) {
       console.error('Ошибка при получении состояния комнаты:', error);
       throw new Error(`Не удалось получить состояние комнаты: ${error.message}`);
