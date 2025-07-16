@@ -1,5 +1,6 @@
 const CharacterProfile = require('../models/character-profile');
 const { getInitializedUserModel } = require('../models/user');
+const CultivationService = require('./cultivation-service');
 
 const INITIAL_RELATIONSHIPS = [
   {
@@ -510,69 +511,153 @@ class CharacterProfileService {
     }
   }
   /**
-   * Обработка взаимодействия с NPC для изменения отношений
+   * Обработка взаимодействия с NPC для изменения отношений и списания энергии
    * @param {number} userId - ID пользователя
-   * @param {number} characterId - ID персонажа (NPC)
-   * @param {string} interactionType - Тип взаимодействия (chat, gift, etc.)
-   * @returns {Promise<Object>} - Объект с обновленными отношениями и сообщением
+   * @param {string} characterId - ID персонажа (NPC)
+   * @param {string} interactionType - Тип взаимодействия (chat, gift, train, quest)
+   * @returns {Promise<Object>} - Объект с обновленными отношениями, энергией и сообщением
    */
   static async handleInteraction(userId, characterId, interactionType) {
+    // Проверяем, находимся ли мы в браузере
+    if (isBrowser) {
+      throw new Error('handleInteraction должен вызываться только на сервере');
+    }
+
+    // Определяем стоимость энергии для каждого типа взаимодействия
+    const energyCosts = {
+      chat: 5,
+      gift: 10,
+      train: 20,
+      quest: 30
+    };
+
+    const energyCost = energyCosts[interactionType];
+    if (!energyCost) {
+      throw new Error(`Неизвестный тип взаимодействия: ${interactionType}`);
+    }
+
+    // Получаем экземпляр Sequelize для транзакций
+    const { Sequelize } = require('sequelize');
+    const connectionProvider = require('../utils/connection-provider');
+    const { db: sequelize } = await connectionProvider.getSequelizeInstance();
+
+    // Начинаем транзакцию для атомарности операций
+    const transaction = await sequelize.transaction();
+
     try {
-      const profile = await CharacterProfile.findOne({ where: { user_id: userId } });
+      // 1. Получаем текущее состояние энергии
+      const cultivationProgress = await CultivationService.getCultivationProgress(userId);
+      
+      if (!cultivationProgress) {
+        throw new Error('Данные о культивации не найдены');
+      }
+
+      // 2. Проверяем, достаточно ли энергии
+      if (cultivationProgress.energy < energyCost) {
+        throw new Error(`Недостаточно духовной энергии. Требуется: ${energyCost}, доступно: ${cultivationProgress.energy}`);
+      }
+
+      // 3. Получаем профиль персонажа
+      const profile = await CharacterProfile.findOne({
+        where: { userId },
+        transaction
+      });
 
       if (!profile) {
         throw new Error('Профиль персонажа не найден');
       }
-
+      console.log(`[DEBUG] весь профиль: `, profile);
+      // 4. Проверяем существование отношений с NPC
       const relationships = profile.relationships || [];
-      const relationshipIndex = relationships.findIndex(r => r.id === characterId);
+    
+      // Добавляем отладочную информацию
+      console.log(`[DEBUG] Поиск отношений для characterId: ${characterId}`);
+      console.log(`[DEBUG] Тип relationships:`, typeof relationships);
+      console.log(`[DEBUG] Является ли массивом:`, Array.isArray(relationships));
+      console.log(`[DEBUG] Количество отношений:`, relationships.length);
+      console.log(`[DEBUG] Все отношения:`, JSON.stringify(relationships, null, 2));
+      
+      // Проверяем, является ли relationships массивом
+      let relationshipsArray = relationships;
+      if (!Array.isArray(relationships)) {
+        // Если это объект, преобразуем в массив
+        if (typeof relationships === 'object' && relationships !== null) {
+          relationshipsArray = Object.values(relationships);
+          console.log(`[DEBUG] Преобразовали объект в массив:`, relationshipsArray);
+        } else {
+          relationshipsArray = [];
+        }
+      }
+      
+      const relationshipIndex = relationshipsArray.findIndex(r => r && r.id === characterId);
+      console.log(`[DEBUG] Найденный индекс:`, relationshipIndex);
 
       if (relationshipIndex === -1) {
-        throw new Error(`Отношения с ID ${characterId} не найдены`);
+        console.log(`[DEBUG] Доступные ID отношений:`, relationshipsArray.map(r => r?.id));
+        throw new Error(`Отношения с персонажем ${characterId} не найдены`);
       }
+      
+      // Обновляем переменную relationships для дальнейшего использования
+      const relationships_final = relationshipsArray;
 
-      // Логика изменения отношений, перенесенная с клиента
+      // 5. Списываем энергию через CultivationService
+      const updatedCultivation = await CultivationService.updateCultivationProgress(userId, {
+        energy: cultivationProgress.energy - energyCost
+      }, { transaction });
+
+      // 6. Рассчитываем изменение отношений
       const relationshipChange = {
-        chat: Math.floor(Math.random() * 3) + 1,
-        gift: Math.floor(Math.random() * 5) + 3,
-        train: Math.floor(Math.random() * 7) + 5,
-        quest: Math.floor(Math.random() * 10) + 7
+        chat: Math.floor(Math.random() * 3) + 1,    // 1-3
+        gift: Math.floor(Math.random() * 5) + 3,    // 3-7
+        train: Math.floor(Math.random() * 7) + 5,   // 5-11
+        quest: Math.floor(Math.random() * 10) + 7   // 7-16
       }[interactionType];
 
-      if (!relationshipChange) {
-        throw new Error(`Неизвестный тип взаимодействия: ${interactionType}`);
-      }
-
-      const currentLevel = relationships[relationshipIndex].level;
+      // 7. Обновляем уровень отношений
+      const currentLevel = relationships_final[relationshipIndex].level;
       const newLevel = Math.min(100, currentLevel + relationshipChange);
-      relationships[relationshipIndex].level = newLevel;
+      relationships_final[relationshipIndex].level = newLevel;
 
-      // Логика добавления события в лог
+      // 8. Добавляем событие в историю
       const eventText = {
-        chat: `Вы побеседовали с ${relationships[relationshipIndex].name}`,
-        gift: `Вы подарили подарок ${relationships[relationshipIndex].name}`,
-        train: `Вы тренировались вместе с ${relationships[relationshipIndex].name}`,
-        quest: `Вы выполнили задание для ${relationships[relationshipIndex].name}`
+        chat: `Вы побеседовали с ${relationships_final[relationshipIndex].name}`,
+        gift: `Вы подарили подарок ${relationships_final[relationshipIndex].name}`,
+        train: `Вы тренировались вместе с ${relationships_final[relationshipIndex].name}`,
+        quest: `Вы выполнили задание для ${relationships_final[relationshipIndex].name}`
       }[interactionType];
 
       if (eventText) {
-        if (!relationships[relationshipIndex].events) {
-          relationships[relationshipIndex].events = [];
+        if (!relationships_final[relationshipIndex].events) {
+          relationships_final[relationshipIndex].events = [];
         }
-        relationships[relationshipIndex].events.push(eventText);
+        relationships_final[relationshipIndex].events.push(eventText);
       }
 
-      // Уведомляем Sequelize о том, что поле JSONB было изменено
-      await profile.update({ relationships });
+      // 9. Сохраняем обновленные отношения
+      await profile.update({ relationships: relationships_final }, { transaction });
 
+      // 10. Коммитим транзакцию
+      await transaction.commit();
+
+      // 11. Возвращаем результат
       return {
-        updatedRelationship: relationships[relationshipIndex],
-        changeAmount: relationshipChange,
-        message: `Отношения с ${relationships[relationshipIndex].name} улучшились на ${relationshipChange}`
+        success: true,
+        updatedRelationship: relationships_final[relationshipIndex],
+        newEnergy: updatedCultivation.energy,
+        energyCost: energyCost,
+        relationshipChange: relationshipChange,
+        message: `Отношения с ${relationships_final[relationshipIndex].name} улучшились на ${relationshipChange} пунктов. Потрачено ${energyCost} энергии.`
       };
+
     } catch (error) {
+      // Откатываем транзакцию в случае ошибки
+      await transaction.rollback();
       console.error('Ошибка при обработке взаимодействия с NPC:', error);
-      throw error;
+      
+      return {
+        success: false,
+        message: error.message || 'Произошла ошибка при взаимодействии с персонажем'
+      };
     }
   }
 

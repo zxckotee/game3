@@ -555,15 +555,37 @@ module.exports.handleInteraction = async (characterId, interactionType) => {
     if (response.ok) {
       const result = await response.json();
       console.log(`[CharacterProfileServiceAPI] Взаимодействие успешно обработано:`, result);
-      return result;
+      
+      // Проверяем успешность операции
+      if (result.success) {
+        return {
+          success: true,
+          updatedRelationship: result.updatedRelationship,
+          newEnergy: result.newEnergy,
+          energyCost: result.energyCost,
+          relationshipChange: result.relationshipChange,
+          message: result.message
+        };
+      } else {
+        return {
+          success: false,
+          message: result.message || 'Операция не выполнена'
+        };
+      }
     } else {
       const errorData = await response.json();
       console.error(`[CharacterProfileServiceAPI] API вернул ошибку при взаимодействии: ${response.status}`, errorData);
-      throw new Error(errorData.message || 'Ошибка при взаимодействии с персонажем');
+      return {
+        success: false,
+        message: errorData.message || 'Ошибка при взаимодействии с персонажем'
+      };
     }
   } catch (error) {
     console.error('[CharacterProfileServiceAPI] Ошибка при взаимодействии с NPC:', error);
-    throw error;
+    return {
+      success: false,
+      message: error.message || 'Ошибка сети при взаимодействии с персонажем'
+    };
   }
 };
 

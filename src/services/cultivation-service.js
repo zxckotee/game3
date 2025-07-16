@@ -132,8 +132,9 @@ class CultivationService {
    * @param {Object} data - Новые данные о культивации
    * @returns {Promise<Object>} - Обновленные данные о культивации
    */
-  static async updateCultivationProgress(userId, data) {
+  static async updateCultivationProgress(userId, data, options = {}) {
     console.log(`[CULTIVATION SERVICE] updateCultivationProgress: ${userId} ${JSON.stringify(data)}`);
+    const { transaction } = options;
     try {
       if (isBrowser) {
         // В браузере используем объект в памяти
@@ -237,7 +238,8 @@ class CultivationService {
         // На сервере используем базу данных
         // Получаем текущие данные о культивации
         let cultivation = await CultivationProgress.findOne({
-          where: { userId }
+          where: { userId },
+          transaction
         });
         
         // Если записи нет, создаем новую
@@ -267,7 +269,7 @@ class CultivationService {
             requiredBottleneckProgress: 100,
             lastInsightTime: new Date(),
             cultivationEfficiency: 1.0
-          });
+          }, { transaction });
         }
         
         // Преобразуем данные из клиента в формат базы данных
@@ -296,12 +298,13 @@ class CultivationService {
         
         //console.log(`[CULTIVATION SERVICE] updateCultivationProgress: ${userId} ${JSON.stringify(updateData)}`);
         // Обновляем данные
-        await cultivation.update(updateData);
+        await cultivation.update(updateData, { transaction });
         console.log(`[CULTIVATION SERVICE] updateCultivationProgress ${updateData} `);
         
         // Получаем обновленные данные
         cultivation = await CultivationProgress.findOne({
-          where: { userId }
+          where: { userId },
+          transaction
         });
         
         // Преобразуем данные для клиента

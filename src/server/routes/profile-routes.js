@@ -158,4 +158,44 @@ router.get('/api/users/:userId/avatar', async (req, res) => {
   }
 });
 
+// Новый API роут для действий с NPC
+router.post('/api/relationships/interact', validateAuth, async (req, res) => {
+  try {
+    const { characterId, interactionType } = req.body;
+    
+    // Получаем userId из аутентифицированного пользователя
+    const userId = req.user.id;
+    
+    console.log(`Взаимодействие с NPC: userId=${userId}, characterId=${characterId}, type=${interactionType}`);
+    
+    // Валидация входных данных
+    if (!characterId || !interactionType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Не указан ID персонажа или тип взаимодействия'
+      });
+    }
+    
+    // Проверяем допустимые типы взаимодействий
+    const allowedTypes = ['chat', 'gift', 'train', 'quest'];
+    if (!allowedTypes.includes(interactionType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Недопустимый тип взаимодействия. Разрешены: ${allowedTypes.join(', ')}`
+      });
+    }
+    
+    // Вызываем обновленный метод handleInteraction
+    const result = await CharacterProfileService.handleInteraction(userId, characterId, interactionType);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Ошибка при обработке взаимодействия с NPC:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 module.exports = router;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
 import CharacterProfileServiceAPI from '../../services/character-profile-service-api';
+import CultivationServiceAPI from '../../services/cultivation-api';
 
 // Анимации
 const fadeIn = keyframes`
@@ -575,57 +576,53 @@ function SocialTab() {
   const handleInteraction = async (type) => {
     if (!selectedCharacter) return;
 
-    const energyCost = {
-      chat: 5,
-      gift: 10,
-      train: 20,
-      quest: 30
-    }[type];
-
-    if ((cultivation.energy || 0) < energyCost) {
-      actions.addNotification({
-        message: 'Недостаточно духовной энергии для взаимодействия',
-        type: 'error'
-      });
-      return;
-    }
-
-    // Оптимистично тратим энергию на клиенте
-    actions.updateCultivation({
-      energy: (cultivation.energy || 0) - energyCost
-    });
-
     try {
+      // Вызываем серверный метод, который сам проверит энергию и выполнит все операции
       const result = await CharacterProfileServiceAPI.handleInteraction(selectedCharacter.id, type);
 
       if (result.success) {
-        // Обновляем состояние через новый, надежный action
+        // Обновляем отношения через action
         actions.updateRelationship(result.updatedRelationship);
 
         // Обновляем локальное состояние для перерисовки
         setSelectedCharacter(result.updatedRelationship);
 
+        // Обновляем данные культивации через API и Redux (как в SectTab)
+        try {
+          // Получаем обновленные данные культивации
+          const updatedCultivation = await CultivationServiceAPI.getCultivationProgress(state?.player?.id || 1);
+          
+          // Обновляем данные культивации в Redux
+          if (actions.updateCultivation) {
+            actions.updateCultivation(updatedCultivation);
+            console.log('Данные о культивации обновлены после взаимодействия с NPC:', updatedCultivation);
+          } else {
+            console.warn('Метод actions.updateCultivation недоступен');
+          }
+        } catch (cultivationError) {
+          console.error('Ошибка при обновлении данных о культивации:', cultivationError);
+          // Если не удалось получить обновленные данные, используем данные из ответа сервера
+          actions.updateCultivation({
+            energy: result.newEnergy
+          });
+        }
+
+        // Показываем уведомление об успехе
         actions.addNotification({
           message: result.message,
           type: 'success'
         });
       } else {
-        // Если сервер вернул ошибку, откатываем списание энергии
-        actions.updateCultivation({
-          energy: cultivation.energy // Возвращаем исходное значение
-        });
+        // Показываем ошибку от сервера
         actions.addNotification({
-          message: result.message || 'Произошла ошибка взаимодействия',
+          message: result.message || 'Произошла ошибка при взаимодействии',
           type: 'error'
         });
       }
     } catch (error) {
-      // В случае ошибки сети, также откатываем списание энергии
-      actions.updateCultivation({
-        energy: cultivation.energy // Возвращаем исходное значение
-      });
+      // Обрабатываем ошибки сети
       actions.addNotification({
-        message: error.message || 'Ошибка сети при взаимодействии',
+        message: 'Ошибка сети при взаимодействии с персонажем',
         type: 'error'
       });
       console.error('Ошибка при взаимодействии:', error);
