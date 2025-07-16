@@ -14,78 +14,360 @@ import {
 import BattleInterface from '../battle/BattleInterface';
 import PvPBattleResult from '../battle/PvPBattleResult';
 
+// Keyframe анимации
+const fadeIn = `
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const shimmer = `
+  @keyframes shimmer {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+`;
+
+const pulse = `
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+`;
+
+const spin = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
 // Стилизованные компоненты
 const TabContainer = styled.div`
+  ${fadeIn}
+  ${shimmer}
+  ${pulse}
+  ${spin}
+  
   display: flex;
   flex-direction: column;
   height: 100%;
+  padding: 20px;
+  background: linear-gradient(135deg,
+    rgba(30, 30, 30, 0.95) 0%,
+    rgba(45, 45, 45, 0.95) 50%,
+    rgba(30, 30, 30, 0.95) 100%
+  );
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
   color: #f0f0f0;
+  animation: fadeIn 0.6s ease-out;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(212, 175, 55, 0.1),
+      transparent
+    );
+    background-size: 200px 100%;
+    animation: shimmer 3s infinite;
+    border-radius: 12px;
+    pointer-events: none;
+  }
 `;
 
 const TabHeader = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+  
+  h2 {
+    background: linear-gradient(135deg, #d4af37, #f4d03f, #b7950b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 2.2rem;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    animation: shimmer 3s infinite;
+    background-size: 200% 100%;
+  }
 `;
 
 const TabContent = styled.div`
   flex: 1;
+  animation: fadeIn 0.8s ease-out 0.2s both;
 `;
 
 const TabMenu = styled.div`
   display: flex;
-  border-bottom: 1px solid #333;
-  margin-bottom: 20px;
+  background: linear-gradient(135deg,
+    rgba(40, 40, 40, 0.8) 0%,
+    rgba(55, 55, 55, 0.8) 100%
+  );
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 `;
 
 const TabMenuItem = styled.div`
-  padding: 10px 20px;
+  padding: 12px 24px;
   cursor: pointer;
   font-weight: ${props => props.active ? 'bold' : 'normal'};
-  color: ${props => props.active ? '#d4af37' : '#f0f0f0'};
-  border-bottom: 3px solid ${props => props.active ? '#d4af37' : 'transparent'};
+  color: ${props => props.active ? '#1a1a1a' : '#f0f0f0'};
+  background: ${props => props.active ?
+    'linear-gradient(135deg, #d4af37, #f4d03f)' :
+    'transparent'
+  };
+  border-radius: 8px;
+  margin: 0 4px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(212, 175, 55, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
   
   &:hover {
-    color: #d4af37;
+    color: ${props => props.active ? '#1a1a1a' : '#d4af37'};
+    background: ${props => props.active ?
+      'linear-gradient(135deg, #f4d03f, #d4af37)' :
+      'rgba(212, 175, 55, 0.1)'
+    };
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 const StyledButton = styled.button`
-  padding: 8px 16px;
-  background: ${props => props.variant === 'primary' ? 'rgba(212, 175, 55, 0.7)' : 
-              props.variant === 'danger' ? 'rgba(220, 53, 69, 0.7)' : 
-              props.variant === 'success' ? 'rgba(40, 167, 69, 0.7)' : 
-              props.variant === 'warning' ? 'rgba(255, 193, 7, 0.7)' : 
-              props.variant === 'secondary' ? 'rgba(108, 117, 125, 0.7)' : 
-              'rgba(52, 58, 64, 0.7)'};
-  color: #fff;
-  border: none;
-  border-radius: 4px;
+  padding: 12px 24px;
+  background: ${props => {
+    if (props.disabled) return 'rgba(60, 60, 60, 0.5)';
+    
+    switch (props.variant) {
+      case 'primary':
+        return 'linear-gradient(135deg, #d4af37, #f4d03f)';
+      case 'danger':
+        return 'linear-gradient(135deg, #dc3545, #ff6b7a)';
+      case 'success':
+        return 'linear-gradient(135deg, #28a745, #4caf50)';
+      case 'warning':
+        return 'linear-gradient(135deg, #ffc107, #ffeb3b)';
+      case 'secondary':
+        return 'linear-gradient(135deg, #6c757d, #8e9297)';
+      case 'outline-primary':
+        return 'transparent';
+      case 'outline-warning':
+        return 'transparent';
+      default:
+        return 'linear-gradient(135deg, #495057, #6c757d)';
+    }
+  }};
+  color: ${props => {
+    if (props.disabled) return '#999';
+    if (props.variant === 'outline-primary' || props.variant === 'outline-warning') {
+      return '#d4af37';
+    }
+    return props.variant === 'warning' ? '#1a1a1a' : '#fff';
+  }};
+  border: ${props => {
+    if (props.variant === 'outline-primary' || props.variant === 'outline-warning') {
+      return '2px solid #d4af37';
+    }
+    return 'none';
+  }};
+  border-radius: 8px;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   opacity: ${props => props.disabled ? 0.6 : 1};
-  margin: 0 5px;
-  transition: all 0.2s;
+  margin: 0 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   
-  &:hover {
-    background: ${props => props.variant === 'primary' ? 'rgba(212, 175, 55, 0.9)' : 
-                props.variant === 'danger' ? 'rgba(220, 53, 69, 0.9)' : 
-                props.variant === 'success' ? 'rgba(40, 167, 69, 0.9)' : 
-                props.variant === 'warning' ? 'rgba(255, 193, 7, 0.9)' : 
-                props.variant === 'secondary' ? 'rgba(108, 117, 125, 0.9)' : 
-                'rgba(52, 58, 64, 0.9)'};
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    background: ${props => {
+      switch (props.variant) {
+        case 'primary':
+          return 'linear-gradient(135deg, #f4d03f, #d4af37)';
+        case 'danger':
+          return 'linear-gradient(135deg, #ff6b7a, #dc3545)';
+        case 'success':
+          return 'linear-gradient(135deg, #4caf50, #28a745)';
+        case 'warning':
+          return 'linear-gradient(135deg, #ffeb3b, #ffc107)';
+        case 'secondary':
+          return 'linear-gradient(135deg, #8e9297, #6c757d)';
+        case 'outline-primary':
+          return 'linear-gradient(135deg, #d4af37, #f4d03f)';
+        case 'outline-warning':
+          return 'linear-gradient(135deg, #ffc107, #ffeb3b)';
+        default:
+          return 'linear-gradient(135deg, #6c757d, #495057)';
+      }
+    }};
+    color: ${props => {
+      if (props.variant === 'outline-primary' || props.variant === 'outline-warning') {
+        return '#1a1a1a';
+      }
+      return props.variant === 'warning' ? '#1a1a1a' : '#fff';
+    }};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+    
+    &::before {
+      left: 100%;
+    }
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
   }
 `;
 
 const StyledCard = styled.div`
-  background: rgba(30, 30, 30, 0.7);
-  border: 1px solid ${props => props.borderColor || '#333'};
-  border-radius: 4px;
-  padding: 16px;
+  background: linear-gradient(135deg,
+    rgba(40, 40, 40, 0.9) 0%,
+    rgba(50, 50, 50, 0.9) 50%,
+    rgba(40, 40, 40, 0.9) 100%
+  );
+  border: 2px solid ${props => {
+    if (props.selected) return '#d4af37';
+    if (props.borderColor) return props.borderColor;
+    return 'rgba(212, 175, 55, 0.3)';
+  }};
+  border-radius: 12px;
+  padding: 20px;
   margin-bottom: 16px;
   cursor: ${props => props.clickable ? 'pointer' : 'default'};
   opacity: ${props => props.disabled ? 0.6 : 1};
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(212, 175, 55, 0.1),
+      transparent
+    );
+    background-size: 200px 100%;
+    animation: ${props => props.selected ? 'shimmer 2s infinite' : 'none'};
+    border-radius: 12px;
+    pointer-events: none;
+  }
   
   ${props => props.selected && `
     border-color: #d4af37;
-    box-shadow: 0 0 5px #d4af37;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.4), 0 4px 15px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg,
+      rgba(212, 175, 55, 0.1) 0%,
+      rgba(50, 50, 50, 0.9) 50%,
+      rgba(212, 175, 55, 0.1) 100%
+    );
+  `}
+  
+  ${props => props.clickable && `
+    &:hover:not([disabled]) {
+      transform: translateY(-4px);
+      border-color: #f4d03f;
+      box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3), 0 4px 15px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(135deg,
+        rgba(212, 175, 55, 0.05) 0%,
+        rgba(55, 55, 55, 0.9) 50%,
+        rgba(212, 175, 55, 0.05) 100%
+      );
+      
+      &::before {
+        animation: shimmer 1.5s infinite;
+      }
+    }
+    
+    &:active:not([disabled]) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2), 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
   `}
 `;
 
@@ -93,35 +375,102 @@ const CardHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #333;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 30%;
+    height: 2px;
+    background: linear-gradient(90deg, #d4af37, #f4d03f);
+    border-radius: 1px;
+  }
 `;
 
 const CardTitle = styled.h4`
   margin: 0;
-  color: #d4af37;
+  background: linear-gradient(135deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+  font-size: 1.1rem;
 `;
 
-const CardBody = styled.div``;
+const CardBody = styled.div`
+  animation: fadeIn 0.6s ease-out 0.1s both;
+`;
 
 const Badge = styled.span`
   display: inline-block;
-  padding: 4px 8px;
+  padding: 6px 12px;
   font-size: 0.8rem;
-  border-radius: 4px;
-  margin-right: 5px;
-  background: ${props => 
-    props.bg === 'primary' ? 'rgba(0, 123, 255, 0.7)' : 
-    props.bg === 'secondary' ? 'rgba(108, 117, 125, 0.7)' : 
-    props.bg === 'success' ? 'rgba(40, 167, 69, 0.7)' : 
-    props.bg === 'danger' ? 'rgba(220, 53, 69, 0.7)' : 
-    props.bg === 'warning' ? 'rgba(255, 193, 7, 0.7)' : 
-    props.bg === 'info' ? 'rgba(23, 162, 184, 0.7)' : 
-    props.bg === 'light' ? 'rgba(248, 249, 250, 0.7)' : 
-    props.bg === 'dark' ? 'rgba(52, 58, 64, 0.7)' : 
-    'rgba(0, 123, 255, 0.7)'};
-  color: ${props => props.text === 'dark' ? '#212529' : '#fff'};
+  font-weight: 600;
+  border-radius: 8px;
+  margin-right: 8px;
+  background: ${props => {
+    switch (props.bg) {
+      case 'primary':
+        return 'linear-gradient(135deg, #007bff, #0056b3)';
+      case 'secondary':
+        return 'linear-gradient(135deg, #6c757d, #495057)';
+      case 'success':
+        return 'linear-gradient(135deg, #28a745, #1e7e34)';
+      case 'danger':
+        return 'linear-gradient(135deg, #dc3545, #bd2130)';
+      case 'warning':
+        return 'linear-gradient(135deg, #d4af37, #b7950b)';
+      case 'info':
+        return 'linear-gradient(135deg, #17a2b8, #117a8b)';
+      case 'light':
+        return 'linear-gradient(135deg, #f8f9fa, #e9ecef)';
+      case 'dark':
+        return 'linear-gradient(135deg, #343a40, #212529)';
+      default:
+        return 'linear-gradient(135deg, #d4af37, #f4d03f)';
+    }
+  }};
+  color: ${props => {
+    if (props.text === 'dark') return '#212529';
+    if (props.bg === 'light') return '#212529';
+    if (props.bg === 'warning') return '#1a1a1a';
+    return '#fff';
+  }};
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    
+    &::before {
+      left: 100%;
+    }
+  }
 `;
 
 const ModalOverlay = styled.div`
@@ -130,156 +479,510 @@ const ModalOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(20, 20, 20, 0.9) 50%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
 `;
 
 const ModalContent = styled.div`
-  background-color: #1e1e1e;
-  border-radius: 4px;
-  padding: 20px;
+  background: linear-gradient(135deg,
+    rgba(30, 30, 30, 0.95) 0%,
+    rgba(45, 45, 45, 0.95) 50%,
+    rgba(30, 30, 30, 0.95) 100%
+  );
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 16px;
+  padding: 24px;
   width: 500px;
   max-width: 90%;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+  animation: fadeIn 0.4s ease-out 0.1s both;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(212, 175, 55, 0.1),
+      transparent
+    );
+    background-size: 200px 100%;
+    animation: shimmer 3s infinite;
+    border-radius: 16px;
+    pointer-events: none;
+  }
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 40%;
+    height: 2px;
+    background: linear-gradient(90deg, #d4af37, #f4d03f);
+    border-radius: 1px;
+  }
 `;
 
 const ModalTitle = styled.h4`
   margin: 0;
-  color: #d4af37;
+  background: linear-gradient(135deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.4rem;
+  font-weight: bold;
 `;
 
 const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 1.5rem;
+  background: linear-gradient(135deg, rgba(60, 60, 60, 0.8), rgba(80, 80, 80, 0.8));
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  font-size: 1.2rem;
   color: #aaa;
   cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &:hover {
     color: #fff;
+    background: linear-gradient(135deg, #d4af37, #f4d03f);
+    border-color: #f4d03f;
+    transform: scale(1.1);
+  }
+  
+  &:active {
+    transform: scale(0.95);
   }
 `;
 
 const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  gap: 12px;
 `;
 
-const ModalBody = styled.div``;
+const ModalBody = styled.div`
+  animation: fadeIn 0.6s ease-out 0.2s both;
+`;
 
 const FormGroup = styled.div`
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.6s ease-out;
 `;
 
 const FormLabel = styled.label`
   display: block;
-  margin-bottom: 8px;
-  color: #d4af37;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #d4af37, #f4d03f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+  font-size: 0.9rem;
 `;
 
 const FormControl = styled.input`
   width: 100%;
-  padding: 8px 12px;
-  background-color: #2d2d2d;
-  border: 1px solid #444;
-  border-radius: 4px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg,
+    rgba(40, 40, 40, 0.9) 0%,
+    rgba(50, 50, 50, 0.9) 100%
+  );
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
   color: #f0f0f0;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  position: relative;
+  
+  &::placeholder {
+    color: rgba(240, 240, 240, 0.5);
+  }
   
   &:focus {
     outline: none;
     border-color: #d4af37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+    background: linear-gradient(135deg,
+      rgba(50, 50, 50, 0.9) 0%,
+      rgba(60, 60, 60, 0.9) 100%
+    );
+  }
+  
+  &:hover:not(:focus) {
+    border-color: rgba(212, 175, 55, 0.5);
   }
 `;
 
 const FormSelect = styled.select`
   width: 100%;
-  padding: 8px 12px;
-  background-color: #2d2d2d;
-  border: 1px solid #444;
-  border-radius: 4px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg,
+    rgba(40, 40, 40, 0.9) 0%,
+    rgba(50, 50, 50, 0.9) 100%
+  );
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
   color: #f0f0f0;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  
+  option {
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+    padding: 8px;
+  }
   
   &:focus {
     outline: none;
     border-color: #d4af37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+    background: linear-gradient(135deg,
+      rgba(50, 50, 50, 0.9) 0%,
+      rgba(60, 60, 60, 0.9) 100%
+    );
+  }
+  
+  &:hover:not(:focus) {
+    border-color: rgba(212, 175, 55, 0.5);
   }
 `;
 
 const StyledTable = styled.table`
   width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg,
+    rgba(40, 40, 40, 0.9) 0%,
+    rgba(50, 50, 50, 0.9) 100%
+  );
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.6s ease-out;
   
   th, td {
-    padding: 10px;
+    padding: 16px 20px;
     text-align: left;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    transition: all 0.3s ease;
   }
   
   th {
+    background: linear-gradient(135deg,
+      rgba(212, 175, 55, 0.2) 0%,
+      rgba(244, 208, 63, 0.2) 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
     color: #d4af37;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #d4af37, #f4d03f);
+    }
   }
   
-  tr:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+  td {
+    color: #f0f0f0;
+    font-size: 0.9rem;
+  }
+  
+  tbody tr {
+    transition: all 0.3s ease;
+    position: relative;
+    
+    &:hover {
+      background: linear-gradient(135deg,
+        rgba(212, 175, 55, 0.1) 0%,
+        rgba(244, 208, 63, 0.05) 100%
+      );
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+      
+      td {
+        color: #fff;
+      }
+    }
+    
+    &:last-child td {
+      border-bottom: none;
+    }
+  }
+  
+  thead tr:first-child th:first-child {
+    border-top-left-radius: 10px;
+  }
+  
+  thead tr:first-child th:last-child {
+    border-top-right-radius: 10px;
+  }
+  
+  tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+  }
+  
+  tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 10px;
   }
 `;
 
 const AlertBox = styled.div`
-  padding: 12px;
-  margin-bottom: 16px;
-  border-radius: 4px;
-  background-color: ${props => 
-    props.variant === 'success' ? 'rgba(40, 167, 69, 0.2)' : 
-    props.variant === 'info' ? 'rgba(23, 162, 184, 0.2)' : 
-    props.variant === 'warning' ? 'rgba(255, 193, 7, 0.2)' : 
-    props.variant === 'danger' ? 'rgba(220, 53, 69, 0.2)' : 
-    'rgba(23, 162, 184, 0.2)'};
-  border-left: 4px solid ${props => 
-    props.variant === 'success' ? 'rgba(40, 167, 69, 0.7)' : 
-    props.variant === 'info' ? 'rgba(23, 162, 184, 0.7)' : 
-    props.variant === 'warning' ? 'rgba(255, 193, 7, 0.7)' : 
-    props.variant === 'danger' ? 'rgba(220, 53, 69, 0.7)' : 
-    'rgba(23, 162, 184, 0.7)'};
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: ${props => {
+    switch (props.variant) {
+      case 'success':
+        return 'linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(76, 175, 80, 0.1))';
+      case 'info':
+        return 'linear-gradient(135deg, rgba(23, 162, 184, 0.2), rgba(33, 150, 243, 0.1))';
+      case 'warning':
+        return 'linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.1))';
+      case 'danger':
+        return 'linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(244, 67, 54, 0.1))';
+      default:
+        return 'linear-gradient(135deg, rgba(23, 162, 184, 0.2), rgba(33, 150, 243, 0.1))';
+    }
+  }};
+  border: 2px solid ${props => {
+    switch (props.variant) {
+      case 'success':
+        return 'rgba(40, 167, 69, 0.4)';
+      case 'info':
+        return 'rgba(23, 162, 184, 0.4)';
+      case 'warning':
+        return 'rgba(212, 175, 55, 0.4)';
+      case 'danger':
+        return 'rgba(220, 53, 69, 0.4)';
+      default:
+        return 'rgba(23, 162, 184, 0.4)';
+    }
+  }};
   color: #f0f0f0;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.6s ease-out;
+  transition: all 0.3s ease;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: ${props => {
+      switch (props.variant) {
+        case 'success':
+          return 'linear-gradient(180deg, #28a745, #4caf50)';
+        case 'info':
+          return 'linear-gradient(180deg, #17a2b8, #2196f3)';
+        case 'warning':
+          return 'linear-gradient(180deg, #d4af37, #f4d03f)';
+        case 'danger':
+          return 'linear-gradient(180deg, #dc3545, #f44336)';
+        default:
+          return 'linear-gradient(180deg, #17a2b8, #2196f3)';
+      }
+    }};
+    border-radius: 0 3px 3px 0;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      ${props => {
+        switch (props.variant) {
+          case 'success':
+            return 'rgba(40, 167, 69, 0.1)';
+          case 'info':
+            return 'rgba(23, 162, 184, 0.1)';
+          case 'warning':
+            return 'rgba(212, 175, 55, 0.1)';
+          case 'danger':
+            return 'rgba(220, 53, 69, 0.1)';
+          default:
+            return 'rgba(23, 162, 184, 0.1)';
+        }
+      }},
+      transparent
+    );
+    background-size: 200px 100%;
+    animation: shimmer 3s infinite;
+    border-radius: 12px;
+    pointer-events: none;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    border-color: ${props => {
+      switch (props.variant) {
+        case 'success':
+          return 'rgba(40, 167, 69, 0.6)';
+        case 'info':
+          return 'rgba(23, 162, 184, 0.6)';
+        case 'warning':
+          return 'rgba(212, 175, 55, 0.6)';
+        case 'danger':
+          return 'rgba(220, 53, 69, 0.6)';
+        default:
+          return 'rgba(23, 162, 184, 0.6)';
+      }
+    }};
+  }
 `;
 
 const ProgressBarContainer = styled.div`
-  height: 20px;
+  height: 24px;
   width: 100%;
-  background-color: #333;
-  border-radius: 4px;
+  background: linear-gradient(135deg,
+    rgba(40, 40, 40, 0.9) 0%,
+    rgba(60, 60, 60, 0.9) 100%
+  );
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    background-size: 100px 100%;
+    animation: shimmer 2s infinite;
+    pointer-events: none;
+  }
 `;
 
 const ProgressBarFill = styled.div`
   height: 100%;
-  background-color: ${props => 
-    props.variant === 'success' ? 'rgba(40, 167, 69, 0.9)' : 
-    props.variant === 'info' ? 'rgba(23, 162, 184, 0.9)' : 
-    props.variant === 'warning' ? 'rgba(255, 193, 7, 0.9)' : 
-    props.variant === 'danger' ? 'rgba(220, 53, 69, 0.9)' : 
-    'rgba(23, 162, 184, 0.9)'};
+  background: ${props => {
+    switch (props.variant) {
+      case 'success':
+        return 'linear-gradient(135deg, #28a745, #4caf50, #66bb6a)';
+      case 'info':
+        return 'linear-gradient(135deg, #17a2b8, #2196f3, #42a5f5)';
+      case 'warning':
+        return 'linear-gradient(135deg, #d4af37, #f4d03f, #ffeb3b)';
+      case 'danger':
+        return 'linear-gradient(135deg, #dc3545, #f44336, #ef5350)';
+      default:
+        return 'linear-gradient(135deg, #17a2b8, #2196f3, #42a5f5)';
+    }
+  }};
   width: ${props => props.percent}%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: width 0.3s ease;
+  transition: width 0.6s ease;
   color: white;
   font-size: 0.8rem;
+  font-weight: 600;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    background-size: 50px 100%;
+    animation: shimmer 1.5s infinite;
+    pointer-events: none;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    pointer-events: none;
+  }
 `;
 
 const Container = styled.div``;
@@ -294,6 +997,50 @@ const Col = styled.div`
   flex: ${props => props.md ? `0 0 ${(props.md / 12) * 100}%` : '1'};
   max-width: ${props => props.md ? `${(props.md / 12) * 100}%` : '100%'};
   padding: 0 10px;
+`;
+
+const LoadingContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    animation: ${fadeIn} 0.3s ease-out;
+`;
+
+const LoadingSpinner = styled.div`
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(212, 175, 55, 0.1);
+    border-radius: 50%;
+    border-top: 4px solid #d4af37;
+    animation: ${spin} 1s linear infinite;
+    margin-bottom: 16px;
+    position: relative;
+    
+    &::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border: 2px solid transparent;
+        border-top: 2px solid rgba(212, 175, 55, 0.3);
+        border-radius: 50%;
+        animation: ${spin} 2s linear infinite reverse;
+    }
+`;
+
+const LoadingText = styled.div`
+    color: #d4af37;
+    font-size: 16px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #d4af37, #f4d03f);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: ${pulse} 2s ease-in-out infinite;
 `;
 
 const PvPTab = () => {
@@ -1909,17 +2656,10 @@ const PvPTab = () => {
             </TabHeader>
             
             {loading && (
-                <div style={{ textAlign: 'center', margin: '20px 0' }}>
-                    <div style={{ 
-                        display: 'inline-block',
-                        width: '40px',
-                        height: '40px',
-                        border: '4px solid rgba(255,255,255,.1)',
-                        borderRadius: '50%',
-                        borderTop: '4px solid #d4af37',
-                        animation: 'spin 1s linear infinite'
-                    }} />
-                </div>
+                <LoadingContainer>
+                    <LoadingSpinner />
+                    <LoadingText>Загрузка...</LoadingText>
+                </LoadingContainer>
             )}
             
             {/* ИСПРАВЛЕНИЕ: Улучшенная логика условного рендеринга для разных состояний */}
