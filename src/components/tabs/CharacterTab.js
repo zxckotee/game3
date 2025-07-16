@@ -389,13 +389,7 @@ function CharacterTab() {
     }
   }, [player.id, actions]);
   
-  // Загрузка аватарки персонажа при монтировании компонента
-  useEffect(() => {
-    if (player && player.id && !player.avatar) {
-      console.log('CharacterTab: Загружаем аватарку персонажа');
-      actions.loadAvatar(player.id);
-    }
-  }, [player.id, player.avatar, actions]);
+  // Аватарка теперь загружается вместе с профилем, отдельный запрос не нужен
   
   // Обработчики для загрузки аватарки
   const handleAvatarClick = () => {

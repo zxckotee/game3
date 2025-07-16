@@ -56,7 +56,7 @@ router.get('/api/users/:userId/profile', async (req, res) => {
     // Используем сервис для получения профиля персонажа
     const profile = await CharacterProfileService.getCharacterProfile(userId);
     
-    if (!profile) {
+    if (!profile) {2
       console.log(`Профиль персонажа для пользователя ${userId} не найден`);
       return res.status(404).json({ error: 'Профиль персонажа не найден' });
     }
@@ -127,12 +127,13 @@ router.post('/api/users/:userId/avatar', upload.single('avatar'), async (req, re
   }
 });
 
-// Получение аватарки персонажа
+// Получение аватарки персонажа (УСТАРЕЛО - аватарка теперь приходит с профилем)
+// Оставлено для совместимости, но рекомендуется использовать /api/users/:userId/profile
 router.get('/api/users/:userId/avatar', async (req, res) => {
   try {
     const userId = req.params.userId;
     
-    console.log(`Запрос аватарки для пользователя ${userId}`);
+    console.log(`[УСТАРЕЛО] Запрос аватарки для пользователя ${userId} - используйте /api/users/:userId/profile`);
     
     // Получаем путь к аватарке из профиля
     const avatarPath = await CharacterProfileService.getAvatar(userId);

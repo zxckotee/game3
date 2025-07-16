@@ -502,45 +502,24 @@ class CharacterProfileServiceAPI {
   }
 
   /**
-   * Получение аватарки персонажа
+   * Получение аватарки персонажа (УСТАРЕЛО - аватарка теперь приходит с профилем)
    * @param {number} userId - ID пользователя
    * @returns {Promise<string|null>} - Путь к аватарке или null
    */
   static async getAvatar(userId) {
-    try {
-      console.log(`[CharacterProfileServiceAPI] Получение аватарки для пользователя ${userId}`);
-      
-      // Сначала пробуем получить из API
-      try {
-        const response = await fetch(`/api/users/${userId}/avatar`);
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log(`[CharacterProfileServiceAPI] Аватарка получена из API:`, result.avatar);
-          return result.avatar;
-        } else if (response.status === 404) {
-          console.log(`[CharacterProfileServiceAPI] Аватарка не найдена в API`);
-          return null;
-        }
-      } catch (apiError) {
-        console.warn(`[CharacterProfileServiceAPI] Ошибка API при получении аватарки:`, apiError);
-      }
-      
-      // Если API не сработал, пробуем localStorage
-      const profiles = getProfilesFromStorage();
-      const profile = profiles[userId];
-      
-      if (profile && profile.avatar) {
-        console.log(`[CharacterProfileServiceAPI] Аватарка получена из localStorage:`, profile.avatar);
-        return profile.avatar;
-      }
-      
-      console.log(`[CharacterProfileServiceAPI] Аватарка не найдена`);
-      return null;
-    } catch (error) {
-      console.error(`[CharacterProfileServiceAPI] Ошибка при получении аватарки:`, error);
-      return null;
+    console.log(`[CharacterProfileServiceAPI] getAvatar устарел - аватарка теперь приходит с профилем`);
+    
+    // Получаем аватарку из профиля в localStorage
+    const profiles = getProfilesFromStorage();
+    const profile = profiles[userId];
+    
+    if (profile && profile.avatar) {
+      console.log(`[CharacterProfileServiceAPI] Аватарка получена из профиля:`, profile.avatar);
+      return profile.avatar;
     }
+    
+    console.log(`[CharacterProfileServiceAPI] Аватарка не найдена в профиле`);
+    return null;
   }
 }
 

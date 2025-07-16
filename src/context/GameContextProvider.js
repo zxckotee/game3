@@ -917,25 +917,7 @@ const actions = {
       }
     },
     
-    loadAvatar: async (userId) => {
-      try {
-        console.log(`[GameContext] Загрузка аватарки для пользователя ${userId}`);
-        
-        // Получаем аватарку через API
-        const avatar = await CharacterProfileServiceAPI.getAvatar(userId);
-        
-        // Обновляем аватарку в состоянии
-        dispatch({
-          type: ACTION_TYPES.SET_AVATAR,
-          payload: avatar
-        });
-        
-        return avatar;
-      } catch (error) {
-        console.error('[GameContext] Ошибка при загрузке аватарки:', error);
-        return null;
-      }
-    },
+    // loadAvatar удален - аватарка теперь загружается вместе с профилем
     
     clearAvatar: () => {
       dispatch({ type: ACTION_TYPES.CLEAR_AVATAR });
