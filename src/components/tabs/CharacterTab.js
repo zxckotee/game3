@@ -488,6 +488,133 @@ function CharacterTab() {
     return value.toString();
   };
   
+  // Словари локализации для предыстории персонажа
+  const LOCALIZATION = {
+    gender: {
+      male: { adjective: 'Этот', pronoun: 'он' },
+      female: { adjective: 'Эта', pronoun: 'она' }
+    },
+    
+    regions: {
+      central: {
+        name: 'Центральные равнины',
+        from: 'из Центральных равнин',
+        description: 'плодородных и мирных земель'
+      },
+      mountain: {
+        name: 'Горные хребты',
+        from: 'из Горных хребтов',
+        description: 'суровых и неприступных гор'
+      },
+      coastal: {
+        name: 'Прибрежные земли',
+        from: 'из Прибрежных земель',
+        description: 'богатых морских просторов'
+      },
+      desert: {
+        name: 'Западная пустыня',
+        from: 'из Западной пустыни',
+        description: 'безжалостных песчаных дюн'
+      },
+      forest: {
+        name: 'Древние леса',
+        from: 'из Древних лесов',
+        description: 'таинственных и дремучих чащ'
+      }
+    },
+    
+    backgrounds: {
+      commoner: {
+        male: {
+          nominative: 'простолюдин',
+          description: 'Простой человек из народа',
+          trait: 'привыкший к тяжелому труду и простой жизни'
+        },
+        female: {
+          nominative: 'простолюдинка',
+          description: 'Простая женщина из народа',
+          trait: 'привыкшая к тяжелому труду и простой жизни'
+        }
+      },
+      noble: {
+        male: {
+          nominative: 'аристократ',
+          description: 'Представитель знатного рода',
+          trait: 'воспитанный в роскоши и благородных традициях'
+        },
+        female: {
+          nominative: 'аристократка',
+          description: 'Представительница знатного рода',
+          trait: 'воспитанная в роскоши и благородных традициях'
+        }
+      },
+      merchant: {
+        male: {
+          nominative: 'торговец',
+          description: 'Опытный торговец',
+          trait: 'знающий цену деньгам и умеющий вести дела'
+        },
+        female: {
+          nominative: 'торговка',
+          description: 'Опытная торговка',
+          trait: 'знающая цену деньгам и умеющая вести дела'
+        }
+      },
+      warrior: {
+        male: {
+          nominative: 'воин',
+          description: 'Закаленный в боях воин',
+          trait: 'познавший силу оружия и дисциплину сражений'
+        },
+        female: {
+          nominative: 'воительница',
+          description: 'Закаленная в боях воительница',
+          trait: 'познавшая силу оружия и дисциплину сражений'
+        }
+      },
+      scholar: {
+        male: {
+          nominative: 'ученый',
+          description: 'Мудрый ученый',
+          trait: 'посвятивший жизнь изучению древних знаний'
+        },
+        female: {
+          nominative: 'ученая',
+          description: 'Мудрая ученая',
+          trait: 'посвятившая жизнь изучению древних знаний'
+        }
+      }
+    }
+  };
+
+  // Функция для генерации полной предыстории персонажа
+  const generateCharacterBackground = (player) => {
+    if (!player) return 'История этого культиватора пока не написана...';
+    
+    const { gender = 'male', region = 'central', background = 'commoner', description, name } = player;
+    
+    // Получаем локализованные данные
+    const genderData = LOCALIZATION.gender[gender] || LOCALIZATION.gender.male;
+    const regionData = LOCALIZATION.regions[region] || LOCALIZATION.regions.central;
+    const backgroundData = LOCALIZATION.backgrounds[background]?.[gender] || LOCALIZATION.backgrounds.commoner[gender];
+    
+    if (!backgroundData) {
+      return description || 'История этого культиватора пока не написана...';
+    }
+    
+    // Формируем основной текст предыстории
+    let backgroundText = `${genderData.adjective} ${backgroundData.nominative} родом ${regionData.from}. `;
+    backgroundText += `${backgroundData.description}, ${backgroundData.trait}, `;
+    backgroundText += `${genderData.pronoun} реши${gender === 'female' ? 'ла' : 'л'} встать на путь культивации в поисках бессмертия.`;
+    
+    // Добавляем пользовательское описание, если есть
+    if (description && description.trim()) {
+      backgroundText += `\n\n${description}`;
+    }
+    
+    return backgroundText;
+  };
+
   // Функция для получения названия стадии развития
   const getCultivationStageName = (level) => {
     level = level || 0;
@@ -564,7 +691,7 @@ function CharacterTab() {
         <BackgroundInfo>
           <BackgroundTitle>Предыстория</BackgroundTitle>
           <BackgroundText>
-            {player.background || 'История этого культиватора пока не написана...'}
+            {generateCharacterBackground(player)}
           </BackgroundText>
         </BackgroundInfo>
       </CharacterPanel>
