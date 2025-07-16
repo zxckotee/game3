@@ -569,7 +569,7 @@ module.exports.handleInteraction = async (characterId, interactionType) => {
 
 /**
  * Добавление нового события к отношениям с NPC
- * @param {number} relationshipId - ID отношений (ID NPC)
+ * @param {string} relationshipId - ID отношений (snake_case ID NPC)
  * @param {string} eventText - Текст события
  * @returns {Promise<Object>} - Ответ сервера
  */

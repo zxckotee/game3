@@ -280,6 +280,42 @@ const ItemPrice = styled.div`
   }};
 `;
 
+const PriceContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+`;
+
+const OriginalPrice = styled.div`
+  color: #888;
+  font-size: 12px;
+  text-decoration: line-through;
+  margin-bottom: 2px;
+`;
+
+const DiscountedPrice = styled.div`
+  color: ${props => {
+    switch(props.currencyType) {
+      case 'copper': return '#b87333';
+      case 'silver': return '#c0c0c0';
+      case 'gold': return '#ffd700';
+      case 'spiritStones': return '#7cb9e8';
+      default: return '#ffd700';
+    }
+  }};
+  font-weight: bold;
+`;
+
+const DiscountBadge = styled.div`
+  background: #e74c3c;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-top: 2px;
+  font-weight: bold;
+`;
+
 const ItemDescription = styled.div`
   font-size: 14px;
   color: #aaa;
@@ -603,10 +639,10 @@ const MarketTab = () => {
 
   // Функция для получения уровня отношений с торговцем
   const getRelationshipLevel = (merchant) => {
-    if (!merchant || !merchant.reputation || !Array.isArray(merchant.reputation) || merchant.reputation.length === 0) {
+    if (!merchant || merchant.reputation === null || merchant.reputation === undefined) {
       return 'neutral';
     }
-    const reputationValue = merchant.reputation[0].reputation;
+    const reputationValue = merchant.reputation;
     if (reputationValue >= 80) return 'friendly';
     if (reputationValue <= 20) return 'hostile';
     return 'neutral';
@@ -621,11 +657,25 @@ const MarketTab = () => {
     }
   };
 
+  // Функция для получения изображения торговца из relationships
+  const getMerchantImage = (merchantId) => {
+    // Получаем relationships из состояния игрока
+    const relationships = player?.social?.relationships || player?.relationships || [];
+    
+    // Ищем торговца по ID
+    const relationship = Array.isArray(relationships)
+      ? relationships.find(rel => rel.id === merchantId)
+      : null;
+    
+    // Возвращаем изображение или fallback
+    return relationship?.image || '/assets/images/npc/default_merchant.png';
+  };
+
   const calculateReputationDiscount = (reputation) => {
-    if (reputation >= 80) return 0.20; // 20%
-    if (reputation >= 60) return 0.15; // 15%
-    if (reputation >= 40) return 0.10; // 10%
-    if (reputation >= 20) return 0.05; // 5%
+    // Новая логика: скидка только при level >= 50, размер = level / 10 / 100
+    if (reputation >= 50) {
+      return Math.floor(reputation / 10) / 100; // level / 10, преобразованное в десятичную дробь
+    }
     return 0;
   };
 
@@ -649,8 +699,8 @@ const MarketTab = () => {
       const marketItems = [];
       
       merchants.forEach(merchant => {
-        const reputationValue = (merchant.reputation && merchant.reputation[0]) ? merchant.reputation[0].reputation : 0;
-        const discount = calculateReputationDiscount(reputationValue);
+        const reputationValue = (merchant.reputation !== null && merchant.reputation !== undefined) ? merchant.reputation : 0;
+        const discount = merchant.discount || calculateReputationDiscount(reputationValue);
 
         if (merchant.items && merchant.items.length > 0) {
           merchant.items.forEach(item => {
@@ -795,6 +845,26 @@ const MarketTab = () => {
       default: return `${price} меди`;
     }
   };
+
+  // Функция для рендеринга цены со скидкой
+  const renderPriceWithDiscount = (item) => {
+    const currencyType = getCurrencyTypeByRarity(item.rarity);
+    const hasDiscount = item.originalPrice && item.discount > 0 && item.price < item.originalPrice;
+    
+    return (
+      <PriceContainer>
+        {hasDiscount && (
+          <OriginalPrice>{formatPrice(item.originalPrice, item.rarity)}</OriginalPrice>
+        )}
+        <DiscountedPrice currencyType={currencyType}>
+          {formatPrice(item.price, item.rarity)}
+        </DiscountedPrice>
+        {hasDiscount && (
+          <DiscountBadge>-{Math.round(item.discount * 100)}%</DiscountBadge>
+        )}
+      </PriceContainer>
+    );
+  };
   
   // Функция для получения цены предмета (для продажи)
   const getItemPrice = (item) => {
@@ -848,16 +918,35 @@ const MarketTab = () => {
           payload: { [currencyType]: -price }
         });
         
-        const itemToAdd = {
-          ...selectedItem,
-          id: result.inventoryItemId,
-          quantity: quantity
-        };
-        
-        actions.dispatch({
-          type: ACTION_TYPES.ADD_ITEM_TO_INVENTORY,
-          payload: itemToAdd
-        });
+        // Обновляем инвентарь с сервера, как это делает InventoryTab
+        try {
+          const updatedInventory = await InventoryServiceAPI.getInventoryItems(userId);
+          if (updatedInventory && Array.isArray(updatedInventory)) {
+            const finalItems = updatedInventory.map(item => ({
+              ...item,
+              enriched: true,
+              enrichedFailed: false
+            }));
+            
+            if (actions.updateInventoryItems) {
+              actions.updateInventoryItems(finalItems);
+              console.log('[MarketTab] Инвентарь обновлен после покупки:', finalItems.length, 'предметов');
+            }
+          }
+        } catch (inventoryError) {
+          console.error('[MarketTab] Ошибка при обновлении инвентаря после покупки:', inventoryError);
+          // Fallback к старому методу, если обновление с сервера не удалось
+          const itemToAdd = {
+            ...selectedItem,
+            id: result.inventoryItemId,
+            quantity: quantity
+          };
+          
+          actions.dispatch({
+            type: ACTION_TYPES.ADD_ITEM_TO_INVENTORY,
+            payload: itemToAdd
+          });
+        }
         
         refreshMarketData();
         updateSelectedItemForCurrentTab(null);
@@ -1044,9 +1133,7 @@ const MarketTab = () => {
                       </ItemIcon>
                       <ItemInfo>
                         <ItemName rarity={item.rarity}>{item.name}</ItemName>
-                        <ItemPrice currencyType={getCurrencyTypeByRarity(item.rarity)}>
-                          {formatPrice(item.price, item.rarity)}
-                        </ItemPrice>
+                        {renderPriceWithDiscount(item)}
                       </ItemInfo>
                     </ItemCard>
                   ))
@@ -1258,7 +1345,13 @@ const MarketTab = () => {
                         setSelectedMerchantItemId(merchant.id);
                       }}
                     >
-                      <ItemIcon>🧙</ItemIcon>
+                      <ItemIcon>
+                        {getMerchantImage(merchant.id) ? (
+                          <img src={getMerchantImage(merchant.id)} alt={merchant.name} />
+                        ) : (
+                          '🧙'
+                        )}
+                      </ItemIcon>
                       <ItemInfo>
                         <ItemName>{merchant.name}</ItemName>
                         <div>Отношения: {getRelationshipText(merchant)}</div>
@@ -1276,11 +1369,11 @@ const MarketTab = () => {
                   <ItemDetails>
                     <DetailRow>
                       <DetailLabel>Репутация:</DetailLabel>
-                      <DetailValue>{selectedMerchantItem.reputation && selectedMerchantItem.reputation[0] ? selectedMerchantItem.reputation[0].reputation : 'N/A'}</DetailValue>
+                      <DetailValue>{selectedMerchantItem.reputation !== null && selectedMerchantItem.reputation !== undefined ? selectedMerchantItem.reputation : 'N/A'}</DetailValue>
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Скидка:</DetailLabel>
-                      <DetailValue>{selectedMerchantItem.reputation && selectedMerchantItem.reputation[0] ? `${calculateReputationDiscount(selectedMerchantItem.reputation[0].reputation) * 100}%` : 'N/A'}</DetailValue>
+                      <DetailValue>{selectedMerchantItem.discount !== null && selectedMerchantItem.discount !== undefined ? `${(selectedMerchantItem.discount * 100).toFixed(1)}%` : 'N/A'}</DetailValue>
                     </DetailRow>
                      <DetailRow>
                       <DetailLabel>Специализация:</DetailLabel>

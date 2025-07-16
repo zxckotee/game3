@@ -61,7 +61,7 @@ router.get('/api/merchants/:id/inventory', async (req, res) => {
 // API маршрут для обновления количества предметов у торговца
 router.put('/api/merchants/:id/update-inventory', async (req, res) => {
   try {
-    const merchantId = parseInt(req.params.id, 10);
+    const merchantId = req.params.id;
     const { itemId, quantity, userId, action } = req.body;
     
     console.log(`Обновление инвентаря торговца: merchantId=${merchantId}, itemId=${itemId}, action=${action}, quantity=${quantity}, userId=${userId}`);
@@ -90,7 +90,7 @@ router.put('/api/merchants/:id/update-inventory', async (req, res) => {
 // API маршрут для покупки товара у торговца
 router.post('/api/merchants/:merchantId/buy', async (req, res) => {
   try {
-    const merchantId = parseInt(req.params.merchantId);
+    const merchantId = req.params.merchantId;
     const { userId, itemId, quantity = 1 } = req.body;
     
     console.log(`Покупка товара у торговца: merchantId=${merchantId}, itemId=${itemId}, userId=${userId}, quantity=${quantity}`);
@@ -118,7 +118,7 @@ router.post('/api/merchants/:merchantId/buy', async (req, res) => {
 // API маршрут для продажи товара торговцу
 router.post('/api/merchants/:merchantId/sell', async (req, res) => {
   try {
-    const merchantId = parseInt(req.params.merchantId);
+    const merchantId = req.params.merchantId;
     const { userId, itemData, quantity = 1 } = req.body;
     
     console.log(`Продажа товара торговцу: merchantId=${merchantId}, userId=${userId}, quantity=${quantity}`);
@@ -146,7 +146,7 @@ router.post('/api/merchants/:merchantId/sell', async (req, res) => {
 // API маршрут для пополнения инвентаря торговца
 router.post('/api/merchants/:merchantId/restock', async (req, res) => {
   try {
-    const merchantId = parseInt(req.params.merchantId);
+    const merchantId = req.params.merchantId;
     const { userId } = req.body;
     
     if (!userId) {

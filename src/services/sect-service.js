@@ -211,8 +211,8 @@ class SectService {
         {type: 'technique_discount', modifier: 2},
       ],
       members: [
-        { id: 1, name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
-        { id: 2, name: 'Старейшина Чжан', role: 'Старейшина', cultivationLevel: 25, level: 6, experience: 150, requiredExperience: 250 },
+        { id: 'master_li', name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
+        { id: 'elder_zhang', name: 'Старейшина Чжан', role: 'Старейшина', cultivationLevel: 25, level: 6, experience: 150, requiredExperience: 250 },
         { id: 3, name: 'Ученик Ван', role: 'Внутренний ученик', cultivationLevel: 15, level: 4, experience: 80, requiredExperience: 150 },
         { id: 4, name: 'Ученица Мэй', role: 'Внутренний ученик', cultivationLevel: 12, level: 3, experience: 50, requiredExperience: 120 },
         { id: 5, name: 'Ученик Чен', role: 'Внешний ученик', cultivationLevel: 8, level: 2, experience: 30, requiredExperience: 100 }
@@ -308,8 +308,8 @@ class SectService {
                 {type: 'technique_discount', modifier: 2}
               ],
               members: [
-                { id: 1, name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
-                { id: 2, name: 'Старейшина Чжан', role: 'Старейшина', cultivationLevel: 25, level: 6, experience: 150, requiredExperience: 250 },
+                { id: 'master_li', name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
+                { id: 'elder_zhang', name: 'Старейшина Чжан', role: 'Старейшина', cultivationLevel: 25, level: 6, experience: 150, requiredExperience: 250 },
                 { id: 3, name: 'Ученик Ван', role: 'Внутренний ученик', cultivationLevel: 15, level: 4, experience: 80, requiredExperience: 150 },
                 { id: 4, name: 'Ученица Мэй', role: 'Внутренний ученик', cultivationLevel: 12, level: 3, experience: 50, requiredExperience: 120 },
                 { id: 5, name: 'Ученик Чен', role: 'Внешний ученик', cultivationLevel: 8, level: 2, experience: 30, requiredExperience: 100 }
@@ -477,8 +477,8 @@ class SectService {
         {type: 'technique_discount', modifier: 2}
       ],
       members: [
-        { id: 1, name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
-        { id: 2, name: 'Старейшина Чжан', role: 'Старейшина', cultivationLevel: 25, level: 6, experience: 150, requiredExperience: 250 },
+        { id: 'master_li', name: 'Мастер Ли', role: 'Глава секты', cultivationLevel: 30, level: 8, experience: 200, requiredExperience: 300 },
+        { id: 'elder_zhang', name: 'Старейшина Чжан', role: 'Старейшина', cultivationLevel: 25, level: 6, experience: 150, requiredExperience: 250 },
         { id: 3, name: 'Ученик Ван', role: 'Внутренний ученик', cultivationLevel: 15, level: 4, experience: 80, requiredExperience: 150 },
         { id: 4, name: 'Ученица Мэй', role: 'Внутренний ученик', cultivationLevel: 12, level: 3, experience: 50, requiredExperience: 120 },
         { id: 5, name: 'Ученик Чен', role: 'Внешний ученик', cultivationLevel: 8, level: 2, experience: 30, requiredExperience: 100 }

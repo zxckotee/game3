@@ -33,23 +33,20 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
     // Получаем модели через реестр
     const Merchant = modelRegistry.getModel('Merchant');
     const MerchantInventory = modelRegistry.getModel('MerchantInventory');
-    const MerchantReputation = modelRegistry.getModel('MerchantReputation');
-    
+    const CharacterProfile = modelRegistry.getModel('CharacterProfile');
+    if (!userId || userId === undefined){
+      userId = 14;
+    }
+
     // Загружаем всех торговцев с их связями, явно указывая атрибуты
     const merchants = await Merchant.findAll({
       include: [
         {
           model: MerchantInventory,
           as: 'inventory',
-          // Фильтруем инвентарь по userId, если он предоставлен 
+          // Фильтруем инвентарь по userId, если он предоставлен
           where: userId ? { userId: userId } : {},
           required: false // Используем LEFT JOIN, чтобы торговцы без инвентаря для этого юзера все равно отображались
-        },
-        {
-          model: MerchantReputation,
-          as: 'reputations',
-          where: userId ? { userId: userId } : {},
-          required: false
         }
       ],
       // Явно указываем атрибуты для выборки, чтобы избежать неявных присоединений
@@ -57,9 +54,27 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
                   'image', 'defaultDiscount', 'createdAt', 'updatedAt']
     });
     
-    // Преобразуем в нужный формат для клиента
-    const formattedMerchants = merchants.map(merchant => formatMerchant(merchant));
-    //console.log(formattedMerchants);
+    // Получаем relationships пользователя, если userId предоставлен
+    let userRelationships = null;
+    if (userId) {
+      try {
+        const profile = await CharacterProfile.findOne({
+          where: { userId },
+          attributes: ['relationships']
+        });
+        userRelationships = profile ? profile.relationships : null;
+      } catch (error) {
+        console.error('Ошибка при получении relationships пользователя:', error);
+        userRelationships = null;
+      }
+    }
+    console.log(userRelationships);
+
+    // Преобразуем в нужный формат для клиента с учетом relationships
+    const formattedMerchants = merchants.map(merchant =>
+      formatMerchant(merchant, userId, userRelationships)
+    );
+    
     // Обновляем кэш
     merchantsCache = formattedMerchants;
 
@@ -69,7 +84,7 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
     }, {});
     return formattedMerchants;
   } catch (error) {
-    console.error('Ошибка при получении торговцев:', error); 
+    console.error('Ошибка при получении торговцев:', error);
     // В случае ошибки возвращаем кэшированные данные
     return merchantsCache;
   }
@@ -80,10 +95,10 @@ exports.getAllMerchants = async function(userId) { // Добавляем userId
  * @param {number} id - ID торговца
  * @returns {Promise<Object|null>} Торговец или null, если не найден
  */
-exports.getMerchantById = async function(id) {
+exports.getMerchantById = async function(id, userId = null) {
   try {
-    // Проверяем, есть ли в кэше
-    if (merchantsById[id]) {
+    // Проверяем, есть ли в кэше (только если userId не предоставлен)
+    if (!userId && merchantsById[id]) {
       return merchantsById[id];
     }
     
@@ -93,28 +108,44 @@ exports.getMerchantById = async function(id) {
     // Получаем модели через реестр
     const Merchant = modelRegistry.getModel('Merchant');
     const MerchantInventory = modelRegistry.getModel('MerchantInventory');
-    const MerchantReputation = modelRegistry.getModel('MerchantReputation');
+    const CharacterProfile = modelRegistry.getModel('CharacterProfile');
     
     // Загружаем торговца с его связями, явно указывая атрибуты
     const merchant = await Merchant.findByPk(id, {
       include: [
-        { model: MerchantInventory, as: 'inventory' },
-        { model: MerchantReputation, as: 'reputations' }
+        { model: MerchantInventory, as: 'inventory' }
       ],
       // Явно указываем атрибуты для выборки, чтобы избежать неявных присоединений
       attributes: ['id', 'name', 'description', 'location', 'specialization',
                   'image', 'defaultDiscount', 'createdAt', 'updatedAt']
     });
     
-    if (!merchant) { 
+    if (!merchant) {
       return null;
     }
     
-    // Преобразуем в нужный формат для клиента
-    const formattedMerchant = formatMerchant(merchant);
+    // Получаем relationships пользователя, если userId предоставлен
+    let userRelationships = null;
+    if (userId) {
+      try {
+        const profile = await CharacterProfile.findOne({
+          where: { userId },
+          attributes: ['relationships']
+        });
+        userRelationships = profile ? profile.relationships : null;
+      } catch (error) {
+        console.error('Ошибка при получении relationships пользователя:', error);
+        userRelationships = null;
+      }
+    }
     
-    // Добавляем в кэш
-    merchantsById[id] = formattedMerchant;
+    // Преобразуем в нужный формат для клиента с учетом relationships
+    const formattedMerchant = formatMerchant(merchant, userId, userRelationships);
+    
+    // Добавляем в кэш только если userId не предоставлен
+    if (!userId) {
+      merchantsById[id] = formattedMerchant;
+    }
     
     return formattedMerchant;
   } catch (error) {
@@ -129,10 +160,10 @@ exports.getMerchantById = async function(id) {
  * @param {string} specialization - Специализация торговцев
  * @returns {Promise<Array>} Массив торговцев указанной специализации
  */
-exports.getMerchantsByType = async function(specialization) {
+exports.getMerchantsByType = async function(specialization, userId = null) {
   try {
-    // Проверяем кэш для оптимизации
-    if (merchantsCache.length > 0) {
+    // Проверяем кэш для оптимизации (только если userId не предоставлен)
+    if (!userId && merchantsCache.length > 0) {
       const cachedMerchants = merchantsCache.filter(merchant => merchant.specialization === specialization);
       if (cachedMerchants.length > 0) {
         return cachedMerchants;
@@ -145,6 +176,7 @@ exports.getMerchantsByType = async function(specialization) {
     // Получаем модели через реестр
     const Merchant = modelRegistry.getModel('Merchant');
     const MerchantInventory = modelRegistry.getModel('MerchantInventory');
+    const CharacterProfile = modelRegistry.getModel('CharacterProfile');
     
     // Загружаем торговцев с их связями, явно указывая атрибуты
     const merchants = await Merchant.findAll({
@@ -157,8 +189,23 @@ exports.getMerchantsByType = async function(specialization) {
                   'image', 'defaultDiscount', 'createdAt', 'updatedAt']
     });
     
-    // Преобразуем в нужный формат для клиента
-    return merchants.map(merchant => formatMerchant(merchant));
+    // Получаем relationships пользователя, если userId предоставлен
+    let userRelationships = null;
+    if (userId) {
+      try {
+        const profile = await CharacterProfile.findOne({
+          where: { userId },
+          attributes: ['relationships']
+        });
+        userRelationships = profile ? profile.relationships : null;
+      } catch (error) {
+        console.error('Ошибка при получении relationships пользователя:', error);
+        userRelationships = null;
+      }
+    }
+    
+    // Преобразуем в нужный формат для клиента с учетом relationships
+    return merchants.map(merchant => formatMerchant(merchant, userId, userRelationships));
   } catch (error) {
     console.error(`Ошибка при получении торговцев специализации ${specialization}:`, error);
     // В случае ошибки фильтруем кэш
@@ -171,10 +218,10 @@ exports.getMerchantsByType = async function(specialization) {
  * @param {string} location - Локация торговцев
  * @returns {Promise<Array>} Массив торговцев в указанной локации
  */
-exports.getMerchantsByLocation = async function(location) {
+exports.getMerchantsByLocation = async function(location, userId = null) {
   try {
-    // Проверяем кэш для оптимизации
-    if (merchantsCache.length > 0) {
+    // Проверяем кэш для оптимизации (только если userId не предоставлен)
+    if (!userId && merchantsCache.length > 0) {
       const cachedMerchants = merchantsCache.filter(merchant => merchant.location === location);
       if (cachedMerchants.length > 0) {
         return cachedMerchants;
@@ -187,6 +234,7 @@ exports.getMerchantsByLocation = async function(location) {
     // Получаем модели через реестр
     const Merchant = modelRegistry.getModel('Merchant');
     const MerchantInventory = modelRegistry.getModel('MerchantInventory');
+    const CharacterProfile = modelRegistry.getModel('CharacterProfile');
     
     // Загружаем торговцев с их связями, явно указывая атрибуты
     const merchants = await Merchant.findAll({
@@ -199,8 +247,23 @@ exports.getMerchantsByLocation = async function(location) {
                   'image', 'defaultDiscount', 'createdAt', 'updatedAt']
     });
     
-    // Преобразуем в нужный формат для клиента
-    return merchants.map(merchant => formatMerchant(merchant));
+    // Получаем relationships пользователя, если userId предоставлен
+    let userRelationships = null;
+    if (userId) {
+      try {
+        const profile = await CharacterProfile.findOne({
+          where: { userId },
+          attributes: ['relationships']
+        });
+        userRelationships = profile ? profile.relationships : null;
+      } catch (error) {
+        console.error('Ошибка при получении relationships пользователя:', error);
+        userRelationships = null;
+      }
+    }
+    
+    // Преобразуем в нужный формат для клиента с учетом relationships
+    return merchants.map(merchant => formatMerchant(merchant, userId, userRelationships));
   } catch (error) {
     console.error(`Ошибка при получении торговцев в локации ${location}:`, error);
     // В случае ошибки фильтруем кэш
@@ -232,7 +295,7 @@ exports.getMerchantInventory = async function(merchantId, userId) {
     
     // Получаем модели через реестр
     const MerchantInventory = modelRegistry.getModel('MerchantInventory');
-    const MerchantReputation = modelRegistry.getModel('MerchantReputation');
+    // MerchantReputation заменен на relationships в CharacterProfile
     const InventoryService = require("./inventory-service");
     
     // Загружаем инвентарь торговца для конкретного пользователя
@@ -243,13 +306,9 @@ exports.getMerchantInventory = async function(merchantId, userId) {
     // Загружаем репутацию пользователя с торговцем
     let discount = merchant.defaultDiscount || 0;
     if (userId) {
-      const reputation = await MerchantReputation.findOne({
-        where: { merchantId, userId }
-      });
-      
-      if (reputation) {
-        discount = reputation.discountRate;
-      }
+      // Получаем репутацию из relationships
+      const reputationLevel = await getMerchantReputationFromRelationships(merchantId, userId);
+      discount = calculateDiscountFromReputation(reputationLevel) / 100; // Преобразуем в десятичную дробь
     }
     // Возврат с "обогащением"
     const merchantPromises = inventory.map(async (item) => {
@@ -378,7 +437,7 @@ exports.buyItemFromMerchant = async function(merchantId, itemId, userId, quantit
     
     // Получаем модели через реестр
     const MerchantInventory = modelRegistry.getModel('MerchantInventory');
-    const MerchantReputation = modelRegistry.getModel('MerchantReputation');
+    // MerchantReputation заменен на relationships в CharacterProfile
     
     // Получаем экземпляр sequelize из connectionProvider для гарантии инициализации
     const connection = await connectionProvider.getSequelizeInstance();
@@ -408,14 +467,9 @@ exports.buyItemFromMerchant = async function(merchantId, itemId, userId, quantit
       // Получаем скидку для пользователя
       let discount = 0;
       if (userId) {
-        const reputation = await MerchantReputation.findOne({
-          where: { merchantId, userId },
-          transaction
-        });
-        
-        if (reputation) {
-          discount = reputation.discountRate;
-        }
+        // Получаем репутацию из relationships
+        const reputationLevel = await getMerchantReputationFromRelationships(merchantId, userId);
+        discount = calculateDiscountFromReputation(reputationLevel) / 100; // Преобразуем в десятичную дробь
       }
       
       // Рассчитываем итоговую цену
@@ -531,7 +585,7 @@ exports.sellItemToMerchant = async function(merchantId, itemData, userId, quanti
     
     // Получаем модели через реестр
     const Merchant = modelRegistry.getModel('Merchant');
-    const MerchantReputation = modelRegistry.getModel('MerchantReputation');
+    // MerchantReputation заменен на relationships в CharacterProfile
     
     // Проверяем существование торговца
     const merchant = await Merchant.findByPk(merchantId);
@@ -1086,8 +1140,51 @@ exports.updateMerchantInventory = async function(merchantId, itemId, userId, qua
 };
 
 /**
+ * Получает репутацию торговца из relationships
+ * @param {string} merchantId - ID торговца
+ * @param {string} userId - ID пользователя
+ * @returns {Promise<number>} Уровень репутации (0-100)
+ */
+async function getMerchantReputationFromRelationships(merchantId, userId) {
+  try {
+    await modelRegistry.initializeRegistry();
+    const CharacterProfile = modelRegistry.getModel('CharacterProfile');
+    const profile = await CharacterProfile.findOne({
+      where: { userId },
+      attributes: ['relationships']
+    });
+    
+    if (!profile || !profile.relationships) {
+      return 0;
+    }
+    
+    const relationships = Array.isArray(profile.relationships)
+      ? profile.relationships
+      : Object.values(profile.relationships);
+    
+    const relationship = relationships.find(rel => rel.id === merchantId);
+    return relationship ? relationship.level : 0;
+  } catch (error) {
+    console.error('Ошибка при получении репутации из relationships:', error);
+    return 0;
+  }
+}
+
+/**
+ * Рассчитывает скидку на основе уровня репутации
+ * @param {number} reputationLevel - Уровень репутации (0-100)
+ * @returns {number} Размер скидки в процентах (0-10)
+ */
+function calculateDiscountFromReputation(reputationLevel) {
+  if (reputationLevel >= 50) {
+    return Math.floor(reputationLevel / 10); // level / 10
+  }
+  return 0;
+}
+
+/**
  * Обновляет репутацию пользователя с торговцем
- * @param {number} merchantId - ID торговца
+ * @param {string} merchantId - ID торговца
  * @param {string} userId - ID пользователя
  * @param {number} reputationChange - Изменение репутации
  * @param {Transaction} transaction - Транзакция Sequelize
@@ -1099,61 +1196,60 @@ async function updateMerchantReputation(merchantId, userId, reputationChange, tr
     // Инициализируем реестр моделей, если он еще не инициализирован
     await modelRegistry.initializeRegistry();
     
-    // Получаем модели через реестр
-    const MerchantReputation = modelRegistry.getModel('MerchantReputation');
+    // Получаем модель профиля персонажа
+    const CharacterProfile = modelRegistry.getModel('CharacterProfile');
     
-    // Ищем существующую репутацию
-    let reputation = await MerchantReputation.findOne({
-      where: { merchantId, userId },
+    // Получаем профиль пользователя
+    const profile = await CharacterProfile.findOne({
+      where: { userId },
       transaction
     });
     
-    // Если репутация не найдена, создаем новую запись
-    if (!reputation) {
-      reputation = await MerchantReputation.create({
-        merchantId,
-        userId,
+    if (!profile) {
+      throw new Error(`Профиль пользователя ${userId} не найден`);
+    }
+    
+    // Получаем текущие relationships
+    let relationships = profile.relationships || [];
+    if (!Array.isArray(relationships)) {
+      relationships = Object.values(relationships);
+    }
+    
+    // Находим relationship с торговцем
+    let merchantRelationship = relationships.find(rel => rel.id === merchantId);
+    
+    if (!merchantRelationship) {
+      // Если relationship не найден, создаем новый
+      merchantRelationship = {
+        id: merchantId,
+        name: `Торговец ${merchantId}`,
         level: 0,
-        points: 0,
-        discountRate: 0
-      }, { transaction });
+        image: `/assets/images/npc/${merchantId}.png`
+      };
+      relationships.push(merchantRelationship);
     }
     
-    // Рассчитываем новые значения репутации
-    const newPoints = reputation.points + reputationChange;
+    // Обновляем уровень репутации
+    const newLevel = Math.max(0, Math.min(100, merchantRelationship.level + reputationChange));
+    merchantRelationship.level = newLevel;
     
-    // Определяем новый уровень репутации
-    let newLevel = reputation.level;
-    let newDiscountRate = reputation.discountRate;
-    
-    // Простая логика повышения уровня (можно доработать)
-    if (newPoints >= 100 && newLevel < 1) {
-      newLevel = 1;
-      newDiscountRate = 0.05; // 5% скидка
-    } else if (newPoints >= 300 && newLevel < 2) {
-      newLevel = 2;
-      newDiscountRate = 0.1; // 10% скидка
-    } else if (newPoints >= 600 && newLevel < 3) {
-      newLevel = 3;
-      newDiscountRate = 0.15; // 15% скидка
-    } else if (newPoints >= 1000 && newLevel < 4) {
-      newLevel = 4;
-      newDiscountRate = 0.2; // 20% скидка
-    } else if (newPoints >= 1500 && newLevel < 5) {
-      newLevel = 5;
-      newDiscountRate = 0.25; // 25% скидка
-    }
-    
-    // Обновляем репутацию
-    await reputation.update({
-      points: newPoints,
-      level: newLevel,
-      discountRate: newDiscountRate
+    // Обновляем relationships в профиле
+    await profile.update({
+      relationships: relationships
     }, { transaction });
     
-    return reputation;
+    // Возвращаем объект в формате, совместимом со старой системой
+    const discountRate = calculateDiscountFromReputation(newLevel) / 100; // Преобразуем в десятичную дробь
+    
+    return {
+      merchantId,
+      userId,
+      level: newLevel,
+      points: newLevel, // Используем level как points для совместимости
+      discountRate
+    };
   } catch (error) {
-    console.error('Ошибка при обновлении репутации:', error);
+    console.error('Ошибка при обновлении репутации через relationships:', error);
     throw error;
   }
 }
@@ -1273,8 +1369,24 @@ exports.updateMerchant = async function(merchantId, merchantData) {
  * @returns {Object} Форматированный объект торговца
  * @private
  */
-function formatMerchant(merchant) {
+function formatMerchant(merchant, userId = null, relationships = null) {
   const plainMerchant = merchant.get ? merchant.get({ plain: true }) : merchant;
+  
+  // Получаем репутацию из relationships, если доступны
+  let reputation = null;
+  let discount = plainMerchant.defaultDiscount || 0;
+  
+  if (userId && relationships) {
+    const relationshipArray = Array.isArray(relationships)
+      ? relationships
+      : Object.values(relationships);
+    const merchantRelationship = relationshipArray.find(rel => rel.id === String(plainMerchant.id));
+    reputation = merchantRelationship ? merchantRelationship.level : 0;
+    
+    // Рассчитываем скидку на основе репутации
+    const reputationDiscount = calculateDiscountFromReputation(reputation) / 100;
+    discount = Math.max(discount, reputationDiscount); // Берем максимальную скидку
+  }
   
   return {
     id: plainMerchant.id,
@@ -1284,6 +1396,7 @@ function formatMerchant(merchant) {
     specialization: plainMerchant.specialization,
     image: plainMerchant.image,
     defaultDiscount: plainMerchant.defaultDiscount,
+    discount: discount, // Итоговая скидка с учетом репутации
     createdAt: plainMerchant.createdAt,
     updatedAt: plainMerchant.updatedAt,
     inventory: plainMerchant.inventory ? plainMerchant.inventory.map(item => ({
@@ -1296,6 +1409,10 @@ function formatMerchant(merchant) {
       quantity: item.quantity,
       price: item.price
     })) : [],
-    reputation: plainMerchant.reputations
+    reputation: reputation
   };
 }
+
+// Экспорт новых функций для работы с relationships
+exports.getMerchantReputationFromRelationships = getMerchantReputationFromRelationships;
+exports.calculateDiscountFromReputation = calculateDiscountFromReputation;

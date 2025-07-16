@@ -1323,13 +1323,13 @@ export const playerReducer = (state, action) => {
       
       // Дефолтные данные отношений (скопированы из SocialTab.js)
       const defaultRelationships = [
-        { id: 1, name: 'Мастер Ли', role: 'Наставник', level: 80, events: [] },
-        { id: 2, name: 'Торговец Чен', role: 'Торговец', level: 40, events: [] },
-        { id: 3, name: 'Госпожа Юнь', role: 'Торговец', level: 40, events: [] },
-        { id: 4, name: 'Старейшина Чжан', role: 'Торговец', level: 60, events: [] },
-        { id: 5, name: 'Торговец Чжао', role: 'Торговец', level: 30, events: [] },
-        { id: 6, name: 'Староста деревни Ванг', role: 'Лидер общины', level: 50, events: [] },
-        { id: 7, name: 'Загадочный отшельник Фэн', role: 'Отшельник', level: 20, events: [] }
+        { id: 'master_li', name: 'Мастер Ли', role: 'Наставник', level: 80, events: [], image: '/assets/images/npc/master_li.png' },
+        { id: 'merchant_chen', name: 'Торговец Чен', role: 'Торговец', level: 40, events: [], image: '/assets/images/npc/merchant_chen.png' },
+        { id: 'lady_yun', name: 'Госпожа Юнь', role: 'Торговец', level: 40, events: [], image: '/assets/images/npc/lady_yun.png' },
+        { id: 'elder_zhang', name: 'Старейшина Чжан', role: 'Торговец', level: 60, events: [], image: '/assets/images/npc/elder_zhang.png' },
+        { id: 'merchant_zhao', name: 'Торговец Чжао', role: 'Торговец', level: 30, events: [], image: '/assets/images/npc/merchant_zhao.png' },
+        { id: 'village_chief_wang', name: 'Староста деревни Ванг', role: 'Лидер общины', level: 50, events: [], image: '/assets/images/npc/village_chief_wang.png' },
+        { id: 'hermit_feng', name: 'Загадочный отшельник Фэн', role: 'Отшельник', level: 20, events: [], image: '/assets/images/npc/hermit_feng.png' }
       ];
       
       // Проверяем, существует ли relationships как объект или массив
