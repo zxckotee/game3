@@ -4,7 +4,64 @@ import { useGame } from '../../context/GameContext';
 import CombatArea from '../world/CombatArea';
 import { getUserCombatStatus, forfeitCombat } from '../../services/combat-api';
 import { getAllLocations } from '../../services/location-api';
+import { enemies } from '../../data/enemies-adapter';
 // // import useTimeWeather from '../../hooks/useTimeWeather';
+
+// Функция для получения имени врага по ID
+const getEnemyNameById = async (enemyId) => {
+  // Полный список всех врагов из базы данных (обе группы INSERT запросов)
+  const staticEnemyNames = {
+    // Первая группа врагов (основные)
+    'training_dummy': 'Тренировочный манекен',
+    'weak_spirit_beast': 'Слабый духовный зверь',
+    'mountain_bandit': 'Горный разбойник',
+    'ancient_guardian': 'Древний страж',
+    'night_wraith': 'Ночной призрак',
+    'lightning_spirit': 'Дух молнии',
+    'water_elemental': 'Водный элементаль',
+    
+    // Вторая группа врагов (новые)
+    'swamp_wraith': 'Болотный призрак',
+    'poison_toad': 'Ядовитая жаба',
+    'mist_spirit': 'Дух тумана',
+    'crystal_golem': 'Кристальный голем',
+    'cave_bat': 'Пещерная летучая мышь',
+    'earth_elemental': 'Земляной элементаль',
+    'fire_salamander': 'Огненная саламандра',
+    'lava_beast': 'Лавовый зверь',
+    'desert_scorpion': 'Пустынный скорпион',
+    'ice_wolf': 'Ледяной волк',
+    'frost_giant': 'Ледяной великан',
+    'blizzard_spirit': 'Дух метели',
+    'treant_guardian': 'Страж-энт',
+    'forest_drake': 'Лесной дракончик',
+    'nature_spirit': 'Дух природы',
+    'star_guardian': 'Звездный страж',
+    'void_wraith': 'Призрак пустоты',
+    'celestial_construct': 'Небесный конструкт'
+  };
+
+  // Проверяем статическое сопоставление
+  if (staticEnemyNames[enemyId]) {
+    return staticEnemyNames[enemyId];
+  }
+
+  // Пытаемся найти врага в данных enemies
+  try {
+    if (typeof enemies.getAllEnemies === 'function') {
+      const allEnemies = await enemies.getAllEnemies();
+      const enemy = allEnemies.find(e => e.id === enemyId);
+      if (enemy && enemy.name) {
+        return enemy.name;
+      }
+    }
+  } catch (error) {
+    console.warn('[MapTab] Ошибка при получении данных врагов:', error);
+  }
+
+  // Fallback - возвращаем null, чтобы вызывающий код мог обработать это
+  return null;
+};
 
 const Container = styled.div`
   display: grid;
@@ -1003,22 +1060,72 @@ function MapTab() {
         
         const response = await getUserCombatStatus();
         
+        console.log('[MapTab] Ответ getUserCombatStatus:', response);
+        
         if (response.success && response.inCombat) {
           console.log('[MapTab] Пользователь находится в активном бою:', response);
           
           // Устанавливаем состояние боя
           setCombatState(response.combat);
           
-          // Определяем область для боя (можно улучшить логику определения области)
-          setCurrentAreaId('starting_area');
+          // Пытаемся определить область из данных боя или используем fallback
+          const areaId = response.combat.area_id || response.combat.location_id || 'starting_area';
+          setCurrentAreaId(areaId);
           setIsExploring(true);
           
-          // Создаем объект врага из данных боя
-          if (response.combat.enemy_state) {
+          // Создаем объект врага из данных боя с улучшенной логикой
+          if (response.combat.enemy_state || response.combat.enemy_id) {
+            const enemyState = response.combat.enemy_state || {};
+            
+            // Пытаемся восстановить полную информацию о враге
+            let enemyName = enemyState.name;
+            let enemyLevel = enemyState.enemyLevel || enemyState.level || 1;
+            let enemyId = response.combat.enemy_id || 'unknown';
+            
+            // Если имя отсутствует, пытаемся найти его по ID
+            if (!enemyName && enemyId && enemyId !== 'unknown') {
+              console.log('[MapTab] Имя врага отсутствует, пытаемся восстановить по ID:', enemyId);
+              
+              try {
+                // Используем новую функцию для получения имени врага
+                enemyName = await getEnemyNameById(enemyId);
+                
+                if (enemyName) {
+                  console.log('[MapTab] Успешно восстановлено имя врага:', enemyName);
+                } else {
+                  console.warn('[MapTab] Не удалось найти имя для ID:', enemyId);
+                  enemyName = 'Неизвестный враг';
+                }
+              } catch (error) {
+                console.error('[MapTab] Ошибка при восстановлении имени врага:', error);
+                enemyName = 'Неизвестный враг';
+              }
+            }
+            
+            // Если все еще нет имени, используем fallback
+            if (!enemyName) {
+              enemyName = 'Неизвестный враг';
+              console.warn('[MapTab] Не удалось определить имя врага, используем fallback');
+            }
+            
+            const restoredEnemy = {
+              name: enemyName,
+              level: enemyLevel,
+              id: enemyId,
+              // Добавляем дополнительные данные если они есть
+              icon: enemyState.icon || '👹',
+              stats: enemyState.stats || enemyState
+            };
+            
+            console.log('[MapTab] Восстановленный объект врага:', restoredEnemy);
+            setActiveEnemy(restoredEnemy);
+          } else {
+            console.warn('[MapTab] Отсутствуют данные о враге в ответе API');
             setActiveEnemy({
-              name: response.combat.enemy_state.name || 'Неизвестный враг',
-              level: response.combat.enemy_state.enemyLevel || 1,
-              id: response.combat.enemy_id || 'unknown'
+              name: 'Неизвестный враг',
+              level: 1,
+              id: 'unknown',
+              icon: '👹'
             });
           }
           
@@ -1027,6 +1134,8 @@ function MapTab() {
             message: 'Вы находитесь в активном бою. Перенаправляем...',
             type: 'info'
           });
+        } else {
+          console.log('[MapTab] Пользователь не находится в активном бою');
         }
       } catch (error) {
         console.error('[MapTab] Ошибка при проверке статуса пользователя:', error);
@@ -1245,11 +1354,26 @@ function MapTab() {
   
   // Обработчик возврата к карте с поддержкой принудительного завершения боя
   const handleReturnToMap = async () => {
-    if (combatState && combatState.status === 'active') {
+    console.log('[MapTab] handleReturnToMap вызван', {
+      combatState: combatState,
+      combatId: combatState?.id,
+      combatStatus: combatState?.status,
+      isExploring,
+      currentAreaId
+    });
+
+    // Проверяем наличие активного боя более тщательно
+    if (combatState && combatState.id && (combatState.status === 'active' || combatState.status === 'ongoing')) {
       try {
-        console.log('[MapTab] Принудительное завершение активного боя:', combatState.id);
+        console.log('[MapTab] Принудительное завершение активного боя:', {
+          combatId: combatState.id,
+          status: combatState.status,
+          enemy: activeEnemy?.name
+        });
         
         const result = await forfeitCombat(combatState.id);
+        
+        console.log('[MapTab] Результат forfeitCombat:', result);
         
         if (result.success) {
           actions.addNotification({
@@ -1258,29 +1382,54 @@ function MapTab() {
           });
           console.log('[MapTab] Бой успешно завершен с поражением игрока');
         } else {
+          console.error('[MapTab] Ошибка при завершении боя:', result);
           actions.addNotification({
-            message: `Ошибка при выходе из боя: ${result.message}`,
+            message: `Ошибка при выходе из боя: ${result.message || 'Неизвестная ошибка'}`,
             type: 'error'
           });
-          console.error('[MapTab] Ошибка при завершении боя:', result.message);
+          
+          // Даже если API вернул ошибку, все равно сбрасываем локальное состояние
+          console.log('[MapTab] Принудительный сброс состояния несмотря на ошибку API');
         }
       } catch (error) {
-        console.error('[MapTab] Ошибка при принудительном завершении боя:', error);
+        console.error('[MapTab] Исключение при принудительном завершении боя:', error);
         actions.addNotification({
-          message: 'Произошла ошибка при выходе из боя',
-          type: 'error'
+          message: 'Произошла ошибка при выходе из боя. Состояние сброшено принудительно.',
+          type: 'warning'
         });
+        
+        // Даже при исключении сбрасываем состояние
+        console.log('[MapTab] Принудительный сброс состояния несмотря на исключение');
       }
+    } else {
+      console.log('[MapTab] Нет активного боя для завершения или некорректное состояние', {
+        hasCombatState: !!combatState,
+        combatId: combatState?.id,
+        status: combatState?.status
+      });
     }
     
-    // Сброс всех состояний боя
+    // Сброс всех состояний боя (выполняется всегда)
+    console.log('[MapTab] Сброс всех состояний боя');
     setCombatState(null);
     setActiveEnemy(null);
     setIsExploring(false);
     setCurrentAreaId(null);
-    setCurrentLocationData(null); // Очищаем данные локации
+    setCurrentLocationData(null);
     
     console.log('[MapTab] Возврат к карте завершен');
+  };
+
+  // Обработчик уведомлений о начале боя от CombatArea
+  const handleCombatStateChange = (newCombatState, newActiveEnemy) => {
+    console.log('[MapTab] Получено уведомление о начале боя:', {
+      combatState: newCombatState,
+      enemy: newActiveEnemy
+    });
+    
+    // Синхронизируем состояние боя в MapTab
+    setCombatState(newCombatState);
+    setActiveEnemy(newActiveEnemy);
   };
 
   // Если игрок находится в режиме исследования, показываем CombatArea
@@ -1295,6 +1444,7 @@ function MapTab() {
           existingCombat={combatState}
           activeEnemy={activeEnemy}
           onForcedExit={handleReturnToMap}
+          onCombatStateChange={handleCombatStateChange}
           locationData={currentLocationData}
         />
       </div>

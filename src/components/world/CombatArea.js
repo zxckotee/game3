@@ -367,7 +367,7 @@ const RewardItem = styled.div`
   }
 `;
 
-function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnemy = null, onForcedExit = null, locationData = null }) {
+function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnemy = null, onForcedExit = null, locationData = null, onCombatStateChange = null }) {
   const { state, actions } = useGame();
   
   const [combatState, setCombatState] = useState(existingCombat);
@@ -529,8 +529,16 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
     try {
       const initialState = await startCombatAPI(enemy.id);
       if (initialState.success) {
+        console.log('[CombatArea] Бой успешно начат:', initialState.combat);
         setCombatState(initialState.combat);
         setActiveEnemy(enemy);
+        
+        // Уведомляем родительский компонент (MapTab) о начале боя
+        if (onCombatStateChange) {
+          console.log('[CombatArea] Уведомляем MapTab о начале боя');
+          onCombatStateChange(initialState.combat, enemy);
+        }
+        
         actions.addNotification({ message: `Начался бой с ${enemy.name}!`, type: 'info' });
       } else {
         actions.addNotification({ message: `Не удалось начать бой: ${initialState.message}`, type: 'error' });
@@ -541,17 +549,25 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
   };
   
   const handleCombatAction = async (action) => {
-    if (!combatState) return;
+    if (!combatState) {
+      console.warn('[CombatArea] handleCombatAction вызван без combatState');
+      return;
+    }
 
     // Обрабатываем как простые строковые действия, так и объекты
     const actionPayload = typeof action === 'string' ? { type: action } : action;
 
+    console.log('[CombatArea] handleCombatAction вызван с действием:', actionPayload);
+
     if (actionPayload.type === 'flee') {
+        console.log('[CombatArea] Обработка действия flee (побег)');
+        
         // Если есть обработчик принудительного выхода, используем его
         if (onForcedExit) {
           console.log('[CombatArea] Вызов принудительного выхода через onForcedExit');
           onForcedExit();
         } else {
+          console.log('[CombatArea] Стандартная логика бегства');
           // Стандартная логика бегства
           setCombatState(null);
           setActiveEnemy(null);
@@ -560,14 +576,28 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
         return;
     }
 
-    const updatedState = await performCombatAction(combatState.id, actionPayload);
-    if (updatedState.success) {
-        setCombatState(updatedState.combat);
-        if (updatedState.combat.status === 'completed') {
-            actions.addNotification({ message: `Бой завершен! Победитель: ${updatedState.combat.winner}`, type: 'success' });
-        }
-    } else {
-        actions.addNotification({ message: `Ошибка действия: ${updatedState.message}`, type: 'error' });
+    try {
+      console.log('[CombatArea] Отправка действия на сервер:', {
+        combatId: combatState.id,
+        action: actionPayload
+      });
+      
+      const updatedState = await performCombatAction(combatState.id, actionPayload);
+      
+      console.log('[CombatArea] Ответ от сервера:', updatedState);
+      
+      if (updatedState.success) {
+          setCombatState(updatedState.combat);
+          if (updatedState.combat.status === 'completed') {
+              actions.addNotification({ message: `Бой завершен! Победитель: ${updatedState.combat.winner}`, type: 'success' });
+          }
+      } else {
+          console.error('[CombatArea] Ошибка при выполнении действия:', updatedState);
+          actions.addNotification({ message: `Ошибка действия: ${updatedState.message}`, type: 'error' });
+      }
+    } catch (error) {
+      console.error('[CombatArea] Исключение при выполнении действия:', error);
+      actions.addNotification({ message: `Ошибка сети: ${error.message}`, type: 'error' });
     }
   };
 
