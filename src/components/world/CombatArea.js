@@ -167,15 +167,109 @@ const EnemyHeader = styled.div`
 `;
 
 const EnemyIcon = styled.div`
-  font-size: 2rem;
-  width: 40px;
-  height: 40px;
+  font-size: 3rem;
+  width: 90px;
+  height: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(212, 175, 55, 0.1);
-  border-radius: 8px;
+  background: linear-gradient(135deg,
+    rgba(212, 175, 55, 0.15) 0%,
+    rgba(244, 208, 63, 0.1) 100%
+  );
+  backdrop-filter: blur(5px);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg,
+      transparent 30%,
+      rgba(212, 175, 55, 0.1) 50%,
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  &:hover::before {
+    opacity: 1;
+  }
 `;
+
+const EnemyImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const EnemyIconFallback = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  background: linear-gradient(135deg,
+    rgba(212, 175, 55, 0.2) 0%,
+    rgba(244, 208, 63, 0.1) 100%
+  );
+  border-radius: 8px;
+  color: #d4af37;
+`;
+
+// Компонент для отображения иконки врага с поддержкой изображений
+const EnemyIconDisplay = ({ enemy }) => {
+  const [imageError, setImageError] = React.useState(false);
+  
+  const handleImageError = () => {
+    setImageError(true);
+  };
+  
+  // Проверяем, является ли icon URL-ом изображения
+  const isImageUrl = enemy.icon && (
+    enemy.icon.startsWith('http') ||
+    enemy.icon.startsWith('/') ||
+    enemy.icon.includes('.png') ||
+    enemy.icon.includes('.jpg') ||
+    enemy.icon.includes('.jpeg') ||
+    enemy.icon.includes('.gif') ||
+    enemy.icon.includes('.webp')
+  );
+  
+  return (
+    <EnemyIcon>
+      {isImageUrl && !imageError ? (
+        <EnemyImage
+          src={enemy.icon}
+          alt={enemy.name}
+          onError={handleImageError}
+        />
+      ) : (
+        <EnemyIconFallback>
+          {enemy.icon || '👹'}
+        </EnemyIconFallback>
+      )}
+    </EnemyIcon>
+  );
+};
 
 const EnemyInfo = styled.div`
   flex: 1;
@@ -568,7 +662,7 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
               onClick={() => handleEnemyClick(enemy)}
             >
               <EnemyHeader>
-                <EnemyIcon>{enemy.icon}</EnemyIcon>
+                <EnemyIconDisplay enemy={enemy} />
                 <EnemyInfo>
                   <EnemyName>{enemy.name}</EnemyName>
                   <EnemyLevel available={enemy.available}>
