@@ -1,28 +1,39 @@
-FROM node:16-alpine
+# Используем Node.js 18 LTS для лучшей совместимости
+FROM node:18-alpine
 
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Установка системных зависимостей
-RUN apk add --no-cache postgresql-client
+# Устанавливаем системные зависимости
+RUN apk add --no-cache \
+    postgresql-client \
+    python3 \
+    make \
+    g++ \
+    git
 
-# Копирование файлов package
+# Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Установка зависимостей с очисткой кеша npm
+# Устанавливаем зависимости
 RUN npm config set registry https://registry.npmjs.org/ && \
     npm cache clean --force && \
-    npm install --legacy-peer-deps --no-fund --no-audit --force && \
-    npm install ajv@8.12.0 --force
+    npm install --legacy-peer-deps && \
+    npm install concurrently --save-dev
 
-# Копирование всего проекта
+# Копируем исходный код
 COPY . .
 
-# Сборка проекта
-RUN npm run build
+# Создаем пользователя для безопасности
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
 
-# Экспозиция порта
-EXPOSE 80
+# Меняем владельца файлов
+RUN chown -R nextjs:nodejs /app
+USER nextjs
 
-# Команда запуска
-ENV HOST=0.0.0.0
-CMD ["sh", "-c", "HOST=0.0.0.0 npm start"]
+# Экспонируем порты для React (3000) и Express (3001)
+EXPOSE 3000 3001
+
+# Команда для разработки
+CMD ["npm", "run", "dev"]
