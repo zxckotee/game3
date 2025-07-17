@@ -248,9 +248,10 @@
 
 .turn-indicator {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 40px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   background-color: rgba(26, 26, 46, 0.9);
   padding: 15px 30px;
   border-radius: 15px;
@@ -263,6 +264,7 @@
   animation: pulse 2s infinite;
   text-transform: uppercase;
   letter-spacing: 1px;
+  width: max-content;
 }
 
 .wait-indicator {
