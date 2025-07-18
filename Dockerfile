@@ -4,13 +4,14 @@ FROM node:18-alpine
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Устанавливаем системные зависимости
+# Устанавливаем системные зависимости включая curl для health check
 RUN apk add --no-cache \
     postgresql-client \
     python3 \
     make \
     g++ \
-    git
+    git \
+    curl
 
 # Копируем package.json и package-lock.json
 COPY package*.json ./

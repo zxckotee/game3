@@ -101,6 +101,15 @@ const { calculateETag } = require('./server/utils/etag-utils');
 // Импортируем middleware для аутентификации
 
 
+// Health check endpoint для Docker
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'game-server'
+  });
+});
+
 // Регистрируем все маршруты API
 // Раздача статических файлов из папки assets (для иконок и т.д.)
 app.use('/assets', express.static(path.join(__dirname, 'assets')));

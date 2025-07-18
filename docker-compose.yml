@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # База данных PostgreSQL
+  # База данных PostgreSQL - запускается первой
   postgres:
     image: postgres:15-alpine
     container_name: game_postgres
@@ -21,31 +21,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - game_network
 
-  # React клиент (CRACO/webpack на порту 80)
-  client:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: game_client
-    ports:
-      - "80:80"  # React dev server на порту 80 как настроено в craco.config.js
-    volumes:
-      # Монтируем исходный код для hot reload
-      - .:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - PORT=80
-      - REACT_APP_API_URL=http://localhost:3001
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-    command: ["npm", "run", "start"]
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-
-  # Express API сервер
+  # Express API сервер - запускается после PostgreSQL
   server:
     build:
       context: .
@@ -70,11 +49,49 @@ services:
         condition: service_healthy
     command: ["npm", "run", "server"]
     restart: unless-stopped
+    networks:
+      - game_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # React клиент - запускается последним
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: game_client
+    ports:
+      - "80:80"  # React dev server на порту 80
+    volumes:
+      # Монтируем исходный код для hot reload
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=80
+      - REACT_APP_API_URL=http://localhost:3001
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      server:
+        condition: service_healthy
+    command: ["npm", "run", "start"]
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    networks:
+      - game_network
 
 volumes:
   postgres_data:
     driver: local
 
 networks:
-  default:
-    name: game_network
+  game_network:
+    driver: bridge
