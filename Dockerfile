@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Обновляем пакеты и устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
-    postgresql-client-16 \
+    postgresql-client \
     python3 \
     build-essential \
     git \
