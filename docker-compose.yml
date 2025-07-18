@@ -22,48 +22,53 @@ services:
       timeout: 5s
       retries: 5
 
-  # Основное приложение (React + Express)
-  app:
+  # React клиент (CRACO/webpack)
+  client:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: game_app
+    container_name: game_client
     ports:
-      - "3000:3000"  # React dev server
-      - "3001:3001"  # Express API server
+      - "80:80"  # React dev server на порту 80
     volumes:
       # Монтируем исходный код для hot reload
       - .:/app
       - /app/node_modules
-      - /app/build
     environment:
       - NODE_ENV=development
+      - PORT=80
       - REACT_APP_API_URL=http://localhost:3001
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    command: ["npm", "run", "start"]
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+  # Express API сервер
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: game_server
+    ports:
+      - "3001:3001"  # Express API server
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
       - DATABASE_URL=postgresql://postgres:root@postgres:5432/game
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=game
       - DB_USER=postgres
       - DB_PASSWORD=root
-      - PORT=3001
-      - REACT_APP_PORT=3000
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-
-  # Nginx для проксирования (опционально)
-  nginx:
-    image: nginx:alpine
-    container_name: game_nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - app
+    command: ["npm", "run", "server"]
     restart: unless-stopped
 
 volumes:

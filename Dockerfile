@@ -18,8 +18,7 @@ COPY package*.json ./
 # Устанавливаем зависимости
 RUN npm config set registry https://registry.npmjs.org/ && \
     npm cache clean --force && \
-    npm install --legacy-peer-deps && \
-    npm install concurrently --save-dev
+    npm install --legacy-peer-deps
 
 # Копируем исходный код
 COPY . .
@@ -32,8 +31,8 @@ RUN addgroup -g 1001 -S nodejs && \
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Экспонируем порты для React (3000) и Express (3001)
-EXPOSE 3000 3001
+# Экспонируем порты для React (80) и Express (3001)
+EXPOSE 80 3001
 
-# Команда для разработки
+# По умолчанию запускаем npm run dev (можно переопределить в docker-compose)
 CMD ["npm", "run", "dev"]
