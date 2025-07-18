@@ -3,12 +3,22 @@
 ## Архитектура
 
 - **PostgreSQL** - База данных на порту 5432
-- **React Client** - CRACO/webpack на порту 80 (`npm run start`)
+- **React Client** - CRACO/webpack на порту 3000 (`npm run start`)
 - **Express Server** - API сервер на порту 3001 (`npm run server`)
 
 ## Быстрый запуск
 
-### 1. Очистка поврежденных контейнеров
+### 1. Остановка зависших контейнеров
+
+```bash
+# Остановить все контейнеры
+docker-compose down --remove-orphans
+
+# Убить зависшие процессы
+docker kill $(docker ps -q) 2>/dev/null || true
+```
+
+### 2. Очистка (если нужно)
 
 ```bash
 # Сделать скрипт исполняемым
@@ -18,7 +28,7 @@ chmod +x docker-cleanup.sh
 ./docker-cleanup.sh
 ```
 
-### 2. Запуск сервисов
+### 3. Запуск сервисов
 
 ```bash
 # Сборка и запуск
@@ -28,9 +38,9 @@ docker-compose up --build
 docker-compose up --build -d
 ```
 
-### 3. Проверка работы
+### 4. Проверка работы
 
-- **React клиент**: http://localhost
+- **React клиент**: http://localhost:3000
 - **API сервер**: http://localhost:3001
 - **PostgreSQL**: localhost:5432
 
@@ -42,12 +52,41 @@ services:
     ports: ["5432:5432"]
     
   client:      # React приложение
-    ports: ["80:80"]
+    ports: ["3000:3000"]
     command: ["npm", "run", "start"]
     
   server:      # Express API
     ports: ["3001:3001"] 
     command: ["npm", "run", "server"]
+```
+
+## Исправления зависания
+
+### Проблема: "Running in..." зависает
+
+**Причина:** Порт 80 требует root прав, непривилегированный пользователь не может его использовать.
+
+**Решение:** Изменили порт React с 80 на 3000 (стандартный для dev server).
+
+### Если контейнер все еще зависает:
+
+```bash
+# 1. Остановить все
+docker-compose down --remove-orphans
+
+# 2. Убить зависшие контейнеры
+docker kill $(docker ps -q) 2>/dev/null || true
+
+# 3. Проверить порты
+sudo lsof -i :3000
+sudo lsof -i :3001
+
+# 4. Освободить порты если заняты
+sudo kill -9 $(sudo lsof -t -i:3000) 2>/dev/null || true
+sudo kill -9 $(sudo lsof -t -i:3001) 2>/dev/null || true
+
+# 5. Запустить заново
+docker-compose up --build
 ```
 
 ## Команды для разработки
@@ -80,49 +119,13 @@ docker-compose exec server npm run migrate
 docker-compose exec server npm run seed
 ```
 
-## Troubleshooting
-
-### Ошибка ContainerConfig
-```bash
-# Полная очистка
-./docker-cleanup.sh
-
-# Пересборка
-docker-compose up --build --force-recreate
-```
-
-### Порты заняты
-```bash
-# Найти процессы на портах
-sudo lsof -i :80
-sudo lsof -i :3001
-sudo lsof -i :5432
-
-# Убить процессы
-sudo kill -9 $(sudo lsof -t -i:80)
-sudo kill -9 $(sudo lsof -t -i:3001)
-```
-
-### Проблемы с правами
-```bash
-# Исправить права на файлы
-sudo chown -R $USER:$USER .
-```
-
-### Hot reload не работает
-Убедитесь что в `.env` есть:
-```env
-CHOKIDAR_USEPOLLING=true
-WATCHPACK_POLLING=true
-```
-
 ## Переменные окружения
 
 Основные настройки в `.env`:
 ```env
 # Порты
 PORT=3001                    # Express сервер
-REACT_APP_PORT=80           # React клиент
+REACT_APP_PORT=3000         # React клиент
 
 # API
 REACT_APP_API_URL=http://localhost:3001
@@ -134,12 +137,32 @@ DATABASE_URL=postgresql://postgres:root@postgres:5432/game
 ## Отличия от предыдущей версии
 
 ❌ **Было неправильно:**
+- Порт 80 для React (требует root)
+- Непривилегированный пользователь nextjs
 - Nginx для проксирования
-- Один контейнер для клиента и сервера
-- Неправильные порты
 
 ✅ **Стало правильно:**
+- Порт 3000 для React (стандартный)
+- Запуск от root в контейнере
 - Отдельные контейнеры для client и server
-- React на порту 80, Express на 3001
 - Без лишнего Nginx
-- Правильные команды запуска
+
+## Troubleshooting
+
+### Контейнер зависает на "Running in..."
+```bash
+# Проблема с портами - используйте стандартные порты
+# React: 3000, Express: 3001
+```
+
+### Hot reload не работает
+```bash
+# Убедитесь что в .env есть:
+CHOKIDAR_USEPOLLING=true
+WATCHPACK_POLLING=true
+```
+
+### Ошибки прав доступа
+```bash
+# Исправить права на файлы
+sudo chown -R $USER:$USER .

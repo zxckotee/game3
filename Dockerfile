@@ -23,16 +23,8 @@ RUN npm config set registry https://registry.npmjs.org/ && \
 # Копируем исходный код
 COPY . .
 
-# Создаем пользователя для безопасности
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+# Экспонируем порты для React (3000) и Express (3001)
+EXPOSE 3000 3001
 
-# Меняем владельца файлов
-RUN chown -R nextjs:nodejs /app
-USER nextjs
-
-# Экспонируем порты для React (80) и Express (3001)
-EXPOSE 80 3001
-
-# По умолчанию запускаем npm run dev (можно переопределить в docker-compose)
+# По умолчанию запускаем npm run dev
 CMD ["npm", "run", "dev"]

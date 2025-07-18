@@ -29,14 +29,14 @@ services:
       dockerfile: Dockerfile
     container_name: game_client
     ports:
-      - "80:80"  # React dev server на порту 80
+      - "3000:3000"  # React dev server на стандартном порту 3000
     volumes:
       # Монтируем исходный код для hot reload
       - .:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - PORT=80
+      - PORT=3000
       - REACT_APP_API_URL=http://localhost:3001
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
