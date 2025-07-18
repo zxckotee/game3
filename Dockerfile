@@ -25,14 +25,8 @@ RUN npm config set registry https://registry.npmjs.org/ && \
 # Копируем исходный код
 COPY . .
 
-# Исправляем права доступа
-RUN chown -R node:node /app
-
 # Экспонируем порты для React (80) и Express (3001)
 EXPOSE 80 3001
-
-# Переключаемся на пользователя node
-USER node
 
 # По умолчанию запускаем npm run dev
 CMD ["npm", "run", "dev"]
