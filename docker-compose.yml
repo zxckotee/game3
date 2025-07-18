@@ -3,16 +3,27 @@ version: '3.8'
 services:
   # База данных PostgreSQL 16 - совместимость с существующими данными
   postgres:
-    image: postgres:13
+    image: postgres:16
+    container_name: game_postgres
     environment:
       POSTGRES_DB: game
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d game"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - game_network
 
   # Единый контейнер для приложения
   app:
@@ -30,7 +41,7 @@ services:
       - NODE_ENV=development
       - PORT=80
       - DATABASE_URL=postgresql://postgres:root@postgres:5432/game
-      - DB_HOST=postgres
+      - DB_HOST=localhost
       - DB_PORT=5432
       - DB_NAME=game
       - DB_USER=postgres
