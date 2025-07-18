@@ -1,4 +1,7 @@
 services:
+  # Единое приложение (React + Express)
+
+volumes:
   postgres:
     image: postgres:13
     environment:
@@ -10,10 +13,6 @@ services:
     ports:
       - "5432:5432"
     restart: unless-stopped
-
-volumes:
-  postgres_data:
-  # Единое приложение (React + Express)
   app:
     build:
       context: .
