@@ -1,6 +1,5 @@
 services:
-  # Единое приложение (React + Express)
-  
+  # Единое приложение (React + Express) БЕЗ PostgreSQL
   app:
     build:
       context: .
@@ -34,20 +33,15 @@ services:
       # Безопасность (для разработки)
       - JWT_SECRET=dev_jwt_secret_change_in_production
       - SESSION_SECRET=dev_session_secret_change_in_production
-      # Database - подключение к внешнему PostgreSQL
-      - USE_DATABASE=true
+      # Database - ПОЛНОСТЬЮ ОТКЛЮЧЕНО
+      - USE_DATABASE=false
       - USE_MERCHANT_FILES=true
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5432
-      - DB_NAME=game
-      - DB_USER=postgres
-      - DB_PASSWORD=root
-      - DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/game
+      # Отключаем все попытки подключения к PostgreSQL
+      - SKIP_DB_CONNECTION=true
+      - DB_DISABLED=true
     restart: unless-stopped
     stdin_open: true
     tty: true
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - app_network
 
