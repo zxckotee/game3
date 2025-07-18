@@ -1,18 +1,6 @@
 services:
   # Единое приложение (React + Express)
-
-volumes:
-  postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_DB: game
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
+  
   app:
     build:
       context: .
