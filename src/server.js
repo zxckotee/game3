@@ -101,13 +101,32 @@ const { calculateETag } = require('./server/utils/etag-utils');
 // Импортируем middleware для аутентификации
 
 
-// Health check endpoint для Docker
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'game-server'
-  });
+// Health check endpoint для Docker с проверкой БД
+app.get('/api/health', async (req, res) => {
+  try {
+    // Проверяем подключение к базе данных
+    if (unifiedDatabase && unifiedDatabase.sequelize) {
+      await unifiedDatabase.sequelize.authenticate();
+    }
+    
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'game-server',
+      database: 'connected',
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      service: 'game-server',
+      database: 'disconnected',
+      error: error.message,
+      uptime: process.uptime()
+    });
+  }
 });
 
 // Регистрируем все маршруты API

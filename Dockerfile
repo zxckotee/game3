@@ -1,17 +1,18 @@
-# Используем Node.js 18 LTS для лучшей совместимости
-FROM node:18-alpine
+# Используем Ubuntu-based образ для максимальной совместимости с Ubuntu 24.04
+FROM node:18-bullseye-slim
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Устанавливаем системные зависимости включая curl для health check
-RUN apk add --no-cache \
-    postgresql-client \
+# Обновляем пакеты и устанавливаем зависимости
+RUN apt-get update && apt-get install -y \
+    postgresql-client-16 \
     python3 \
-    make \
-    g++ \
+    build-essential \
     git \
-    curl
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Копируем package.json и package-lock.json
 COPY package*.json ./
