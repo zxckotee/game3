@@ -1,91 +1,52 @@
 version: '3.8'
 
 services:
-  # База данных PostgreSQL - запускается первой
+  # База данных PostgreSQL - проверенная рабочая версия
   postgres:
-    image: postgres:16.9
+    image: postgres:13
     container_name: game_postgres
     environment:
       POSTGRES_DB: game
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d game"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - game_network
 
-  # Express API сервер - запускается после PostgreSQL
-  server:
+  # Единый контейнер для приложения
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: game_server
+    container_name: game_app
     ports:
-      - "3001:3001"  # Express API server
+      - "80:80"    # React
+      - "3001:3001" # Express API
     volumes:
       - .:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - PORT=3001
+      - PORT=80
       - DATABASE_URL=postgresql://postgres:root@postgres:5432/game
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=game
       - DB_USER=postgres
       - DB_PASSWORD=root
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: ["npm", "run", "dev"]
-    restart: unless-stopped
-    networks:
-      - game_network
-
-  # React клиент - запускается последним
-  client:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: game_client
-    ports:
-      - "80:80"  # React dev server на порту 80
-    volumes:
-      # Монтируем исходный код для hot reload
-      - .:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - PORT=80
       - REACT_APP_API_URL=http://localhost:3001
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     depends_on:
-      postgres:
-        condition: service_healthy
-      server:
-        condition: service_started
-    command: ["npm", "run", "start"]
+      - postgres
+    command: ["npm", "run", "dev"]
     restart: unless-stopped
     stdin_open: true
     tty: true
-    networks:
-      - game_network
 
 volumes:
   postgres_data:
     driver: local
-
-networks:
-  game_network:
-    driver: bridge
