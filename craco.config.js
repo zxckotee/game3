@@ -70,7 +70,24 @@ module.exports = {
               test: /\.js$/,
               enforce: "pre",
               use: ["source-map-loader"],
-              exclude: /node_modules/
+              exclude: [
+                /node_modules/,
+                path.resolve(__dirname, 'src/server'),
+                path.resolve(__dirname, 'src/services')
+              ]
+            },
+            // Полностью исключаем серверные файлы из обработки
+            {
+              test: /\.js$/,
+              include: [
+                path.resolve(__dirname, 'src/server'),
+                path.resolve(__dirname, 'src/server/utils'),
+                path.resolve(__dirname, 'src/server/routes'),
+                path.resolve(__dirname, 'src/server/middleware')
+              ],
+              use: {
+                loader: 'null-loader'
+              }
             }
           ]
         },
