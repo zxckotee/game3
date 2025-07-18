@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router(); const app = router;
 const { validateAuth, validateAdmin } = require('../middleware/auth-middleware');
-const { calculateETag } = require('../../utils/etag-utils');
+const { calculateETag } = require('../utils/etag-utils');
 
 // Импортируем сервис техник
 const TechniqueService = require('../../services/technique-service');

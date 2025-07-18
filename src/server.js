@@ -82,7 +82,7 @@ app.get('/api/status', (req, res) => {
 
 
 // Импортируем утилиты для работы с ETag
-const { calculateETag } = require('./utils/etag-utils');
+const { calculateETag } = require('./server/utils/etag-utils');
 
 
 

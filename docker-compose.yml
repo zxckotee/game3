@@ -22,21 +22,21 @@ services:
       timeout: 5s
       retries: 5
 
-  # React клиент (CRACO/webpack)
+  # React клиент (CRACO/webpack на порту 80)
   client:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: game_client
     ports:
-      - "3000:3000"  # React dev server на стандартном порту 3000
+      - "80:80"  # React dev server на порту 80 как настроено в craco.config.js
     volumes:
       # Монтируем исходный код для hot reload
       - .:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - PORT=3000
+      - PORT=80
       - REACT_APP_API_URL=http://localhost:3001
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true

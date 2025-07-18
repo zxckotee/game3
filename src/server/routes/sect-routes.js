@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { validateAuth, validateAdmin } = require('../middleware/auth-middleware');
-const { calculateETag } = require('../../utils/etag-utils');
+const { calculateETag } = require('../utils/etag-utils');
 
 const { unifiedDatabase, initializeDatabaseConnection } = require('../../services/database-connection-manager');
 let sequelize; const { Sequelize } = require('sequelize');

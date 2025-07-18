@@ -80,7 +80,7 @@ class InventoryService {
         
         // Импортируем sequelize
         const { getSequelizeInstance } = require('../utils/connection-provider');
-        const { calculateETag } = require('../utils/etag-utils');
+        const { calculateETag } = require('../server/utils/etag-utils');
         
         // Получаем объект с экземпляром sequelize
         const sequelizeResult = await getSequelizeInstance();

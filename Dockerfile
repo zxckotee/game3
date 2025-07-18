@@ -23,8 +23,8 @@ RUN npm config set registry https://registry.npmjs.org/ && \
 # Копируем исходный код
 COPY . .
 
-# Экспонируем порты для React (3000) и Express (3001)
-EXPOSE 3000 3001
+# Экспонируем порты для React (80) и Express (3001)
+EXPOSE 80 3001
 
 # По умолчанию запускаем npm run dev
 CMD ["npm", "run", "dev"]

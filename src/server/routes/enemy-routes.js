@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { validateAuth, validateAdmin } = require('../middleware/auth-middleware');
-const { calculateETag } = require('../../utils/etag-utils');
+const { calculateETag } = require('../utils/etag-utils');
 const EnemyService = require('../../services/enemy-service');
 
 // ==============================

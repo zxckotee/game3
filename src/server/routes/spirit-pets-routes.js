@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { validateAuth, validateAdmin } = require('../middleware/auth-middleware');
-const { calculateETag } = require('../../utils/etag-utils');
+const { calculateETag } = require('../utils/etag-utils');
 
 const SpiritPetService = require('../../services/spirit-pet-service');
 
