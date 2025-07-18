@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # База данных PostgreSQL 16 - совместимость с существующими данными
+  # База данных PostgreSQL 16
   postgres:
     image: postgres:16
     container_name: game_postgres
@@ -25,37 +25,49 @@ services:
     networks:
       - game_network
 
-  # Единый контейнер для приложения
-  app:
+  # Express API сервер
+  server:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: game_app
+      dockerfile: Dockerfile.server
+    container_name: game_server
     ports:
-      - "80:80"    # React
-      - "3001:3001" # Express API
-    volumes:
-      - .:/app
-      - /app/node_modules
+      - "3001:3001"
     environment:
-      - NODE_ENV=development
-      - PORT=80
-      - DATABASE_URL=postgresql://postgres:root@postgres:5432/game
-      - DB_HOST=localhost
+      - NODE_ENV=production
+      - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=game
       - DB_USER=postgres
       - DB_PASSWORD=root
-      - REACT_APP_API_URL=http://localhost:3001
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
+      - DATABASE_URL=postgresql://postgres:root@postgres:5432/game
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["npm", "run", "dev"]
     restart: unless-stopped
-    stdin_open: true
-    tty: true
+    networks:
+      - game_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # React приложение
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: game_app
+    ports:
+      - "80:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - game_network
 

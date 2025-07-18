@@ -19,12 +19,12 @@
     "username": "postgres",
     "password": "root",
     "database": "game",
-    "host": "localhost",
+    "host": "postgres",
     "dialect": "postgres",
     "port": 5432,
     "dialectOptions": {
       "ssl": {
-        "require": true,
+        "require": false,
         "rejectUnauthorized": false
       }
     }
