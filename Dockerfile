@@ -1,32 +1,41 @@
-# Используем Ubuntu-based образ для максимальной совместимости
+# Новый оптимизированный Dockerfile для разработки
 FROM node:18-bullseye-slim
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Обновляем пакеты и устанавливаем зависимости
+# Устанавливаем только необходимые системные зависимости
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    python3 \
-    build-essential \
     git \
     curl \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Копируем package.json и package-lock.json
+# Копируем package.json и package-lock.json для кэширования зависимостей
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm config set registry https://registry.npmjs.org/ && \
-    npm cache clean --force && \
-    npm install --legacy-peer-deps
+# Устанавливаем зависимости с оптимизацией
+RUN npm ci --only=production=false --silent
 
 # Копируем исходный код
 COPY . .
 
-# Экспонируем порты для React (80) и Express (3001)
+# Создаем пользователя для безопасности
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Экспонируем порты
 EXPOSE 80 3001
 
-# По умолчанию запускаем npm run dev
+# Устанавливаем переменные окружения для разработки
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+ENV GENERATE_SOURCEMAP=false
+ENV SKIP_PREFLIGHT_CHECK=true
+ENV FAST_REFRESH=true
+ENV CI=false
+
+# Запускаем npm run dev (concurrently запускает React и Express)
 CMD ["npm", "run", "dev"]
