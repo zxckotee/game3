@@ -1,31 +1,13 @@
 /**
- * Адаптер для выбора подходящего AuthService в зависимости от среды выполнения
- * Безопасная версия, предотвращающая включение серверного кода в клиентскую сборку
+ * Адаптер для работы с аутентификацией
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
-// Импортируем API-версию для клиента
-const AuthServiceAPI = require('./auth-api'); // Через API (для браузера)
+// Импортируем только API-версию для всех сред
+const AuthServiceAPI = require('./auth-api');
 
-// Определение объекта сервиса в зависимости от окружения
-let AuthService;
-
-// В браузере всегда используем API-версию
-if (!isServerEnvironment) {
-  AuthService = AuthServiceAPI;
-} else {
-  // В серверном окружении используем прямой доступ к БД
-  try {
-    // Используем прямой импорт на сервере
-    const AuthServiceDirect = require('./auth');
-    AuthService = AuthServiceDirect.default || AuthServiceDirect;
-  } catch (error) {
-    console.error('Ошибка при импорте серверного AuthService:', error);
-    console.warn('Используем API версию из-за ошибки импорта');
-    
-    // В случае ошибки используем API-версию
-    AuthService = AuthServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const AuthService = AuthServiceAPI;
 
 module.exports = AuthService;

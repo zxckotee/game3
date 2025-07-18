@@ -1,35 +1,17 @@
 /**
- * Адаптер для выбора подходящей версии equipment-service.js в зависимости от среды выполнения
- * Модифицирован для устранения циклических зависимостей
+ * Адаптер для работы с экипировкой
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
 // Импортируем константы напрямую из модуля констант
 const EquipmentConstants = require('../constants/equipment-constants');
 
-// Импортируем клиентскую версию для браузера
+// Импортируем только API-версию для всех сред
 const EquipmentServiceAPI = require('./equipment-service-api');
 
-// Определение объекта в зависимости от окружения
-let EquipmentService;
-
-// В браузере всегда используем клиентскую версию
-if (!isServerEnvironment) {
-  EquipmentService = EquipmentServiceAPI;
-} else {
-  // В серверном окружении используем оригинальную версию с доступом к БД
-  try {
-    // Используем прямой импорт на сервере
-    const ServerEquipmentService = require('./equipment-service');
-    EquipmentService = ServerEquipmentService;
-  } catch (error) {
-    console.error('Ошибка при импорте серверной версии equipment-service:', error);
-    console.warn('Используем клиентскую версию из-за ошибки импорта');
-    
-    // В случае ошибки используем клиентскую версию
-    EquipmentService = EquipmentServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const EquipmentService = EquipmentServiceAPI;
 
 // Создаем адаптер для экспорта
 const adapter = {};

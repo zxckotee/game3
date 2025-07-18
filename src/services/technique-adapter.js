@@ -1,32 +1,14 @@
 /**
- * Адаптер для выбора подходящего TechniqueService в зависимости от среды выполнения
- * Безопасная версия, предотвращающая включение серверного кода в клиентскую сборку
+ * Адаптер для работы с техниками
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
-// Импортируем API-версию для клиента
-const TechniqueServiceAPI = require('./technique-api'); // Через API (для браузера)
+// Импортируем только API-версию для всех сред
+const TechniqueServiceAPI = require('./technique-api');
 
-// Определение объекта сервиса в зависимости от окружения
-let TechniqueService;
-
-// В браузере всегда используем API-версию
-if (!isServerEnvironment) {
-  TechniqueService = TechniqueServiceAPI;
-} else {
-  // В серверном окружении используем прямой доступ к БД
-  try {
-    // Используем прямой импорт на сервере
-    const TechniqueServiceDirect = require('./technique-service');
-    TechniqueService = TechniqueServiceDirect.default || TechniqueServiceDirect;
-  } catch (error) {
-    console.error('Ошибка при импорте серверного TechniqueService:', error);
-    console.warn('Используем API версию из-за ошибки импорта');
-    
-    // В случае ошибки используем API-версию
-    TechniqueService = TechniqueServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const TechniqueService = TechniqueServiceAPI;
 
 // Константы
 const techniqueTypes = TechniqueService.techniqueTypes || {

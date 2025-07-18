@@ -1,32 +1,14 @@
 /**
- * Адаптер для выбора подходящего EnemyService в зависимости от среды выполнения
- * Безопасная версия, предотвращающая включение серверного кода в клиентскую сборку
+ * Адаптер для работы с врагами
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
-// Импортируем API-версию для клиента
-const EnemyServiceAPI = require('./enemy-api'); // Через API (для браузера)
+// Импортируем только API-версию для всех сред
+const EnemyServiceAPI = require('./enemy-api');
 
-// Определение объекта сервиса в зависимости от окружения
-let EnemyService;
-
-// В браузере всегда используем API-версию
-if (!isServerEnvironment) {
-  EnemyService = EnemyServiceAPI;
-} else {
-  // В серверном окружении используем прямой доступ к БД
-  try {
-    // Используем прямой импорт на сервере
-    const EnemyServiceDirect = require('./enemy-service');
-    EnemyService = EnemyServiceDirect.default || EnemyServiceDirect;
-  } catch (error) {
-    console.error('Ошибка при импорте серверного EnemyService:', error);
-    console.warn('Используем API версию из-за ошибки импорта');
-    
-    // В случае ошибки используем API-версию
-    EnemyService = EnemyServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const EnemyService = EnemyServiceAPI;
 
 // Добавляем обратную совместимость для классов, которые инстанцируют EnemyService
 // Создаем класс-оболочку для статических методов

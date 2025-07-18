@@ -1,32 +1,14 @@
 /**
- * Адаптер для выбора подходящей версии event-service.js в зависимости от среды выполнения
- * Предотвращает включение серверного кода в клиентскую сборку
+ * Адаптер для работы с событиями
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
-// Импортируем клиентскую версию для браузера
+// Импортируем только API-версию для всех сред
 const EventServiceAPI = require('./event-service-api');
 
-// Определение объекта в зависимости от окружения
-let EventService;
-
-// В браузере всегда используем клиентскую версию
-if (!isServerEnvironment) {
-  EventService = EventServiceAPI;
-} else {
-  // В серверном окружении используем оригинальную версию с доступом к БД
-  try {
-    // Используем прямой импорт на сервере
-    const ServerEventService = require('./event-service');
-    EventService = ServerEventService;
-  } catch (error) {
-    console.error('Ошибка при импорте серверной версии event-service:', error);
-    console.warn('Используем клиентскую версию из-за ошибки импорта');
-    
-    // В случае ошибки используем клиентскую версию
-    EventService = EventServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const EventService = EventServiceAPI;
 
 // Экспортируем все методы и свойства из выбранной реализации
 module.exports.getEventTypes = EventService.getEventTypes;

@@ -1,33 +1,16 @@
 /**
  * Адаптер для работы с ресурсами
- * Выбирает подходящую реализацию в зависимости от среды выполнения
- * Модифицировано для устранения циклических зависимостей
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
 
-const { isServerEnvironment } = require('../sequelize-config');
 const ResourceAPI = require('./resource-api');
 
 // Импортируем константы напрямую, а не через сервис
 const ResourceConstants = require('../constants/resource-constants');
 
-// Определяем сервис
-let ResourceService;
-
-// В браузере всегда используем API для запросов к серверу
-if (!isServerEnvironment) {
-  ResourceService = ResourceAPI;
-} else {
-  // На сервере используем прямое взаимодействие с базой данных
-  try {
-    // Используем прямой импорт на сервере
-    const ServerResourceService = require('./resource-service');
-    ResourceService = ServerResourceService;
-  } catch (error) {
-    console.error('Ошибка при импорте серверной версии resource-service:', error);
-    console.warn('Используем клиентскую версию из-за ошибки импорта');
-    ResourceService = ResourceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const ResourceService = ResourceAPI;
 
 // Создаём кэш для значений
 const valueCache = {};

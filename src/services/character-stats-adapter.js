@@ -1,32 +1,14 @@
 /**
- * Адаптер для выбора подходящего CharacterStatsService в зависимости от среды выполнения
- * Безопасная версия, предотвращающая включение серверного кода в клиентскую сборку
+ * Адаптер для работы со статистикой персонажа
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
-// Импортируем API-версию для клиента
-const CharacterStatsServiceAPI = require('./character-stats-api'); // Через API (для браузера)
+// Импортируем только API-версию для всех сред
+const CharacterStatsServiceAPI = require('./character-stats-api');
 
-// Определение объекта сервиса в зависимости от окружения
-let CharacterStatsService;
-
-// В браузере всегда используем API-версию
-if (!isServerEnvironment) {
-  CharacterStatsService = CharacterStatsServiceAPI;
-} else {
-  // В серверном окружении используем прямой доступ к БД
-  try {
-    // Используем прямой импорт на сервере
-    const CharacterStatsServiceDirect = require('./character-stats-service');
-    CharacterStatsService = CharacterStatsServiceDirect.default || CharacterStatsServiceDirect;
-  } catch (error) {
-    console.error('Ошибка при импорте серверного CharacterStatsService:', error);
-    console.warn('Используем API версию из-за ошибки импорта');
-    
-    // В случае ошибки используем API-версию
-    CharacterStatsService = CharacterStatsServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const CharacterStatsService = CharacterStatsServiceAPI;
 
 // Создаем единственный экземпляр для использования методов экземпляра (если такие есть)
 const serviceInstance = new (function() {

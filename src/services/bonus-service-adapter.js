@@ -1,32 +1,14 @@
 /**
- * Адаптер для выбора подходящей версии bonus-service.js в зависимости от среды выполнения
- * Предотвращает включение серверного кода в клиентскую сборку
+ * Адаптер для работы с бонусами
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
-// Импортируем клиентскую версию для браузера
+// Импортируем только API-версию для всех сред
 const BonusServiceAPI = require('./bonus-service-api');
 
-// Определение объекта в зависимости от окружения
-let BonusService;
-
-// В браузере всегда используем клиентскую версию
-if (!isServerEnvironment) {
-  BonusService = BonusServiceAPI;
-} else {
-  // В серверном окружении используем оригинальную версию с доступом к БД
-  try {
-    // Используем прямой импорт на сервере
-    const ServerBonusService = require('./bonus-service');
-    BonusService = ServerBonusService;
-  } catch (error) {
-    console.error('Ошибка при импорте серверной версии bonus-service:', error);
-    console.warn('Используем клиентскую версию из-за ошибки импорта');
-    
-    // В случае ошибки используем клиентскую версию
-    BonusService = BonusServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const BonusService = BonusServiceAPI;
 
 // Экспортируем все методы и свойства из выбранной реализации
 module.exports.calculateAllBonuses = BonusService.calculateAllBonuses;

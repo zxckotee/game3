@@ -1,35 +1,17 @@
 /**
- * Адаптер для выбора подходящей версии alchemy-service.js в зависимости от среды выполнения
- * Модифицировано для устранения циклических зависимостей
+ * Адаптер для работы с алхимией
+ * Использует только API для обеспечения совместимости с браузером
+ * Исправлено: убран импорт серверного сервиса для предотвращения ошибок crypto-browserify
  */
-const { isServerEnvironment } = require('../sequelize-config');
 
 // Импортируем константы напрямую из модуля констант
 const AlchemyConstants = require('../constants/alchemy-constants');
 
-// Импортируем клиентскую версию для браузера
+// Импортируем только API-версию для всех сред
 const AlchemyServiceAPI = require('./alchemy-service-api');
 
-// Определение объекта в зависимости от окружения
-let AlchemyService;
-
-// В браузере всегда используем клиентскую версию
-if (!isServerEnvironment) {
-  AlchemyService = AlchemyServiceAPI;
-} else {
-  // В серверном окружении используем оригинальную версию с доступом к БД
-  try {
-    // Используем прямой импорт на сервере
-    const ServerAlchemyService = require('./alchemy-service');
-    AlchemyService = ServerAlchemyService;
-  } catch (error) {
-    console.error('Ошибка при импорте серверной версии alchemy-service:', error);
-    console.warn('Используем клиентскую версию из-за ошибки импорта');
-    
-    // В случае ошибки используем клиентскую версию
-    AlchemyService = AlchemyServiceAPI;
-  }
-}
+// Всегда используем API-версию для предотвращения проблем с crypto-browserify
+const AlchemyService = AlchemyServiceAPI;
 
 // Создаем адаптер для экспорта
 const adapter = {};
