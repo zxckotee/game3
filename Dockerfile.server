@@ -21,7 +21,11 @@ COPY src/config/ ./src/config/
 COPY src/migrations/ ./src/migrations/
 COPY src/sequelize-config.js ./src/
 COPY src/server.js ./src/
-COPY .env ./
+
+# Копируем Docker-специфичную конфигурацию БД
+COPY src/config/database.docker.json ./src/config/database.json
+
+# НЕ копируем .env файл, используем только переменные окружения Docker
 
 # Установка переменных окружения для Docker
 ENV NODE_ENV=production
@@ -30,9 +34,10 @@ ENV DB_PORT=5432
 ENV DB_NAME=game
 ENV DB_USER=postgres
 ENV DB_PASSWORD=root
+ENV DATABASE_URL=postgresql://postgres:root@postgres:5432/game
 
 # Открытие порта 3001
 EXPOSE 3001
 
-# Запуск сервера
-CMD ["npm", "run", "server"]
+# Запуск сервера напрямую
+CMD ["node", "src/server.js"]

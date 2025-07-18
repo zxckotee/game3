@@ -231,10 +231,13 @@ async function startServer() {
     
     // Запускаем периодическую очистку истекших эффектов
     console.log('Запуск периодической задачи для очистки истекших эффектов...');
+    // Импортируем конфигурацию интервалов
+    const { getInterval, INTERVAL_TYPES } = require('./config/intervals');
+    
     setInterval(() => {
       console.log('[EffectLifecycleService] Запуск плановой очистки истекших эффектов...');
       EffectLifecycleService.cleanupExpiredEffects();
-    }, 600000); // Каждые 10 минут
+    }, getInterval(INTERVAL_TYPES.EFFECT_CLEANUP));
 
     // Запускаем сервер только после успешного подключения к БД
     const server = app.listen(PORT, () => {

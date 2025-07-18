@@ -1,0 +1,32 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "root",
+    "database": "game",
+    "host": "postgres",
+    "dialect": "postgres",
+    "port": 5432
+  },
+  "test": { 
+    "username": "postgres",
+    "password": "root",
+    "database": "game",
+    "host": "postgres",
+    "dialect": "postgres",
+    "port": 5432
+  },
+  "production": {
+    "username": "postgres",
+    "password": "root",
+    "database": "game",
+    "host": "postgres",
+    "dialect": "postgres",
+    "port": 5432,
+    "dialectOptions": {
+      "ssl": {
+        "require": false,
+        "rejectUnauthorized": false
+      }
+    }
+  }
+}

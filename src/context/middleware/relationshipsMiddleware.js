@@ -77,6 +77,12 @@ export const relationshipsMiddleware = store => next => action => {
       isUpdateScheduled = true;
     }
     
+    // Создаем дебаунсированную версию обновления профиля
+    const debouncedProfileUpdate = createDebouncedProfileUpdate(
+      CharacterProfileServiceAPI.updateCharacterProfile,
+      action.payload.userId
+    );
+
     debounceTimeout = setTimeout(async () => {
       try {
         const state = store.getState();

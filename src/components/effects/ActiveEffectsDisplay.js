@@ -37,7 +37,9 @@ const ActiveEffectsDisplay = ({ userId }) => {
     };
 
     fetchEffects(); // Первый вызов при монтировании
-    const intervalId = setInterval(fetchEffects, 15000); // Повторяем каждые 15 секунд
+    // Увеличиваем интервал для production среды
+    const updateInterval = process.env.NODE_ENV === 'production' ? 30000 : 15000;
+    const intervalId = setInterval(fetchEffects, updateInterval);
 
     return () => clearInterval(intervalId); // Очистка при размонтировании
   }, [userId, state.player.inventory.items]); // Перезапускаем при изменении инвентаря

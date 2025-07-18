@@ -586,7 +586,7 @@ function GamePage() {
         message: events[Math.floor(Math.random() * events.length)],
         type: 'info'
       });
-    }, 30000); // Каждые 30 секунд
+    }, process.env.NODE_ENV === 'production' ? 120000 : 30000); // 2 минуты в production, 30 секунд в development
     
     return () => clearInterval(timer);
   }, [actions]);
@@ -712,7 +712,7 @@ function GamePage() {
       } catch (error) {
         console.error('Ошибка при автосохранении:', error);
       }
-    }, 5 * 60 * 1000); // Каждые 5 минут
+    }, process.env.NODE_ENV === 'production' ? 600000 : 300000); // 10 минут в production, 5 минут в development
     
     // Сохранение при изменении важных данных
     const saveData = async () => {

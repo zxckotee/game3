@@ -399,12 +399,15 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
       return;
     }
 
+    // Увеличиваем интервал для production среды
+    const updateInterval = process.env.NODE_ENV === 'production' ? 2000 : 1000;
+    
     const interval = setInterval(async () => {
       const updatedState = await getCombatState(combatState.id);
       if (updatedState.success) {
         setCombatState(updatedState.combat);
       }
-    }, 1000); // Опрос каждую секунду
+    }, updateInterval);
 
     return () => clearInterval(interval);
   }, [combatState]);

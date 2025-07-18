@@ -1315,7 +1315,9 @@ const PvPTab = () => {
             }
             
             // Для периодического обновления всегда используем тихую загрузку
-            const interval = setInterval(silentLoadRooms, 5000); // Обновляем каждые 5 секунд без анимации
+            // Увеличиваем интервал для production среды
+            const updateInterval = process.env.NODE_ENV === 'production' ? 15000 : 5000;
+            const interval = setInterval(silentLoadRooms, updateInterval);
             return () => clearInterval(interval);
         }
     }, [selectedMode, activeTab, refreshTrigger, initialLoad]);

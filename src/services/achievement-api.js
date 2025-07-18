@@ -376,8 +376,14 @@ const updateCharacterProfile = async (userId) => {
       return;
     }
     
-    // Получаем данные профиля через CharacterProfileServiceAPI
-    const profileResponse = await CharacterProfileServiceAPI.getCharacterProfile(userId);
+    // Создаем дебаунсированную версию получения профиля
+    const debouncedGetProfile = createDebouncedProfileUpdate(
+      CharacterProfileServiceAPI.getCharacterProfile,
+      userId
+    );
+    
+    // Получаем данные профиля через дебаунсированную функцию
+    const profileResponse = await debouncedGetProfile(userId);
     if (profileResponse) {
       console.log('[Achievement API] Обновление профиля в Redux:', profileResponse);
       console.log('[Achievement API] Валюта профиля:', profileResponse.currency);
