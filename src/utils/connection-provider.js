@@ -16,7 +16,28 @@ let databasePromise = null;
 function loadDatabaseConfig() {
   try {
     // Требуем файл конфигурации напрямую
-    const config = require('../config/database.json');
+    const baseConfig = require('../config/database.json');
+    const env = process.env.NODE_ENV || 'development';
+    const envConfig = baseConfig[env];
+    
+    // Поддержка переменных окружения для Docker (аналогично database-connection-manager.js)
+    const config = {
+      ...baseConfig,
+      [env]: {
+        ...envConfig,
+        host: process.env.DB_HOST || envConfig.host,
+        port: parseInt(process.env.DB_PORT) || envConfig.port,
+        database: process.env.DB_NAME || envConfig.database,
+        username: process.env.DB_USER || envConfig.username,
+        password: process.env.DB_PASSWORD || envConfig.password
+      }
+    };
+    
+    if (process.env.DB_HOST) {
+      console.log('connection-provider: Используются переменные окружения для подключения к БД');
+      console.log(`connection-provider: Подключение к ${config[env].host}:${config[env].port}`);
+    }
+    
     return config;
   } catch (error) {
     console.error('Ошибка при загрузке конфигурации базы данных:', error);
