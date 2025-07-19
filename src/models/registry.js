@@ -155,18 +155,20 @@ async function initializeAllModels() {
       }
     }
     
-    // Устанавливаем ассоциации между моделями
-   // console.log('Установка ассоциаций между моделями...');
-    for (const [modelName, ModelClass] of Object.entries(modelCache)) {
-      try {
-        if (typeof ModelClass.associate === 'function') {
-         // console.log(`Установка ассоциаций для модели ${modelName}...`);
-          ModelClass.associate(modelCache);
-        }
-      } catch (error) {
-        console.error(`Ошибка при установке ассоциаций для модели ${modelName}:`, error);
-      }
-    }
+    // ОТКЛЮЧЕНО: Устанавливаем ассоциации между моделями
+    // Модели сами устанавливают ассоциации при инициализации
+    // Дублирование ассоциаций через registry.js вызывает ошибки
+    // console.log('Установка ассоциаций между моделями...');
+    // for (const [modelName, ModelClass] of Object.entries(modelCache)) {
+    //   try {
+    //     if (typeof ModelClass.associate === 'function') {
+    //      console.log(`Установка ассоциаций для модели ${modelName}...`);
+    //       ModelClass.associate(modelCache);
+    //     }
+    //   } catch (error) {
+    //     console.error(`Ошибка при установке ассоциаций для модели ${modelName}:`, error);
+    //   }
+    // }
     
     initialized = true;
     console.log('Реестр моделей успешно инициализирован');

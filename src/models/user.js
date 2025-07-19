@@ -105,9 +105,14 @@ async function initializeUserModel() {
 }
 
 // Инициализируем модель при импорте модуля
-getInitializedUserModel().catch(error => {
-  console.error('Ошибка при начальной инициализации модели User:', error);
-});
+(async () => {
+  try {
+    await getInitializedUserModel();
+    console.log('User модель успешно инициализирована при импорте');
+  } catch (error) {
+    console.error('Ошибка при начальной инициализации модели User:', error);
+  }
+})();
 
 // Экспорт для CommonJS
 module.exports = User;

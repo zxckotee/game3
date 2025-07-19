@@ -114,7 +114,15 @@ CultivationProgress.init = async function() {
   });
 };
 
-// Больше не используем самоинициализацию через IIFE
-// Инициализация будет происходить централизованно через src/models/initializeModels.js
+// Инициализируем модель автоматически для обеспечения работы сервисов
+(async () => {
+  try {
+    await CultivationProgress.init();
+    console.log('CultivationProgress модель инициализирована');
+  } catch (error) {
+    console.error('Ошибка инициализации модели CultivationProgress:', error);
+    console.error(error.stack);
+  }
+})();
 
 module.exports = CultivationProgress;
