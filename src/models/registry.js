@@ -137,9 +137,13 @@ async function initializeAllModels() {
           if (!sequelize.models[modelName] && !CachedModel.sequelize) { // CachedModel.sequelize появляется после init
             // console.log(`Инициализация класса модели ${modelName} через init()...`);
             if (CachedModel.init.constructor.name === 'AsyncFunction') {
+              console.log(`[REGISTRY DEBUG] Асинхронная инициализация модели ${modelName}...`);
               await CachedModel.init(sequelize.Sequelize.DataTypes, { sequelize, modelName }); // Передаем DataTypes и опции
+              console.log(`[REGISTRY DEBUG] Асинхронная инициализация модели ${modelName} завершена`);
             } else {
+              console.log(`[REGISTRY DEBUG] Синхронная инициализация модели ${modelName}...`);
               CachedModel.init(sequelize.Sequelize.DataTypes, { sequelize, modelName }); // Передаем DataTypes и опции
+              console.log(`[REGISTRY DEBUG] Синхронная инициализация модели ${modelName} завершена`);
             }
              // После init, модель должна быть в sequelize.models[modelName]
              if (sequelize.models[modelName]) {
@@ -171,6 +175,21 @@ async function initializeAllModels() {
         // }
       } catch (error) {
         console.error(`Ошибка при дополнительной инициализации/регистрации модели ${modelName}:`, error);
+      }
+    }
+    
+    // Дополнительная проверка для CharacterStats - убедимся, что модель полностью инициализирована
+    if (modelCache['CharacterStats'] && typeof modelCache['CharacterStats'].init === 'function') {
+      console.log('[REGISTRY DEBUG] Дополнительная проверка инициализации CharacterStats...');
+      try {
+        // Если CharacterStats еще не инициализирована через registry, инициализируем её
+        if (!modelCache['CharacterStats'].sequelize) {
+          console.log('[REGISTRY DEBUG] CharacterStats требует дополнительной инициализации...');
+          await modelCache['CharacterStats'].init();
+          console.log('[REGISTRY DEBUG] CharacterStats дополнительно инициализирована');
+        }
+      } catch (error) {
+        console.error('[REGISTRY DEBUG] Ошибка при дополнительной инициализации CharacterStats:', error);
       }
     }
     
@@ -248,6 +267,36 @@ async function initializeAllModels() {
     
     if (CharacterStatsModel) {
       console.log('[REGISTRY DEBUG] ✓ CharacterStats модель найдена в кэше');
+      console.log('[REGISTRY DEBUG] CharacterStats.associate функция:', typeof CharacterStatsModel.associate);
+      console.log('[REGISTRY DEBUG] CharacterStats.associations до принудительной установки:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'undefined');
+      
+      if (typeof CharacterStatsModel.associate === 'function') {
+        console.log('[REGISTRY DEBUG] Вызываем CharacterStats.associate принудительно...');
+        try {
+          CharacterStatsModel.associate(modelCache);
+          console.log('[REGISTRY DEBUG] CharacterStats.associate выполнен без ошибок');
+          console.log('[REGISTRY DEBUG] CharacterStats.associations после принудительной установки:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'undefined');
+          
+          // Проверяем конкретную ассоциацию с User
+          if (CharacterStatsModel.associations && CharacterStatsModel.associations.user) {
+            console.log('[REGISTRY DEBUG] ✓ Ассоциация CharacterStats -> User найдена:', CharacterStatsModel.associations.user.associationType);
+            console.log('[REGISTRY DEBUG] ✓ Target модель:', CharacterStatsModel.associations.user.target.name);
+          } else {
+            console.log('[REGISTRY DEBUG] ✗ Ассоциация CharacterStats -> User НЕ найдена');
+            console.log('[REGISTRY DEBUG] Доступные ассоциации CharacterStats:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'нет');
+          }
+        } catch (error) {
+          console.error('[REGISTRY DEBUG] ✗ Ошибка при принудительной установке ассоциаций для CharacterStats:', error);
+          console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
+        }
+      } else {
+        console.log('[REGISTRY DEBUG] ✗ CharacterStats.associate функция не найдена');
+      }
+    } else {
+      console.log('[REGISTRY DEBUG] ✗ CharacterStats модель НЕ найдена в кэше');
+    }
+    
+    console.log('[REGISTRY DEBUG] ========== КОНЕЦ ДЕТАЛЬНОЙ ДИАГНОСТИКИ ==========');
       console.log('[REGISTRY DEBUG] CharacterStats.associations:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'undefined');
       
       // Проверяем обратную ассоциацию

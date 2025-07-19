@@ -22,8 +22,14 @@ class CharacterStats extends Model {
 }
 
 // Исправление: не используем super за пределами класса
-CharacterStats.init = async function() {
-  const sequelize = await getSequelize();
+CharacterStats.init = async function(DataTypes, options) {
+  // Если параметры переданы из registry, используем их
+  let sequelize;
+  if (options && options.sequelize) {
+    sequelize = options.sequelize;
+  } else {
+    sequelize = await getSequelize();
+  }
   
   // Вызываем метод init стандартным образом
   return Model.init.call(this, {
