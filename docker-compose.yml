@@ -65,8 +65,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=root
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     restart: unless-stopped
     stdin_open: true
     tty: true
