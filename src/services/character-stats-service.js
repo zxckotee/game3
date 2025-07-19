@@ -1,7 +1,9 @@
 const { getModel } = require('../models/registry');
 const CultivationService = require('./cultivation-service');
-const CharacterStats = require('../models/character-stats');
 const User = require('../models/user');
+
+// Получаем модель CharacterStats через registry для избежания конфликтов инициализации
+const getCharacterStatsModel = () => getModel('CharacterStats');
 
 // Проверяем, находимся ли мы в браузере
 const isBrowser = typeof window !== 'undefined';
@@ -58,6 +60,9 @@ class CharacterStatsService {
         };
       } else {
         // На сервере используем базу данных
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const CharacterStats = getCharacterStatsModel();
+        
         // Проверяем, есть ли запись о характеристиках для пользователя
         let stats = await CharacterStats.findOne({
           where: { user_id: userId }
@@ -164,6 +169,9 @@ class CharacterStatsService {
         };
       } else {
         // На сервере используем базу данных
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const CharacterStats = getCharacterStatsModel();
+        
         // Получаем текущие характеристики персонажа
         let stats = await CharacterStats.findOne({
           where: { user_id: userId }

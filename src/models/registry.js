@@ -242,6 +242,9 @@ register('User', require('./user'));
 register('CharacterStats', require('./character-stats'));
 register('Combat', require('./combat'));
 
+// Регистрируем модели инвентаря
+register('ItemImage', require('./item-image'));
+
 // Регистрируем модели PvP
 register('PvPMode', require('./pvp-mode'));
 register('PvPRoom', require('./pvp-room'));
