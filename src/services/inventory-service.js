@@ -1,11 +1,15 @@
 const { response } = require('express');
 const { getModel } = require('../models/registry');
+const modelRegistry = require('../models/registry');
 const InventoryItem = require('../models/inventory-item');
 const User = require('../models/user');
 const { Sequelize } = require('sequelize');
 
 // Получаем модель ItemImage через registry для избежания конфликтов инициализации
-const getItemImageModel = () => getModel('ItemImage');
+const getItemImageModel = async () => {
+  await modelRegistry.initializeRegistry();
+  return getModel('ItemImage');
+};
 
 // Проверяем, находимся ли мы в браузере
 const isBrowser = typeof window !== 'undefined';
@@ -503,7 +507,7 @@ class InventoryService {
         // Сразу "обогащаем" предметы
         const responsePromies = items.map(async (item) => {
           // Получаем модель через registry для избежания конфликтов инициализации
-          const ItemImage = getItemImageModel();
+          const ItemImage = await getItemImageModel();
           let item_image = await ItemImage.findByPk(item.itemId);
 
           if (item_image !== null){
