@@ -64,6 +64,7 @@ services:
       - DB_NAME=game
       - DB_USER=postgres
       - DB_PASSWORD=root
+      - LC-ALL=C.UTF-8
     depends_on:
       - postgres
     restart: unless-stopped

@@ -33,6 +33,17 @@ async function initializeAllModels() {
     const sequelizeResult = await connectionProvider.getSequelizeInstance();
     const sequelize = sequelizeResult.db;
     
+    // Специальная обработка для модели User
+    // User инициализируется самостоятельно, но нужно добавить её в registry
+    try {
+      const { getInitializedUserModel } = require('./user');
+      const UserModel = await getInitializedUserModel();
+      modelCache['User'] = UserModel;
+      console.log('Модель User добавлена в registry из собственной инициализации');
+    } catch (error) {
+      console.warn('Не удалось добавить модель User в registry:', error.message);
+    }
+    
     // Получаем список файлов моделей
     const modelFiles = fs.readdirSync(__dirname)
       .filter(file => {

@@ -11,8 +11,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
+
 # Копируем package.json и package-lock.json для кэширования зависимостей
 COPY package*.json ./
+
+ENV LC_ALL="C.UTF-8"
 
 # Устанавливаем зависимости с оптимизацией
 RUN npm ci --only=production=false --silent
