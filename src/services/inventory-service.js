@@ -1,14 +1,18 @@
 const { response } = require('express');
 const { getModel } = require('../models/registry');
 const modelRegistry = require('../models/registry');
-const InventoryItem = require('../models/inventory-item');
 const User = require('../models/user');
 const { Sequelize } = require('sequelize');
 
-// Получаем модель ItemImage через registry для избежания конфликтов инициализации
+// Получаем модели через registry для избежания конфликтов инициализации
 const getItemImageModel = async () => {
   await modelRegistry.initializeRegistry();
   return getModel('ItemImage');
+};
+
+const getInventoryItemModel = async () => {
+  await modelRegistry.initializeRegistry();
+  return getModel('InventoryItem');
 };
 
 // Проверяем, находимся ли мы в браузере
@@ -500,6 +504,9 @@ class InventoryService {
         }));
       } else {
         // На сервере используем базу данных
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const InventoryItem = await getInventoryItemModel();
+        
         // Получаем все предметы инвентаря пользователя
         const items = await InventoryItem.findAll({
           where: { userId }
@@ -613,6 +620,9 @@ class InventoryService {
         }
       } else {
         // На сервере используем базу данных
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const InventoryItem = await getInventoryItemModel();
+        
         // Проверяем, есть ли уже такой предмет в инвентаре
         // Проверяем различные варианты идентификатора предмета
         const itemIdentifier = item.item_id || item.itemId || item.id;
@@ -677,6 +687,9 @@ class InventoryService {
           }
           
           console.log(`Создание нового предмета в инвентаре: itemIdentifier=${itemIdentifier}`, item);
+          
+          // Получаем модель через registry для избежания конфликтов инициализации
+          const InventoryItem = await getInventoryItemModel();
           
           const newItem = await InventoryItem.create({
             userId,
@@ -772,6 +785,9 @@ class InventoryService {
       } else {
         // На сервере используем базу данных
         // Получаем предмет из инвентаря
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const InventoryItem = await getInventoryItemModel();
+        
         const item = await InventoryItem.findOne({
           where: {
             userId,
@@ -874,6 +890,9 @@ class InventoryService {
       } else {
         // На сервере используем базу данных
         // Получаем предмет из инвентаря
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const InventoryItem = await getInventoryItemModel();
+        
         const item = await InventoryItem.findOne({
           where: {
             userId,
@@ -956,6 +975,9 @@ class InventoryService {
         return true;
       } else {
         // На сервере удаляем все предметы пользователя из базы данных
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const InventoryItem = await getInventoryItemModel();
+        
         await InventoryItem.destroy({
           where: {
             userId
@@ -1004,6 +1026,9 @@ class InventoryService {
         }));
 
         // Используем bulkCreate для оптимизации
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const InventoryItem = await getInventoryItemModel();
+        
         const createdItems = await InventoryItem.bulkCreate(formattedItems);
         
         // Преобразуем созданные предметы в формат для клиента
@@ -1072,6 +1097,9 @@ class InventoryService {
       } else {
         // На сервере используем базу данных
         // В базе данных может быть колонка item_id вместо itemId
+        // Получаем модель через registry для избежания конфликтов инициализации
+        const InventoryItem = await getInventoryItemModel();
+        
         const item = await InventoryItem.findOne({
           where: {
             userId,

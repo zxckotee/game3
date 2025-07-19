@@ -244,6 +244,7 @@ register('Combat', require('./combat'));
 
 // Регистрируем модели инвентаря
 register('ItemImage', require('./item-image'));
+register('InventoryItem', require('./inventory-item'));
 
 // Регистрируем модели PvP
 register('PvPMode', require('./pvp-mode'));
