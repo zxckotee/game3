@@ -210,28 +210,59 @@ async function initializeAllModels() {
     
     // Принудительная установка ассоциаций для модели User
     // User может не пройти через основной блок ассоциаций из-за особенностей инициализации
-    console.log('[REGISTRY DEBUG] Принудительная проверка ассоциаций для User...');
+    // Детальная диагностика ассоциаций для User
+    console.log('[REGISTRY DEBUG] ========== ДЕТАЛЬНАЯ ДИАГНОСТИКА USER ==========');
     const UserModel = modelCache['User'];
-    if (UserModel && typeof UserModel.associate === 'function') {
-      const hasUserAssociations = UserModel.associations && Object.keys(UserModel.associations).length > 0;
-      console.log('[REGISTRY DEBUG] User имеет ассоциации:', hasUserAssociations);
+    const CharacterStatsModel = modelCache['CharacterStats'];
+    
+    if (UserModel) {
+      console.log('[REGISTRY DEBUG] ✓ User модель найдена в кэше');
+      console.log('[REGISTRY DEBUG] User.associate функция:', typeof UserModel.associate);
+      console.log('[REGISTRY DEBUG] User.associations до принудительной установки:', UserModel.associations ? Object.keys(UserModel.associations) : 'undefined');
       
-      if (!hasUserAssociations) {
-        console.log('[REGISTRY DEBUG] Принудительно устанавливаем ассоциации для User...');
+      if (typeof UserModel.associate === 'function') {
+        console.log('[REGISTRY DEBUG] Вызываем User.associate принудительно...');
         try {
           UserModel.associate(modelCache);
-          console.log('[REGISTRY DEBUG] Ассоциации для User установлены принудительно');
+          console.log('[REGISTRY DEBUG] User.associate выполнен без ошибок');
+          console.log('[REGISTRY DEBUG] User.associations после принудительной установки:', UserModel.associations ? Object.keys(UserModel.associations) : 'undefined');
+          
+          // Проверяем конкретную ассоциацию с CharacterStats
+          if (UserModel.associations && UserModel.associations.characterStats) {
+            console.log('[REGISTRY DEBUG] ✓ Ассоциация User -> CharacterStats найдена:', UserModel.associations.characterStats.associationType);
+            console.log('[REGISTRY DEBUG] ✓ Target модель:', UserModel.associations.characterStats.target.name);
+          } else {
+            console.log('[REGISTRY DEBUG] ✗ Ассоциация User -> CharacterStats НЕ найдена');
+            console.log('[REGISTRY DEBUG] Доступные ассоциации User:', UserModel.associations ? Object.keys(UserModel.associations) : 'нет');
+          }
         } catch (error) {
-          console.error('[REGISTRY DEBUG] Ошибка при принудительной установке ассоциаций для User:', error);
+          console.error('[REGISTRY DEBUG] ✗ Ошибка при принудительной установке ассоциаций для User:', error);
+          console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
         }
       } else {
-        console.log('[REGISTRY DEBUG] User уже имеет ассоциации');
+        console.log('[REGISTRY DEBUG] ✗ User.associate функция не найдена');
       }
     } else {
-      console.log('[REGISTRY DEBUG] User не найден в кэше или не имеет метода associate');
-      console.log('[REGISTRY DEBUG] UserModel:', !!UserModel);
-      console.log('[REGISTRY DEBUG] UserModel.associate:', UserModel ? typeof UserModel.associate : 'N/A');
+      console.log('[REGISTRY DEBUG] ✗ User модель НЕ найдена в кэше');
     }
+    
+    if (CharacterStatsModel) {
+      console.log('[REGISTRY DEBUG] ✓ CharacterStats модель найдена в кэше');
+      console.log('[REGISTRY DEBUG] CharacterStats.associations:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'undefined');
+      
+      // Проверяем обратную ассоциацию
+      if (CharacterStatsModel.associations && CharacterStatsModel.associations.user) {
+        console.log('[REGISTRY DEBUG] ✓ Ассоциация CharacterStats -> User найдена:', CharacterStatsModel.associations.user.associationType);
+        console.log('[REGISTRY DEBUG] ✓ Target модель:', CharacterStatsModel.associations.user.target.name);
+      } else {
+        console.log('[REGISTRY DEBUG] ✗ Ассоциация CharacterStats -> User НЕ найдена');
+        console.log('[REGISTRY DEBUG] Доступные ассоциации CharacterStats:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'нет');
+      }
+    } else {
+      console.log('[REGISTRY DEBUG] ✗ CharacterStats модель НЕ найдена в кэше');
+    }
+    
+    console.log('[REGISTRY DEBUG] ========== КОНЕЦ ДИАГНОСТИКИ USER ==========');
     
     initialized = true;
     console.log('[REGISTRY DEBUG] Реестр моделей успешно инициализирован');
