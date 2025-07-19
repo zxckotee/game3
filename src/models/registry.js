@@ -268,14 +268,15 @@ module.exports = {
   getAllModels: () => modelCache
 };
 
-// Явная регистрация ключевых моделей для гарантии доступности
-register('User', require('./user'));
-register('CharacterStats', require('./character-stats'));
-register('Combat', require('./combat'));
+// ОТКЛЮЧЕНО: Явная регистрация ключевых моделей
+// Эти регистрации перезаписывают правильно инициализированные модели из initializeAllModels()
+// register('User', require('./user'));
+// register('CharacterStats', require('./character-stats'));
+// register('Combat', require('./combat'));
 
-// Регистрируем модели инвентаря
-register('ItemImage', require('./item-image'));
-register('InventoryItem', require('./inventory-item'));
+// ОТКЛЮЧЕНО: Регистрируем модели инвентаря
+// register('ItemImage', require('./item-image'));
+// register('InventoryItem', require('./inventory-item'));
 
 // Регистрируем модели PvP
 register('PvPMode', require('./pvp-mode'));
