@@ -1,7 +1,6 @@
 const { getModel } = require('../models/registry');
 const modelRegistry = require('../models/registry');
 const CultivationService = require('./cultivation-service');
-const User = require('../models/user');
 
 // Получаем модель CharacterStats через registry для избежания конфликтов инициализации
 const getCharacterStatsModel = async () => {
