@@ -35,7 +35,7 @@ class CombatService {
     // Инициализируем registry перед использованием моделей
     await modelRegistry.initializeRegistry();
 
-    const User = modelRegistry.getModel('User');
+    const User = await modelRegistry.getModel('User');
     const CharacterStats = modelRegistry.getModel('CharacterStats');
     const Enemy = modelRegistry.getModel('Enemy');
     const EnemyStats = modelRegistry.getModel('EnemyStats');
