@@ -1,6 +1,28 @@
 services:
-  # Единое приложение (React + Express)
-  
+  # PostgreSQL 16 база данных
+  postgres:
+    image: postgres:16
+    container_name: immortal-path-postgres
+    environment:
+      POSTGRES_DB: game
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"  # Доступ с хоста для psql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d game"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
+  # Приложение (React + Express)
   app:
     build:
       context: .
@@ -34,25 +56,27 @@ services:
       # Безопасность (для разработки)
       - JWT_SECRET=dev_jwt_secret_change_in_production
       - SESSION_SECRET=dev_session_secret_change_in_production
-      # Database - подключение к внешнему PostgreSQL
+      # Database - подключение к PostgreSQL контейнеру
       - USE_DATABASE=true
       - USE_MERCHANT_FILES=true
-      - DB_HOST=host.docker.internal
+      - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=game
       - DB_USER=postgres
       - DB_PASSWORD=root
-      - DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/game
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     stdin_open: true
     tty: true
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - app_network
+
+volumes:
+  postgres_data:
+    driver: local
 
 networks:
   app_network:
     driver: bridge
-
-# Volumes не нужны, так как PostgreSQL исключен

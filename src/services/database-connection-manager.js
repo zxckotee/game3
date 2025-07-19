@@ -109,8 +109,22 @@ async function testDirectPostgresConnection(config) {
 async function initializeDatabaseConnection() {
   try {
     const env = process.env.NODE_ENV || 'development';
-    const config = databaseConfig[env];
+    const baseConfig = databaseConfig[env];
+    
+    // Поддержка переменных окружения для Docker
+    const config = {
+      ...baseConfig,
+      host: process.env.DB_HOST || baseConfig.host,
+      port: parseInt(process.env.DB_PORT) || baseConfig.port,
+      database: process.env.DB_NAME || baseConfig.database,
+      username: process.env.DB_USER || baseConfig.username,
+      password: process.env.DB_PASSWORD || baseConfig.password
+    };
+    
     console.log(`Попытка подключения к PostgreSQL (${config.host}:${config.port})...`);
+    if (process.env.DB_HOST) {
+      console.log(`Используются переменные окружения для подключения к БД`);
+    }
     
     // Сначала проверим прямое подключение
     try {
