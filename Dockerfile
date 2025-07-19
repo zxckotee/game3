@@ -20,11 +20,6 @@ RUN npm ci --only=production=false --silent
 # Копируем исходный код
 COPY . .
 
-# Создаем пользователя для безопасности
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
-USER appuser
-
 # Экспонируем порты
 EXPOSE 80 3001
 
