@@ -75,11 +75,11 @@ module.exports = {
   SpiritPetFood
 };
 
-// Автоматически инициализируем модели при импорте модуля
-(async () => {
-  try {
-    await initializeSpiritPetModels();
-  } catch (error) {
-    console.error('Ошибка при автоматической инициализации моделей духовных питомцев:', error);
-  }
-})();
+// НЕ инициализируем модели автоматически при импорте - это должно контролироваться вручную
+// (async () => {
+//   try {
+//     await initializeSpiritPetModels();
+//   } catch (error) {
+//     console.error('Ошибка при автоматической инициализации моделей духовных питомцев:', error);
+//   }
+// })();

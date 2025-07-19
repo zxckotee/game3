@@ -132,34 +132,22 @@ UserSpiritPet.init = async function() {
 
 /**
  * Устанавливает ассоциации с другими моделями
+ * ПРИМЕЧАНИЕ: Ассоциации управляются через init-spirit-pet-models.js
  */
 UserSpiritPet.associate = function(models) {
-  // Связь с пользователем
-  if (models.User) {
-    UserSpiritPet.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'owner'
-    });
-  } else {
-    console.warn('Ассоциация UserSpiritPet -> User не установлена: User не найден в models');
-  }
-  
-  // Связь с типом питомца из каталога
-  // Упрощаем ассоциацию, чтобы избежать проблем с циклическими зависимостями
-  UserSpiritPet.belongsTo(require('./spirit-pet-catalog'), {
-    foreignKey: 'petId',
-    as: 'petType'
-  });
+  // Ассоциации устанавливаются в init-spirit-pet-models.js
+  // чтобы избежать дублирования и циклических зависимостей
+  console.log('UserSpiritPet.associate вызван, но ассоциации управляются централизованно');
 };
 
-// Инициализируем модель
-(async () => {
-  try {
-    await UserSpiritPet.init();
-    console.log('Модель UserSpiritPet инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели UserSpiritPet:', error);
-  }
-})();
+// НЕ инициализируем модель здесь - это делается в init-spirit-pet-models.js
+// (async () => {
+//   try {
+//     await UserSpiritPet.init();
+//     console.log('Модель UserSpiritPet инициализирована');
+//   } catch (error) {
+//     console.error('Ошибка инициализации модели UserSpiritPet:', error);
+//   }
+// })();
 
 module.exports = UserSpiritPet;

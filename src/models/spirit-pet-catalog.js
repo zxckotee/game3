@@ -72,23 +72,22 @@ SpiritPetCatalog.init = async function() {
 
 /**
  * Устанавливает ассоциации с другими моделями
+ * ПРИМЕЧАНИЕ: Ассоциации управляются через init-spirit-pet-models.js
  */
 SpiritPetCatalog.associate = function(models) {
-  // Упрощаем ассоциацию, чтобы избежать проблем с циклическими зависимостями
-  SpiritPetCatalog.hasMany(require('./user-spirit-pet'), {
-    foreignKey: 'petId',
-    as: 'userPets'
-  });
+  // Ассоциации устанавливаются в init-spirit-pet-models.js
+  // чтобы избежать дублирования и циклических зависимостей
+  console.log('SpiritPetCatalog.associate вызван, но ассоциации управляются централизованно');
 };
 
-// Инициализируем модель
-(async () => {
-  try {
-    await SpiritPetCatalog.init();
-    console.log('Модель SpiritPetCatalog инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели SpiritPetCatalog:', error);
-  }
-})();
+// НЕ инициализируем модель здесь - это делается в init-spirit-pet-models.js
+// (async () => {
+//   try {
+//     await SpiritPetCatalog.init();
+//     console.log('Модель SpiritPetCatalog инициализирована');
+//   } catch (error) {
+//     console.error('Ошибка инициализации модели SpiritPetCatalog:', error);
+//   }
+// })();
 
 module.exports = SpiritPetCatalog;

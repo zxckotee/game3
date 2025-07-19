@@ -222,7 +222,8 @@ function register(name, model) {
   return model;
 }
 
-initializeRegistry().then((res) => {console.log(getModel('AlchemyRecipe'));});
+// НЕ вызываем автоматическую инициализацию при импорте - это может вызывать конфликты
+// initializeRegistry().then((res) => {console.log(getModel('AlchemyRecipe'));});
 // Экспортируем функции и не запускаем инициализацию автоматически
 module.exports = {
   initializeRegistry,

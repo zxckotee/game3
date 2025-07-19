@@ -104,15 +104,15 @@ CharacterProfile.init = async function() {
     });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await CharacterProfile.init();
-    console.log('CharacterProfile модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели CharacterProfile:', error);
-    console.error(error.stack);
-  }
-})();
+// НЕ инициализируем модель автоматически - это должно делаться через registry.js
+// (async () => {
+//   try {
+//     await CharacterProfile.init();
+//     console.log('CharacterProfile модель инициализирована');
+//   } catch (error) {
+//     console.error('Ошибка инициализации модели CharacterProfile:', error);
+//     console.error(error.stack);
+//   }
+// })();
 
 module.exports = CharacterProfile;
