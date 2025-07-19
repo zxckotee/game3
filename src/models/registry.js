@@ -175,24 +175,37 @@ async function initializeAllModels() {
     
     // Устанавливаем ассоциации между моделями
     // Только для моделей, которые имеют метод associate и еще не установили ассоциации
-    console.log('Установка ассоциаций между моделями...');
+    console.log('[REGISTRY DEBUG] Начинаем установку ассоциаций между моделями...');
+    console.log('[REGISTRY DEBUG] Количество моделей в кэше:', Object.keys(modelCache).length);
+    
     for (const [modelName, ModelClass] of Object.entries(modelCache)) {
       try {
+        console.log(`[REGISTRY DEBUG] Проверяем модель ${modelName}...`);
+        console.log(`[REGISTRY DEBUG] ModelClass для ${modelName}:`, !!ModelClass);
+        console.log(`[REGISTRY DEBUG] ModelClass.associate для ${modelName}:`, typeof ModelClass.associate);
+        
         if (typeof ModelClass.associate === 'function') {
           // Проверяем, не установлены ли уже ассоциации для этой модели
           const hasAssociations = ModelClass.associations && Object.keys(ModelClass.associations).length > 0;
+          console.log(`[REGISTRY DEBUG] ${modelName} уже имеет ассоциации:`, hasAssociations);
           
           if (!hasAssociations) {
-            console.log(`Установка ассоциаций для модели ${modelName}...`);
+            console.log(`[REGISTRY DEBUG] Устанавливаем ассоциации для модели ${modelName}...`);
             ModelClass.associate(modelCache);
+            console.log(`[REGISTRY DEBUG] Ассоциации для ${modelName} установлены успешно`);
           } else {
-            console.log(`Ассоциации для модели ${modelName} уже установлены, пропускаем`);
+            console.log(`[REGISTRY DEBUG] Ассоциации для модели ${modelName} уже установлены, пропускаем`);
           }
+        } else {
+          console.log(`[REGISTRY DEBUG] Модель ${modelName} не имеет метода associate`);
         }
       } catch (error) {
-        console.error(`Ошибка при установке ассоциаций для модели ${modelName}:`, error);
+        console.error(`[REGISTRY DEBUG] Ошибка при установке ассоциаций для модели ${modelName}:`, error);
+        console.error(`[REGISTRY DEBUG] Stack trace:`, error.stack);
       }
     }
+    
+    console.log('[REGISTRY DEBUG] Завершена установка ассоциаций между моделями');
     
     initialized = true;
     console.log('[REGISTRY DEBUG] Реестр моделей успешно инициализирован');
