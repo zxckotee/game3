@@ -44,6 +44,7 @@ async function initializeAllModels() {
       console.log('[REGISTRY DEBUG] Получили getInitializedUserModel функцию');
       const UserModel = await getInitializedUserModel();
       console.log('[REGISTRY DEBUG] Получили UserModel:', !!UserModel);
+      console.log('[REGISTRY DEBUG] UserModel.associate:', typeof UserModel.associate);
       modelCache['User'] = UserModel;
       console.log('[REGISTRY DEBUG] Модель User добавлена в registry из собственной инициализации');
     } catch (error) {
@@ -206,6 +207,31 @@ async function initializeAllModels() {
     }
     
     console.log('[REGISTRY DEBUG] Завершена установка ассоциаций между моделями');
+    
+    // Принудительная установка ассоциаций для модели User
+    // User может не пройти через основной блок ассоциаций из-за особенностей инициализации
+    console.log('[REGISTRY DEBUG] Принудительная проверка ассоциаций для User...');
+    const UserModel = modelCache['User'];
+    if (UserModel && typeof UserModel.associate === 'function') {
+      const hasUserAssociations = UserModel.associations && Object.keys(UserModel.associations).length > 0;
+      console.log('[REGISTRY DEBUG] User имеет ассоциации:', hasUserAssociations);
+      
+      if (!hasUserAssociations) {
+        console.log('[REGISTRY DEBUG] Принудительно устанавливаем ассоциации для User...');
+        try {
+          UserModel.associate(modelCache);
+          console.log('[REGISTRY DEBUG] Ассоциации для User установлены принудительно');
+        } catch (error) {
+          console.error('[REGISTRY DEBUG] Ошибка при принудительной установке ассоциаций для User:', error);
+        }
+      } else {
+        console.log('[REGISTRY DEBUG] User уже имеет ассоциации');
+      }
+    } else {
+      console.log('[REGISTRY DEBUG] User не найден в кэше или не имеет метода associate');
+      console.log('[REGISTRY DEBUG] UserModel:', !!UserModel);
+      console.log('[REGISTRY DEBUG] UserModel.associate:', UserModel ? typeof UserModel.associate : 'N/A');
+    }
     
     initialized = true;
     console.log('[REGISTRY DEBUG] Реестр моделей успешно инициализирован');
