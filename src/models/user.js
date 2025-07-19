@@ -114,12 +114,6 @@ async function initializeUserModel() {
   }
 })();
 
-// Экспорт для CommonJS - совместимость с registry системой
-// Экспортируем функцию, которая возвращает инициализированную модель
-module.exports = async function() {
-  return await getInitializedUserModel();
-};
-
-// Также экспортируем класс и функцию для обратной совместимости
-module.exports.User = User;
+// Экспорт для CommonJS - следуем паттерну других моделей
+module.exports = User;
 module.exports.getInitializedUserModel = getInitializedUserModel;
