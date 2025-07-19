@@ -32,6 +32,9 @@ class CombatService {
   static async startCombat(userId, enemyId) {
     console.log(`[CombatService] Попытка начать бой для игрока ${userId} с врагом ${enemyId}`);
 
+    // Инициализируем registry перед использованием моделей
+    await modelRegistry.initializeRegistry();
+
     const User = modelRegistry.getModel('User');
     const CharacterStats = modelRegistry.getModel('CharacterStats');
     const Enemy = modelRegistry.getModel('Enemy');
@@ -136,6 +139,9 @@ class CombatService {
    * @returns {Object} - Обновленное состояние боя
    */
   static async performAction(combatId, userId, action) {
+    // Инициализируем registry перед использованием моделей
+    await modelRegistry.initializeRegistry();
+    
     const Combat = modelRegistry.getModel('Combat');
     const combat = await Combat.findByPk(combatId);
 
@@ -964,6 +970,9 @@ class CombatService {
   }
 
   static async getCombatState(combatId) {
+    // Инициализируем registry перед использованием моделей
+    await modelRegistry.initializeRegistry();
+    
     const Combat = modelRegistry.getModel('Combat');
     const combat = await Combat.findByPk(combatId);
 
@@ -1041,6 +1050,9 @@ class CombatService {
    * @private
    */
   static async _processRewards(combat, userId) {
+    // Инициализируем registry перед использованием моделей
+    await modelRegistry.initializeRegistry();
+    
     // Проверка квестов на убийство врага
     const completedDefeatEnemyQuests = await QuestService.checkQuestEvent(userId, 'DEFEAT_ENEMY', { enemyId: combat.enemy_id, amount: 1 });
     for (const questId of completedDefeatEnemyQuests) {
@@ -1163,6 +1175,9 @@ class CombatService {
    */
   static async getUserCombatStatus(userId) {
     try {
+      // Инициализируем registry перед использованием моделей
+      await modelRegistry.initializeRegistry();
+      
       const Combat = modelRegistry.getModel('Combat');
       
       // Ищем активный бой пользователя
@@ -1204,6 +1219,9 @@ class CombatService {
    */
   static async forfeitCombat(combatId, userId) {
     try {
+      // Инициализируем registry перед использованием моделей
+      await modelRegistry.initializeRegistry();
+      
       const Combat = modelRegistry.getModel('Combat');
       const combat = await Combat.findByPk(combatId);
 
