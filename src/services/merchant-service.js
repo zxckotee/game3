@@ -7,10 +7,17 @@
 // Импортируем реестр моделей и базу данных
 const connectionProvider = require('../utils/connection-provider');
 const modelRegistry = require('../models/registry');
+const { getModel } = require('../models/registry');
 const { calculateMerchantDiscount, applyLoyaltyDiscount } = require('../utils/sectRelationshipSyncer');
 const { sequelize } = require('../services/database'); // Импортируем sequelize для транзакций
 const InventoryService = require('./inventory-service'); // Импортируем сервис инвентаря для обновления инвентаря пользователя
-const ItemImage = require('../models/item-image');
+
+// Получаем модель ItemImage через registry для избежания конфликтов инициализации
+const getItemImageModel = async () => {
+  await modelRegistry.initializeRegistry();
+  return getModel('ItemImage');
+};
+
 // Импортируем константы из общего файла
 const { merchantTypes, merchantRarityLevels } = require('../data/merchant-constants');
 const { checkItemRequirements } = require('./equipment-service');
@@ -312,6 +319,8 @@ exports.getMerchantInventory = async function(merchantId, userId) {
     }
     // Возврат с "обогащением"
     const merchantPromises = inventory.map(async (item) => {
+      // Получаем модель через registry для избежания конфликтов инициализации
+      const ItemImage = await getItemImageModel();
       let item_image = await ItemImage.findByPk(item.itemId);
 
       if (item_image !== null){
