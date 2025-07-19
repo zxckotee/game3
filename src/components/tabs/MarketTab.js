@@ -1096,6 +1096,7 @@ const MarketTab = () => {
                   <option value="talisman">Талисманы</option>
                   <option value="consumable">Расходники</option>
                   <option value="resource">Ресурсы</option>
+                  <option value="book">Книги</option>
                   <option value="pet_food">Еда для питомцев</option>
                 </FilterSelect>
                 <FilterSelect value={rarityFilter} onChange={(e) => setRarityFilter(e.target.value)}>
