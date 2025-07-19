@@ -22,12 +22,15 @@ let initPromise = null;
  * @returns {Promise<Object>} Объект с зарегистрированными моделями
  */
 async function initializeAllModels() {
+  console.log('[REGISTRY DEBUG] Вызов initializeAllModels(), initialized =', initialized);
+  
   if (initialized) {
+    console.log('[REGISTRY DEBUG] Registry уже инициализирован, возвращаем кэш');
     return modelCache;
   }
 
   try {
-    //console.log('Инициализация реестра моделей...');
+    console.log('[REGISTRY DEBUG] Начинаем инициализацию реестра моделей...');
     
     // Получаем экземпляр Sequelize
     const sequelizeResult = await connectionProvider.getSequelizeInstance();
@@ -35,13 +38,17 @@ async function initializeAllModels() {
     
     // Специальная обработка для модели User
     // User инициализируется самостоятельно, но нужно добавить её в registry
+    console.log('[REGISTRY DEBUG] Пытаемся добавить модель User в registry...');
     try {
       const { getInitializedUserModel } = require('./user');
+      console.log('[REGISTRY DEBUG] Получили getInitializedUserModel функцию');
       const UserModel = await getInitializedUserModel();
+      console.log('[REGISTRY DEBUG] Получили UserModel:', !!UserModel);
       modelCache['User'] = UserModel;
-      console.log('Модель User добавлена в registry из собственной инициализации');
+      console.log('[REGISTRY DEBUG] Модель User добавлена в registry из собственной инициализации');
     } catch (error) {
-      console.warn('Не удалось добавить модель User в registry:', error.message);
+      console.error('[REGISTRY DEBUG] Не удалось добавить модель User в registry:', error.message);
+      console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
     }
     
     // Получаем список файлов моделей
@@ -188,10 +195,12 @@ async function initializeAllModels() {
     }
     
     initialized = true;
-    console.log('Реестр моделей успешно инициализирован');
+    console.log('[REGISTRY DEBUG] Реестр моделей успешно инициализирован');
+    console.log('[REGISTRY DEBUG] Модели в кэше:', Object.keys(modelCache));
     return modelCache;
   } catch (error) {
-    console.error('Критическая ошибка при инициализации реестра моделей:', error);
+    console.error('[REGISTRY DEBUG] Критическая ошибка при инициализации реестра моделей:', error);
+    console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
     throw error;
   }
 }
@@ -229,8 +238,13 @@ function getModel(modelName) {
  * @returns {Promise<Object>} Промис, который разрешается после инициализации реестра
  */
 function initializeRegistry() {
+  console.log('[REGISTRY DEBUG] Вызов initializeRegistry(), initPromise =', !!initPromise);
+  
   if (!initPromise) {
+    console.log('[REGISTRY DEBUG] Создаем новый initPromise');
     initPromise = initializeAllModels();
+  } else {
+    console.log('[REGISTRY DEBUG] initPromise уже существует, возвращаем его');
   }
   
   return initPromise;
