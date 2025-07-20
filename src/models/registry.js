@@ -297,21 +297,6 @@ async function initializeAllModels() {
     }
     
     console.log('[REGISTRY DEBUG] ========== КОНЕЦ ДЕТАЛЬНОЙ ДИАГНОСТИКИ ==========');
-      console.log('[REGISTRY DEBUG] CharacterStats.associations:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'undefined');
-      
-      // Проверяем обратную ассоциацию
-      if (CharacterStatsModel.associations && CharacterStatsModel.associations.user) {
-        console.log('[REGISTRY DEBUG] ✓ Ассоциация CharacterStats -> User найдена:', CharacterStatsModel.associations.user.associationType);
-        console.log('[REGISTRY DEBUG] ✓ Target модель:', CharacterStatsModel.associations.user.target.name);
-      } else {
-        console.log('[REGISTRY DEBUG] ✗ Ассоциация CharacterStats -> User НЕ найдена');
-        console.log('[REGISTRY DEBUG] Доступные ассоциации CharacterStats:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'нет');
-      }
-    } else {
-      console.log('[REGISTRY DEBUG] ✗ CharacterStats модель НЕ найдена в кэше');
-    }
-    
-    console.log('[REGISTRY DEBUG] ========== КОНЕЦ ДИАГНОСТИКИ USER ==========');
     
     initialized = true;
     console.log('[REGISTRY DEBUG] Реестр моделей успешно инициализирован');
