@@ -22,35 +22,16 @@ let initPromise = null;
  * @returns {Promise<Object>} Объект с зарегистрированными моделями
  */
 async function initializeAllModels() {
-  console.log('[REGISTRY DEBUG] Вызов initializeAllModels(), initialized =', initialized);
-  
   if (initialized) {
-    console.log('[REGISTRY DEBUG] Registry уже инициализирован, возвращаем кэш');
     return modelCache;
   }
 
   try {
-    console.log('[REGISTRY DEBUG] Начинаем инициализацию реестра моделей...');
+    //console.log('Инициализация реестра моделей...');
     
     // Получаем экземпляр Sequelize
     const sequelizeResult = await connectionProvider.getSequelizeInstance();
     const sequelize = sequelizeResult.db;
-    
-    // Специальная обработка для модели User
-    // User инициализируется самостоятельно, но нужно добавить её в registry
-    console.log('[REGISTRY DEBUG] Пытаемся добавить модель User в registry...');
-    try {
-      const { getInitializedUserModel } = require('./user');
-      console.log('[REGISTRY DEBUG] Получили getInitializedUserModel функцию');
-      const UserModel = await getInitializedUserModel();
-      console.log('[REGISTRY DEBUG] Получили UserModel:', !!UserModel);
-      console.log('[REGISTRY DEBUG] UserModel.associate:', typeof UserModel.associate);
-      modelCache['User'] = UserModel;
-      console.log('[REGISTRY DEBUG] Модель User добавлена в registry из собственной инициализации');
-    } catch (error) {
-      console.error('[REGISTRY DEBUG] Не удалось добавить модель User в registry:', error.message);
-      console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
-    }
     
     // Получаем список файлов моделей
     const modelFiles = fs.readdirSync(__dirname)
@@ -137,13 +118,9 @@ async function initializeAllModels() {
           if (!sequelize.models[modelName] && !CachedModel.sequelize) { // CachedModel.sequelize появляется после init
             // console.log(`Инициализация класса модели ${modelName} через init()...`);
             if (CachedModel.init.constructor.name === 'AsyncFunction') {
-              console.log(`[REGISTRY DEBUG] Асинхронная инициализация модели ${modelName}...`);
               await CachedModel.init(sequelize.Sequelize.DataTypes, { sequelize, modelName }); // Передаем DataTypes и опции
-              console.log(`[REGISTRY DEBUG] Асинхронная инициализация модели ${modelName} завершена`);
             } else {
-              console.log(`[REGISTRY DEBUG] Синхронная инициализация модели ${modelName}...`);
               CachedModel.init(sequelize.Sequelize.DataTypes, { sequelize, modelName }); // Передаем DataTypes и опции
-              console.log(`[REGISTRY DEBUG] Синхронная инициализация модели ${modelName} завершена`);
             }
              // После init, модель должна быть в sequelize.models[modelName]
              if (sequelize.models[modelName]) {
@@ -178,133 +155,24 @@ async function initializeAllModels() {
       }
     }
     
-    // Дополнительная проверка для CharacterStats - убедимся, что модель полностью инициализирована
-    if (modelCache['CharacterStats'] && typeof modelCache['CharacterStats'].init === 'function') {
-      console.log('[REGISTRY DEBUG] Дополнительная проверка инициализации CharacterStats...');
-      try {
-        // Если CharacterStats еще не инициализирована через registry, инициализируем её
-        if (!modelCache['CharacterStats'].sequelize) {
-          console.log('[REGISTRY DEBUG] CharacterStats требует дополнительной инициализации...');
-          await modelCache['CharacterStats'].init();
-          console.log('[REGISTRY DEBUG] CharacterStats дополнительно инициализирована');
-        }
-      } catch (error) {
-        console.error('[REGISTRY DEBUG] Ошибка при дополнительной инициализации CharacterStats:', error);
-      }
-    }
-    
     // Устанавливаем ассоциации между моделями
-    // Только для моделей, которые имеют метод associate и еще не установили ассоциации
-    console.log('[REGISTRY DEBUG] Начинаем установку ассоциаций между моделями...');
-    console.log('[REGISTRY DEBUG] Количество моделей в кэше:', Object.keys(modelCache).length);
-    
+   // console.log('Установка ассоциаций между моделями...');
     for (const [modelName, ModelClass] of Object.entries(modelCache)) {
       try {
-        console.log(`[REGISTRY DEBUG] Проверяем модель ${modelName}...`);
-        console.log(`[REGISTRY DEBUG] ModelClass для ${modelName}:`, !!ModelClass);
-        console.log(`[REGISTRY DEBUG] ModelClass.associate для ${modelName}:`, typeof ModelClass.associate);
-        
         if (typeof ModelClass.associate === 'function') {
-          // Проверяем, не установлены ли уже ассоциации для этой модели
-          const hasAssociations = ModelClass.associations && Object.keys(ModelClass.associations).length > 0;
-          console.log(`[REGISTRY DEBUG] ${modelName} уже имеет ассоциации:`, hasAssociations);
-          
-          if (!hasAssociations) {
-            console.log(`[REGISTRY DEBUG] Устанавливаем ассоциации для модели ${modelName}...`);
-            ModelClass.associate(modelCache);
-            console.log(`[REGISTRY DEBUG] Ассоциации для ${modelName} установлены успешно`);
-          } else {
-            console.log(`[REGISTRY DEBUG] Ассоциации для модели ${modelName} уже установлены, пропускаем`);
-          }
-        } else {
-          console.log(`[REGISTRY DEBUG] Модель ${modelName} не имеет метода associate`);
+         // console.log(`Установка ассоциаций для модели ${modelName}...`);
+          ModelClass.associate(modelCache);
         }
       } catch (error) {
-        console.error(`[REGISTRY DEBUG] Ошибка при установке ассоциаций для модели ${modelName}:`, error);
-        console.error(`[REGISTRY DEBUG] Stack trace:`, error.stack);
+        console.error(`Ошибка при установке ассоциаций для модели ${modelName}:`, error);
       }
     }
-    
-    console.log('[REGISTRY DEBUG] Завершена установка ассоциаций между моделями');
-    
-    // Принудительная установка ассоциаций для модели User
-    // User может не пройти через основной блок ассоциаций из-за особенностей инициализации
-    // Детальная диагностика ассоциаций для User
-    console.log('[REGISTRY DEBUG] ========== ДЕТАЛЬНАЯ ДИАГНОСТИКА USER ==========');
-    const UserModel = modelCache['User'];
-    const CharacterStatsModel = modelCache['CharacterStats'];
-    
-    if (UserModel) {
-      console.log('[REGISTRY DEBUG] ✓ User модель найдена в кэше');
-      console.log('[REGISTRY DEBUG] User.associate функция:', typeof UserModel.associate);
-      console.log('[REGISTRY DEBUG] User.associations до принудительной установки:', UserModel.associations ? Object.keys(UserModel.associations) : 'undefined');
-      
-      if (typeof UserModel.associate === 'function') {
-        console.log('[REGISTRY DEBUG] Вызываем User.associate принудительно...');
-        try {
-          UserModel.associate(modelCache);
-          console.log('[REGISTRY DEBUG] User.associate выполнен без ошибок');
-          console.log('[REGISTRY DEBUG] User.associations после принудительной установки:', UserModel.associations ? Object.keys(UserModel.associations) : 'undefined');
-          
-          // Проверяем конкретную ассоциацию с CharacterStats
-          if (UserModel.associations && UserModel.associations.characterStats) {
-            console.log('[REGISTRY DEBUG] ✓ Ассоциация User -> CharacterStats найдена:', UserModel.associations.characterStats.associationType);
-            console.log('[REGISTRY DEBUG] ✓ Target модель:', UserModel.associations.characterStats.target.name);
-          } else {
-            console.log('[REGISTRY DEBUG] ✗ Ассоциация User -> CharacterStats НЕ найдена');
-            console.log('[REGISTRY DEBUG] Доступные ассоциации User:', UserModel.associations ? Object.keys(UserModel.associations) : 'нет');
-          }
-        } catch (error) {
-          console.error('[REGISTRY DEBUG] ✗ Ошибка при принудительной установке ассоциаций для User:', error);
-          console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
-        }
-      } else {
-        console.log('[REGISTRY DEBUG] ✗ User.associate функция не найдена');
-      }
-    } else {
-      console.log('[REGISTRY DEBUG] ✗ User модель НЕ найдена в кэше');
-    }
-    
-    if (CharacterStatsModel) {
-      console.log('[REGISTRY DEBUG] ✓ CharacterStats модель найдена в кэше');
-      console.log('[REGISTRY DEBUG] CharacterStats.associate функция:', typeof CharacterStatsModel.associate);
-      console.log('[REGISTRY DEBUG] CharacterStats.associations до принудительной установки:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'undefined');
-      
-      if (typeof CharacterStatsModel.associate === 'function') {
-        console.log('[REGISTRY DEBUG] Вызываем CharacterStats.associate принудительно...');
-        try {
-          CharacterStatsModel.associate(modelCache);
-          console.log('[REGISTRY DEBUG] CharacterStats.associate выполнен без ошибок');
-          console.log('[REGISTRY DEBUG] CharacterStats.associations после принудительной установки:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'undefined');
-          
-          // Проверяем конкретную ассоциацию с User
-          if (CharacterStatsModel.associations && CharacterStatsModel.associations.user) {
-            console.log('[REGISTRY DEBUG] ✓ Ассоциация CharacterStats -> User найдена:', CharacterStatsModel.associations.user.associationType);
-            console.log('[REGISTRY DEBUG] ✓ Target модель:', CharacterStatsModel.associations.user.target.name);
-          } else {
-            console.log('[REGISTRY DEBUG] ✗ Ассоциация CharacterStats -> User НЕ найдена');
-            console.log('[REGISTRY DEBUG] Доступные ассоциации CharacterStats:', CharacterStatsModel.associations ? Object.keys(CharacterStatsModel.associations) : 'нет');
-          }
-        } catch (error) {
-          console.error('[REGISTRY DEBUG] ✗ Ошибка при принудительной установке ассоциаций для CharacterStats:', error);
-          console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
-        }
-      } else {
-        console.log('[REGISTRY DEBUG] ✗ CharacterStats.associate функция не найдена');
-      }
-    } else {
-      console.log('[REGISTRY DEBUG] ✗ CharacterStats модель НЕ найдена в кэше');
-    }
-    
-    console.log('[REGISTRY DEBUG] ========== КОНЕЦ ДЕТАЛЬНОЙ ДИАГНОСТИКИ ==========');
     
     initialized = true;
-    console.log('[REGISTRY DEBUG] Реестр моделей успешно инициализирован');
-    console.log('[REGISTRY DEBUG] Модели в кэше:', Object.keys(modelCache));
+    console.log('Реестр моделей успешно инициализирован');
     return modelCache;
   } catch (error) {
-    console.error('[REGISTRY DEBUG] Критическая ошибка при инициализации реестра моделей:', error);
-    console.error('[REGISTRY DEBUG] Stack trace:', error.stack);
+    console.error('Критическая ошибка при инициализации реестра моделей:', error);
     throw error;
   }
 }
@@ -342,13 +210,8 @@ function getModel(modelName) {
  * @returns {Promise<Object>} Промис, который разрешается после инициализации реестра
  */
 function initializeRegistry() {
-  console.log('[REGISTRY DEBUG] Вызов initializeRegistry(), initPromise =', !!initPromise);
-  
   if (!initPromise) {
-    console.log('[REGISTRY DEBUG] Создаем новый initPromise');
     initPromise = initializeAllModels();
-  } else {
-    console.log('[REGISTRY DEBUG] initPromise уже существует, возвращаем его');
   }
   
   return initPromise;
@@ -359,8 +222,7 @@ function register(name, model) {
   return model;
 }
 
-// НЕ вызываем автоматическую инициализацию при импорте - это может вызывать конфликты
-// initializeRegistry().then((res) => {console.log(getModel('AlchemyRecipe'));});
+initializeRegistry().then((res) => {console.log(getModel('AlchemyRecipe'));});
 // Экспортируем функции и не запускаем инициализацию автоматически
 module.exports = {
   initializeRegistry,
@@ -372,15 +234,10 @@ module.exports = {
   getAllModels: () => modelCache
 };
 
-// ОТКЛЮЧЕНО: Явная регистрация ключевых моделей
-// Эти регистрации перезаписывают правильно инициализированные модели из initializeAllModels()
-// register('User', require('./user'));
-// register('CharacterStats', require('./character-stats'));
-// register('Combat', require('./combat'));
-
-// ОТКЛЮЧЕНО: Регистрируем модели инвентаря
-// register('ItemImage', require('./item-image'));
-// register('InventoryItem', require('./inventory-item'));
+// Явная регистрация ключевых моделей для гарантии доступности
+register('User', require('./user'));
+register('CharacterStats', require('./character-stats'));
+register('Combat', require('./combat'));
 
 // Регистрируем модели PvP
 register('PvPMode', require('./pvp-mode'));
@@ -407,11 +264,3 @@ register('EquipmentItem', equipmentItemModels);
 register('EquipmentItemEffect', require('./equipment-item-effect'));
 register('EquipmentItemRequirement', require('./equipment-item-requirement'));
 register('EquipmentItemSpecialEffect', require('./equipment-item-special-effect'));
-
-// Регистрируем модели эффектов
-register('Effect', require('./effect'));
-register('ActivePlayerEffect', require('./active-player-effect'));
-
-// Регистрируем модель локаций
-register('Location', require('./location'));
-
