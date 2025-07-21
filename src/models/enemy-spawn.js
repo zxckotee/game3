@@ -79,15 +79,7 @@ EnemySpawn.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await EnemySpawn.init();
-    console.log('EnemySpawn модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели EnemySpawn:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = EnemySpawn;

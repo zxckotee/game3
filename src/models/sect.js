@@ -141,15 +141,7 @@ Sect.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await Sect.init();
-    console.log('Sect модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели Sect:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = Sect;

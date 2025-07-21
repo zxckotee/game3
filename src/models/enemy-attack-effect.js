@@ -68,15 +68,7 @@ EnemyAttackEffect.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await EnemyAttackEffect.init();
-    console.log('EnemyAttackEffect модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели EnemyAttackEffect:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = EnemyAttackEffect;

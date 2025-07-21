@@ -13,7 +13,7 @@ const TabContent = React.memo(({ active, children }) => {
   return <div>{children}</div>;
 });
 
-function CultivationTab() {
+function CultivationTabOptimized() {
   const { state, actions } = useGame();
   const {
     isLoading,
@@ -772,4 +772,4 @@ function CultivationTab() {
   );
 }
 
-export default CultivationTab;
+export default CultivationTabOptimized;

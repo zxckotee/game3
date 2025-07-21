@@ -96,15 +96,7 @@ GroupMember.init = async function() {
 });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await GroupMember.init();
-    console.log('GroupMember модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели GroupMember:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = GroupMember;

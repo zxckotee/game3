@@ -184,15 +184,7 @@ SpiritPet.init = async function() {
 });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await SpiritPet.init();
-    console.log('SpiritPet модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели SpiritPet:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = SpiritPet;

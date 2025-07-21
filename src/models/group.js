@@ -106,15 +106,7 @@ Group.init = async function() {
 });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await Group.init();
-    console.log('Group модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели Group:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = Group;

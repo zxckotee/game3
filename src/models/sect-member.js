@@ -197,15 +197,7 @@ SectMember.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await SectMember.init();
-    console.log('SectMember модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели SectMember:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = SectMember;

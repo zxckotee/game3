@@ -149,15 +149,7 @@ MerchantInventory.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await MerchantInventory.init();
-    console.log('MerchantInventory модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели MerchantInventory:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = MerchantInventory;

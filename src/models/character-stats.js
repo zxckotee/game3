@@ -106,15 +106,7 @@ CharacterStats.init = async function(DataTypes, options) {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await CharacterStats.init();
-    console.log('CharacterStats модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели CharacterStats:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = CharacterStats;

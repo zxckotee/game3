@@ -103,15 +103,7 @@ GroupInvitation.init = async function() {
   });
 };
 
-// Инициализируем модель сразу для применения изменений
-(async () => {
-  try {
-    await GroupInvitation.init();
-    console.log('GroupInvitation модель инициализирована');
-  } catch (error) {
-    console.error('Ошибка инициализации модели GroupInvitation:', error);
-    console.error(error.stack);
-  }
-})();
+// Больше не используем самоинициализацию через IIFE
+// Инициализация будет происходить централизованно через src/models/initializeModels.js
 
 module.exports = GroupInvitation;
