@@ -592,7 +592,15 @@ function CombatArea({ areaId, existingCombat = null, activeEnemy: propActiveEnem
       if (updatedState.success) {
           setCombatState(updatedState.combat);
           if (updatedState.combat.status === 'completed') {
-              actions.addNotification({ message: `Бой завершен! Победитель: ${updatedState.combat.winner}`, type: 'success' });
+              // Определяем имя победителя
+              const winnerName = updatedState.combat.winner === 'player'
+                ? state.player.name || state.player.username || 'Игрок'
+                : activeEnemy?.name || 'Противник';
+              
+              actions.addNotification({
+                message: `Бой завершен! Победитель: ${winnerName}`,
+                type: 'success'
+              });
           }
       } else {
           console.error('[CombatArea] Ошибка при выполнении действия:', updatedState);
