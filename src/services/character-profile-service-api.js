@@ -543,6 +543,9 @@ module.exports.getAvatar = CharacterProfileServiceAPI.getAvatar;
 module.exports.handleInteraction = async (characterId, interactionType) => {
   console.log(`[CharacterProfileServiceAPI] Взаимодействие с персонажем ${characterId}, тип: ${interactionType}`);
   try {
+    console.log(`[CharacterProfileServiceAPI] Отправка запроса на /api/relationships/interact`);
+    console.log(`[CharacterProfileServiceAPI] Токен авторизации:`, localStorage.getItem('authToken') ? 'присутствует' : 'отсутствует');
+    
     const response = await fetch('/api/relationships/interact', {
       method: 'POST',
       headers: {
@@ -552,27 +555,35 @@ module.exports.handleInteraction = async (characterId, interactionType) => {
       body: JSON.stringify({ characterId, interactionType })
     });
 
+    console.log(`[CharacterProfileServiceAPI] Получен ответ со статусом:`, response.status);
+    console.log(`[CharacterProfileServiceAPI] response.ok:`, response.ok);
+
     if (response.ok) {
+      console.log(`[CharacterProfileServiceAPI] Парсинг JSON ответа...`);
       const result = await response.json();
       console.log(`[CharacterProfileServiceAPI] Взаимодействие успешно обработано:`, result);
       
       // Проверяем успешность операции
       if (result.success) {
+        console.log(`[CharacterProfileServiceAPI] Операция успешна, возвращаем результат`);
         return {
           success: true,
           updatedRelationship: result.updatedRelationship,
+          allRelationships: result.allRelationships, // Передаем полный массив для обновления Redux
           newEnergy: result.newEnergy,
           energyCost: result.energyCost,
           relationshipChange: result.relationshipChange,
           message: result.message
         };
       } else {
+        console.log(`[CharacterProfileServiceAPI] Операция неуспешна:`, result.message);
         return {
           success: false,
           message: result.message || 'Операция не выполнена'
         };
       }
     } else {
+      console.log(`[CharacterProfileServiceAPI] Ошибка HTTP, парсинг ошибки...`);
       const errorData = await response.json();
       console.error(`[CharacterProfileServiceAPI] API вернул ошибку при взаимодействии: ${response.status}`, errorData);
       return {
@@ -581,7 +592,14 @@ module.exports.handleInteraction = async (characterId, interactionType) => {
       };
     }
   } catch (error) {
-    console.error('[CharacterProfileServiceAPI] Ошибка при взаимодействии с NPC:', error);
+    console.error('=== ОШИБКА В КЛИЕНТСКОМ API ===');
+    console.error('Тип ошибки:', error.constructor.name);
+    console.error('Сообщение:', error.message);
+    console.error('Стек:', error.stack);
+    console.error('characterId:', characterId);
+    console.error('interactionType:', interactionType);
+    console.error('================================');
+    
     return {
       success: false,
       message: error.message || 'Ошибка сети при взаимодействии с персонажем'

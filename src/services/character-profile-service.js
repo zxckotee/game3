@@ -432,7 +432,8 @@ class CharacterProfileService {
    * @param {Object} relationships - Данные об отношениях
    * @returns {Promise<Object>} - Обновленные отношения
    */
-  static async updateRelationships(userId, relationships) {
+  static async updateRelationships(userId, relationships, options = {}) {
+    const { transaction } = options;
     try {
       if (isBrowser) {
         // В браузере используем объект в памяти
@@ -451,22 +452,58 @@ class CharacterProfileService {
         // На сервере используем базу данных
         // Получаем текущий профиль персонажа
         let profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { user_id: userId },
+          transaction
         });
         
         if (!profile) {
           throw new Error('Профиль персонажа не найден');
         }
         
-        // Обновляем отношения
-        await profile.update({
-          relationships
+        console.log(`[DEBUG] Обновление relationships через updateRelationships...`);
+        console.log(`[DEBUG] Новые relationships:`, JSON.stringify(relationships, null, 2));
+        
+        // Проверяем события в каждом отношении перед сохранением
+        relationships.forEach((rel, index) => {
+          if (rel && rel.events) {
+            console.log(`[DEBUG] ПЕРЕД СОХРАНЕНИЕМ - Отношение ${index} (${rel.name || rel.id}): ${rel.events.length} событий`);
+            console.log(`[DEBUG] ПЕРЕД СОХРАНЕНИЕМ - События:`, JSON.stringify(rel.events, null, 2));
+          } else if (rel) {
+            console.log(`[DEBUG] ПЕРЕД СОХРАНЕНИЕМ - Отношение ${index} (${rel.name || rel.id}): events = ${rel.events} (тип: ${typeof rel.events})`);
+          }
         });
         
-        // Получаем обновленный профиль
-        profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
-        });
+        console.log(`[DEBUG] Сохраняем в БД relationships с ${relationships.length} отношениями`);
+        
+        // Для JSONB полей в Sequelize нужно явно указать, что поле изменилось
+        profile.set('relationships', relationships);
+        profile.changed('relationships', true);
+        
+        // Обновляем отношения
+        await profile.save({ transaction });
+        
+        console.log(`[DEBUG] Relationships обновлены в БД через updateRelationships с использованием profile.save()`);
+        
+        // Перезагружаем профиль из БД для получения актуальных данных
+        await profile.reload({ transaction });
+        console.log(`[DEBUG] Профиль перезагружен из БД после сохранения`);
+        
+        console.log(`[DEBUG] Получен обновленный профиль из БД`);
+        console.log(`[DEBUG] Профиль содержит ${profile.relationships ? profile.relationships.length : 'null'} отношений`);
+        
+        // Проверяем события в каждом отношении после получения из БД
+        if (profile.relationships && Array.isArray(profile.relationships)) {
+          profile.relationships.forEach((rel, index) => {
+            if (rel && rel.events) {
+              console.log(`[DEBUG] ПОСЛЕ ПОЛУЧЕНИЯ ИЗ БД - Отношение ${index} (${rel.name || rel.id}): ${rel.events.length} событий`);
+              console.log(`[DEBUG] ПОСЛЕ ПОЛУЧЕНИЯ ИЗ БД - События:`, JSON.stringify(rel.events, null, 2));
+            } else if (rel) {
+              console.log(`[DEBUG] ПОСЛЕ ПОЛУЧЕНИЯ ИЗ БД - Отношение ${index} (${rel.name || rel.id}): events = ${rel.events} (тип: ${typeof rel.events})`);
+            }
+          });
+        } else {
+          console.log(`[DEBUG] ПОСЛЕ ПОЛУЧЕНИЯ ИЗ БД - relationships не является массивом:`, typeof profile.relationships);
+        }
         
         // Возвращаем обновленные отношения
         return profile.relationships;
@@ -498,11 +535,13 @@ class CharacterProfileService {
       if (relationshipIndex === -1) {
         throw new Error(`Отношения с ID ${relationshipId} не найдены`);
       }
-
+      console.log(relationships[relationshipIndex]);
       relationships[relationshipIndex].events.push(eventText);
-
-      // Уведомляем Sequelize о том, что поле JSONB было изменено
-      await profile.update({ relationships });
+      console.log(relationships[relationshipIndex]);
+      // Для JSONB полей в Sequelize нужно явно указать, что поле изменилось
+      profile.set('relationships', relationships);
+      profile.changed('relationships', true);
+      await profile.save();
       
       return relationships[relationshipIndex];
     } catch (error) {
@@ -541,9 +580,6 @@ class CharacterProfileService {
     const connectionProvider = require('../utils/connection-provider');
     const { db: sequelize } = await connectionProvider.getSequelizeInstance();
 
-    // Начинаем транзакцию для атомарности операций
-    const transaction = await sequelize.transaction();
-
     try {
       // 1. Получаем текущее состояние энергии
       const cultivationProgress = await CultivationService.getCultivationProgress(userId);
@@ -558,52 +594,29 @@ class CharacterProfileService {
       }
 
       // 3. Получаем профиль персонажа
-      const profile = await CharacterProfile.findOne({
-        where: { userId },
-        transaction
+      console.log(`[DEBUG] Получение профиля для userId: ${userId}`);
+      let profile = await CharacterProfile.findOne({
+        where: { user_id: userId }
       });
 
       if (!profile) {
         throw new Error('Профиль персонажа не найден');
       }
-      console.log(`[DEBUG] весь профиль: `, profile);
-      // 4. Проверяем существование отношений с NPC
+
+      // 4. Получаем отношения и находим нужное
       const relationships = profile.relationships || [];
-    
-      // Добавляем отладочную информацию
-      console.log(`[DEBUG] Поиск отношений для characterId: ${characterId}`);
-      console.log(`[DEBUG] Тип relationships:`, typeof relationships);
-      console.log(`[DEBUG] Является ли массивом:`, Array.isArray(relationships));
-      console.log(`[DEBUG] Количество отношений:`, relationships.length);
-      console.log(`[DEBUG] Все отношения:`, JSON.stringify(relationships, null, 2));
-      
-      // Проверяем, является ли relationships массивом
-      let relationshipsArray = relationships;
-      if (!Array.isArray(relationships)) {
-        // Если это объект, преобразуем в массив
-        if (typeof relationships === 'object' && relationships !== null) {
-          relationshipsArray = Object.values(relationships);
-          console.log(`[DEBUG] Преобразовали объект в массив:`, relationshipsArray);
-        } else {
-          relationshipsArray = [];
-        }
-      }
-      
-      const relationshipIndex = relationshipsArray.findIndex(r => r && r.id === characterId);
-      console.log(`[DEBUG] Найденный индекс:`, relationshipIndex);
+      const relationshipIndex = relationships.findIndex(r => r && r.id === characterId);
 
       if (relationshipIndex === -1) {
-        console.log(`[DEBUG] Доступные ID отношений:`, relationshipsArray.map(r => r?.id));
         throw new Error(`Отношения с персонажем ${characterId} не найдены`);
       }
-      
-      // Обновляем переменную relationships для дальнейшего использования
-      const relationships_final = relationshipsArray;
 
-      // 5. Списываем энергию через CultivationService
-      const updatedCultivation = await CultivationService.updateCultivationProgress(userId, {
+      console.log(`[DEBUG] СОБЫТИЯ ДО ИЗМЕНЕНИЙ:`, JSON.stringify(relationships[relationshipIndex].events, null, 2));
+
+      // 5. Списываем энергию
+      await CultivationService.updateCultivationProgress(userId, {
         energy: cultivationProgress.energy - energyCost
-      }, { transaction });
+      });
 
       // 6. Рассчитываем изменение отношений
       const relationshipChange = {
@@ -614,45 +627,90 @@ class CharacterProfileService {
       }[interactionType];
 
       // 7. Обновляем уровень отношений
-      const currentLevel = relationships_final[relationshipIndex].level;
+      const currentLevel = relationships[relationshipIndex].level;
       const newLevel = Math.min(100, currentLevel + relationshipChange);
-      relationships_final[relationshipIndex].level = newLevel;
+      relationships[relationshipIndex].level = newLevel;
 
       // 8. Добавляем событие в историю
       const eventText = {
-        chat: `Вы побеседовали с ${relationships_final[relationshipIndex].name}`,
-        gift: `Вы подарили подарок ${relationships_final[relationshipIndex].name}`,
-        train: `Вы тренировались вместе с ${relationships_final[relationshipIndex].name}`,
-        quest: `Вы выполнили задание для ${relationships_final[relationshipIndex].name}`
+        chat: `Вы побеседовали с ${relationships[relationshipIndex].name}`,
+        gift: `Вы подарили подарок ${relationships[relationshipIndex].name}`,
+        train: `Вы тренировались вместе с ${relationships[relationshipIndex].name}`,
+        quest: `Вы выполнили задание для ${relationships[relationshipIndex].name}`
       }[interactionType];
-
+      console.log(relationships[relationshipIndex]);
       if (eventText) {
-        if (!relationships_final[relationshipIndex].events) {
-          relationships_final[relationshipIndex].events = [];
+        if (!relationships[relationshipIndex].events) {
+          relationships[relationshipIndex].events = [];
         }
-        relationships_final[relationshipIndex].events.push(eventText);
+        relationships[relationshipIndex].events.push(eventText);
       }
+      
+      console.log(relationships[relationshipIndex]);
 
-      // 9. Сохраняем обновленные отношения
-      await profile.update({ relationships: relationships_final }, { transaction });
 
-      // 10. Коммитим транзакцию
-      await transaction.commit();
+      console.log(`[DEBUG] СОБЫТИЯ ПОСЛЕ ДОБАВЛЕНИЯ:`, JSON.stringify(relationships[relationshipIndex].events, null, 2));
 
-      // 11. Возвращаем результат
+      // 9. Используем проверенный метод updateCharacterProfile для сохранения relationships
+      console.log(`[DEBUG] Сохраняем relationships через проверенный метод updateCharacterProfile...`);
+      
+      // Вызываем updateCharacterProfile с обновленными relationships
+      const updatedCharacterProfile = await this.updateCharacterProfile(userId, {
+        relationships: relationships
+      });
+      profile = await CharacterProfile.findOne({
+        where: { user_id: userId }
+      });
+      
+      console.log(`[DEBUG] Профиль обновлен через updateCharacterProfile с новыми relationships`, profile.dataValues.relationships);
+      
+      // 10. Отправляем Redux action для синхронизации состояния в браузере
+      const updatedRelationship = relationships[relationshipIndex];
+      console.log(`[DEBUG] Отправляем Redux action UPDATE_RELATIONSHIP для синхронизации состояния`);
+      
+      // Отправляем событие в браузер для обновления Redux state
+      if (typeof global !== 'undefined' && global.io) {
+        // Если есть Socket.IO, отправляем через него
+        global.io.emit('redux-action', {
+          type: 'UPDATE_RELATIONSHIP',
+          payload: {
+            id: updatedRelationship.id,
+            relationship: updatedRelationship
+          }
+        });
+      } else if (typeof window !== 'undefined' && window.dispatchEvent) {
+        // Если в браузере, отправляем через DOM события
+        window.dispatchEvent(new CustomEvent('redux-action', {
+          detail: {
+            type: 'UPDATE_RELATIONSHIP',
+            payload: {
+              id: updatedRelationship.id,
+              relationship: updatedRelationship
+            }
+          }
+        }));
+      }
+      
+      console.log(`[DEBUG] Финальные данные отношений с событиями:`, updatedCharacterProfile.relationships[relationshipIndex]);
+      
+      // 11. Возвращаем результат с полным массивом relationships для правильного обновления Redux state
       return {
         success: true,
-        updatedRelationship: relationships_final[relationshipIndex],
-        newEnergy: updatedCultivation.energy,
+        updatedRelationship: updatedRelationship,
+        allRelationships: relationships, // Добавляем полный массив для middleware
+        newEnergy: cultivationProgress.energy - energyCost,
         energyCost: energyCost,
         relationshipChange: relationshipChange,
-        message: `Отношения с ${relationships_final[relationshipIndex].name} улучшились на ${relationshipChange} пунктов. Потрачено ${energyCost} энергии.`
+        message: `Отношения с ${updatedRelationship.name} улучшились на ${relationshipChange} пунктов. Потрачено ${energyCost} энергии.`
       };
 
     } catch (error) {
-      // Откатываем транзакцию в случае ошибки
-      await transaction.rollback();
-      console.error('Ошибка при обработке взаимодействия с NPC:', error);
+      console.error('=== ОШИБКА ПРИ ВЗАИМОДЕЙСТВИИ С NPC ===');
+      console.error('Сообщение:', error.message);
+      console.error('userId:', userId);
+      console.error('characterId:', characterId);
+      console.error('interactionType:', interactionType);
+      console.error('==========================================');
       
       return {
         success: false,
@@ -676,7 +734,7 @@ class CharacterProfileService {
       }
 
       const profile = await CharacterProfile.create({
-        userId: userId,
+        user_id: userId,
         name: username, // Используем username как имя персонажа по умолчанию
         gender: 'male',
         region: 'central',
@@ -688,7 +746,7 @@ class CharacterProfileService {
         gold: 0,
         silver: 0,
         copper: 0,
-        spirit_stones: 0,
+        spiritStones: 0,
         reputation: {},
         relationships: INITIAL_RELATIONSHIPS,
       }, { transaction });

@@ -583,6 +583,12 @@ function SocialTab() {
       if (result.success) {
         // Обновляем отношения через action
         actions.updateRelationship(result.updatedRelationship);
+        
+        // ВАЖНО: Обновляем ВСЕ relationships для корректной работы middleware
+        if (result.allRelationships && actions.updateSocialRelationships) {
+          console.log('[SocialTab] Обновляем все relationships для синхронизации с middleware:', result.allRelationships);
+          actions.updateSocialRelationships(result.allRelationships);
+        }
 
         // Обновляем локальное состояние для перерисовки
         setSelectedCharacter(result.updatedRelationship);

@@ -91,7 +91,7 @@ CharacterProfile.init = async function() {
   },
   relationships: {
     type: DataTypes.JSON,
-    defaultValue: {}
+    defaultValue: []
   }
   }, {
     sequelize,
