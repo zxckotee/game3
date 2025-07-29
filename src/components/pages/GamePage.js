@@ -611,11 +611,11 @@ function GamePage() {
       const dayIncrement = (currentHour === 23 && newHour === 0) ? 1 : 0;
       const newDay = currentDay + dayIncrement;
       
-      console.log('⏱️ Обновление времени в таймере:', {
+      /*console.log('⏱️ Обновление времени в таймере:', {
         текущее: `${currentHour}:${currentMinute} день ${currentDay}`,
         новое: `${newHour}:${newMinute} день ${newDay}`,
         переход_полночи: dayIncrement === 1
-      });
+      });*/
       
       // Обновляем время с сохранением дня
       actions.updateTime({

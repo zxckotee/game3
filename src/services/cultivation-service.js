@@ -1,6 +1,8 @@
 const CultivationProgress = require('../models/cultivation-progress');
 const User = require('../models/user');
 const ResourceService = require('./resource-service');
+const InventoryItem = require('../models/inventory-item');
+const { getSequelizeInstance } = require('../utils/connection-provider');
 
 // Проверяем, находимся ли мы в браузере
 const isBrowser = typeof window !== 'undefined';
@@ -14,6 +16,111 @@ const STAGE_CONFIG = [
  { name: 'Золотое ядро', endLevel: 13 },
  { name: 'Формирование души', endLevel: Infinity }
 ];
+
+/**
+ * Получение требуемых ресурсов для прорыва на основе стадии и уровня
+ * @param {string} stage - Текущая ступень культивации
+ * @param {number} level - Текущий уровень
+ * @returns {Object} - Объект с требуемыми ресурсами
+ */
+function getBreakthroughResources(stage, level) {
+  const stageResourceSets = {
+    'Закалка тела': [
+      // Набор 1 (уровни 1, 4, 7, 10...)
+      {
+        'herb_qigathering': { name: 'Трава сбора ци', baseAmount: 5 },
+        'mineral_dust': { name: 'Минеральная пыль', baseAmount: 2 }
+      },
+      // Набор 2 (уровни 2, 5, 8, 11...)
+      {
+        'herb_ironroot': { name: 'Железный корень', baseAmount: 3 },
+        'water_pure': { name: 'Очищенная вода', baseAmount: 2 }
+      },
+      // Набор 3 (уровни 3, 6, 9, 12...)
+      {
+        'herb_clearflow': { name: 'Кристальный цветок', baseAmount: 4 },
+        'crystal_clear': { name: 'Чистый кристалл', baseAmount: 1 }
+      }
+    ],
+    'Очищение Ци': [
+      // Набор 1
+      {
+        'herb_spiritbloom': { name: 'Духовный цвет', baseAmount: 4 },
+        'essence_concentration': { name: 'Эссенция концентрации', baseAmount: 2 },
+        'crystal_mind': { name: 'Кристалл разума', baseAmount: 1 }
+      },
+      // Набор 2
+      {
+        'herb_goldensage': { name: 'Золотой шалфей', baseAmount: 3 },
+        'essence_purity': { name: 'Эссенция чистоты', baseAmount: 2 },
+        'metal_celestial': { name: 'Небесный металл', baseAmount: 1 }
+      },
+      // Набор 3
+      {
+        'water_spirit': { name: 'Духовная вода', baseAmount: 5 },
+        'crystal_formation': { name: 'Кристалл формирования', baseAmount: 2 }
+      }
+    ],
+    'Золотое ядро': [
+      // Набор 1
+      {
+        'herb_soulwhisper': { name: 'Шепот души', baseAmount: 3 },
+        'essence_enlightenment': { name: 'Эссенция просветления', baseAmount: 2 },
+        'crystal_soul': { name: 'Кристалл души', baseAmount: 1 }
+      },
+      // Набор 2
+      {
+        'metal_heavenly': { name: 'Небожительный металл', baseAmount: 2 },
+        'essence_heaven': { name: 'Эссенция небес', baseAmount: 1 },
+        'crystal_star': { name: 'Звездный кристалл', baseAmount: 1 }
+      },
+      // Набор 3
+      {
+        'feather_phoenix': { name: 'Перо феникса', baseAmount: 1 },
+        'dust_stardust': { name: 'Звездная пыль', baseAmount: 3 }
+      }
+    ],
+    'Формирование души': [
+      // Набор 1
+      {
+        'spirit_ancient': { name: 'Древний дух', baseAmount: 1 },
+        'essence_heaven': { name: 'Эссенция небес', baseAmount: 2 },
+        'crystal_star': { name: 'Звездный кристалл', baseAmount: 2 }
+      },
+      // Набор 2
+      {
+        'herb_soulwhisper': { name: 'Шепот души', baseAmount: 4 },
+        'essence_enlightenment': { name: 'Эссенция просветления', baseAmount: 3 },
+        'dust_stardust': { name: 'Звездная пыль', baseAmount: 2 }
+      },
+      // Набор 3
+      {
+        'metal_heavenly': { name: 'Небожительный металл', baseAmount: 3 },
+        'crystal_soul': { name: 'Кристалл души', baseAmount: 2 },
+        'feather_phoenix': { name: 'Перо феникса', baseAmount: 1 }
+      }
+    ]
+  };
+
+  // Получаем наборы ресурсов для текущей стадии
+  const stageSets = stageResourceSets[stage] || stageResourceSets['Закалка тела'];
+  
+  // Определяем какой набор использовать (циклически каждые 3 уровня)
+  const setIndex = (level - 1) % 3;
+  const resourceSet = stageSets[setIndex];
+  
+  // Вычисляем множитель на основе уровня
+  const multiplier = Math.ceil(level / 3);
+  
+  // Формируем финальный объект ресурсов
+  const finalResources = {};
+  Object.keys(resourceSet).forEach(resourceId => {
+    const resource = resourceSet[resourceId];
+    finalResources[resourceId] = resource.baseAmount * multiplier;
+  });
+  
+  return finalResources;
+}
 
 /**
  * Сервис для работы с данными о культивации
@@ -479,6 +586,153 @@ class CultivationService {
       throw error;
     }
   }
+
+  /**
+   * Проверка ресурсов для прорыва
+   * @param {number} userId - ID пользователя
+   * @param {Object} requiredResources - Требуемые ресурсы
+   * @returns {Promise<Object>} - Результат проверки ресурсов
+   */
+  static async checkResourceRequirements(userId, requiredResources) {
+    try {
+      const missingResources = [];
+      let hasAllResources = true;
+
+      for (const [resourceId, requiredAmount] of Object.entries(requiredResources)) {
+        // Ищем предмет в инвентаре напрямую через модель
+        const inventoryItem = await InventoryItem.findOne({
+          where: {
+            userId: userId,
+            itemId: resourceId
+          }
+        });
+        
+        const currentAmount = inventoryItem ? inventoryItem.quantity : 0;
+        
+        if (currentAmount < requiredAmount) {
+          hasAllResources = false;
+          missingResources.push(`${resourceId}: ${currentAmount}/${requiredAmount}`);
+        }
+      }
+
+      return { hasAllResources, missingResources };
+    } catch (error) {
+      console.error('Ошибка при проверке ресурсов:', error);
+      return { hasAllResources: false, missingResources: ['Ошибка при проверке ресурсов'] };
+    }
+  }
+
+  /**
+   * Расходование ресурсов для прорыва
+   * @param {number} userId - ID пользователя
+   * @param {Object} requiredResources - Ресурсы для расходования
+   * @returns {Promise<boolean>} - Успешность операции
+   */
+  static async consumeBreakthroughResources(userId, requiredResources) {
+    try {
+      for (const [resourceId, requiredAmount] of Object.entries(requiredResources)) {
+        // Находим предмет в инвентаре
+        const inventoryItem = await InventoryItem.findOne({
+          where: {
+            userId: userId,
+            itemId: resourceId
+          }
+        });
+        
+        if (!inventoryItem || inventoryItem.quantity < requiredAmount) {
+          throw new Error(`Недостаточно ресурса ${resourceId}`);
+        }
+        
+        // Уменьшаем количество или удаляем предмет
+        const newQuantity = inventoryItem.quantity - requiredAmount;
+        if (newQuantity <= 0) {
+          await inventoryItem.destroy();
+        } else {
+          await inventoryItem.update({ quantity: newQuantity });
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Ошибка при расходовании ресурсов:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Полная проверка всех требований для прорыва
+   * @param {number} userId - ID пользователя
+   * @returns {Promise<Object>} - Результат проверки всех требований
+   */
+  static async checkBreakthroughRequirements(userId) {
+    try {
+      // 1. Получаем данные культивации
+      let cultivation;
+      
+      if (isBrowser) {
+        cultivation = browserCultivationData[userId];
+        if (!cultivation) {
+          return { canBreakthrough: false, message: 'Данные о культивации не найдены' };
+        }
+      } else {
+        cultivation = await CultivationProgress.findOne({ where: { userId } });
+        if (!cultivation) {
+          return { canBreakthrough: false, message: 'Данные о культивации не найдены' };
+        }
+      }
+
+      const missingRequirements = [];
+
+      // 2. Проверяем опыт
+      const hasEnoughExperience = cultivation.experience >= cultivation.experienceToNextLevel;
+      if (!hasEnoughExperience) {
+        missingRequirements.push(`Недостаточно опыта (${cultivation.experience}/${cultivation.experienceToNextLevel})`);
+      }
+
+      // 3. Проверяем энергию (80% от максимума)
+      const requiredEnergy = Math.floor(cultivation.maxEnergy * 0.8);
+      const hasEnoughEnergy = cultivation.energy >= requiredEnergy;
+      if (!hasEnoughEnergy) {
+        missingRequirements.push(`Недостаточно энергии (${cultivation.energy}/${requiredEnergy})`);
+      }
+
+      // 4. Проверяем бутылочное горлышко
+      const passedBottleneck = cultivation.bottleneckProgress >= cultivation.requiredBottleneckProgress;
+      if (!passedBottleneck) {
+        missingRequirements.push(`Не пройдено бутылочное горлышко (${cultivation.bottleneckProgress}/${cultivation.requiredBottleneckProgress})`);
+      }
+
+      // 5. Проверяем трибуляцию (если требуется)
+      const needsTribulation = (cultivation.level === 3 || cultivation.level === 6 || cultivation.level === 9);
+      const passedTribulation = !needsTribulation || cultivation.tribulationCompleted;
+      if (!passedTribulation) {
+        missingRequirements.push('Не пройдена трибуляция');
+      }
+
+      // 6. Проверяем ресурсы через InventoryService
+      const requiredResources = getBreakthroughResources(cultivation.stage, cultivation.level);
+      const resourceCheckResults = await this.checkResourceRequirements(userId, requiredResources);
+      
+      if (!resourceCheckResults.hasAllResources) {
+        missingRequirements.push(...resourceCheckResults.missingResources);
+      }
+
+      const canBreakthrough = missingRequirements.length === 0;
+
+      return {
+        canBreakthrough,
+        missingRequirements,
+        requiredResources,
+        message: canBreakthrough ? 'Готов к прорыву!' : 'Не выполнены требования для прорыва'
+      };
+    } catch (error) {
+      console.error('Ошибка при проверке требований для прорыва:', error);
+      return {
+        canBreakthrough: false,
+        message: 'Произошла ошибка при проверке требований',
+        missingRequirements: ['Системная ошибка']
+      };
+    }
+  }
   
   /**
    * Выполнение трибуляции
@@ -834,9 +1088,16 @@ class CultivationService {
    * @returns {Promise<Object>} - Результат прорыва
    */
   static async performBreakthrough(userId) {
+    // Получаем экземпляр sequelize
+    const { db: sequelize } = await getSequelizeInstance();
+    const transaction = await sequelize.transaction();
+    
     try {
-      const checkResult = await this.checkBreakthroughPossibility(userId);
+      // 1. Проверяем все требования (включая ресурсы)
+      const checkResult = await this.checkBreakthroughRequirements(userId);
+      
       if (!checkResult.canBreakthrough) {
+        await transaction.rollback();
         return {
           success: false,
           message: 'Невозможно выполнить прорыв',
@@ -844,11 +1105,18 @@ class CultivationService {
         };
       }
 
-      const cultivation = await CultivationProgress.findOne({ where: { userId } });
+      // 2. Получаем данные культивации в рамках транзакции
+      const cultivation = await CultivationProgress.findOne({
+        where: { userId },
+        transaction
+      });
+      
       if (!cultivation) {
+        await transaction.rollback();
         return { success: false, message: 'Данные о культивации не найдены' };
       }
 
+      // 3. Вычисляем новые параметры
       const previousLevel = cultivation.level;
       const previousStage = cultivation.stage;
       
@@ -868,33 +1136,42 @@ class CultivationService {
       const energyBonus = Math.floor(cultivation.maxEnergy * 0.1);
       const newMaxEnergy = cultivation.maxEnergy + energyBonus;
 
+      // 4. Расходуем ресурсы
+      await this.consumeBreakthroughResources(userId, checkResult.requiredResources);
+
+      // 5. Расходуем опыт и энергию, обновляем данные культивации
+      const requiredEnergy = Math.floor(cultivation.maxEnergy * 0.8);
       const updateData = {
         level: newLevel,
         stage: newStage,
-        experience: 0,
+        experience: 0, // Сбрасываем опыт после прорыва
         experienceToNextLevel: newExperienceToNextLevel,
-        bottleneckProgress: 0,
+        bottleneckProgress: 0, // Сбрасываем прогресс бутылочного горлышка
+        energy: cultivation.energy - requiredEnergy, // Расходуем энергию
         maxEnergy: newMaxEnergy,
-        energy: newMaxEnergy,
-        tribulationCompleted: false
+        tribulationCompleted: false // Сбрасываем статус трибуляции
       };
 
       const requirements = this.generateBreakthroughRequirements(newStage, newLevel);
       updateData.requiredBottleneckProgress = (cultivation.requiredBottleneckProgress || 100) + requirements.bottleneckProgress;
 
-      await cultivation.update(updateData);
+      await cultivation.update(updateData, { transaction });
 
-      const user = await User.findByPk(userId);
+      // 6. Обновляем уровень пользователя
+      const user = await User.findByPk(userId, { transaction });
       if (user) {
-        await user.update({ cultivation_level: newLevel });
+        await user.update({ cultivation_level: newLevel }, { transaction });
       }
 
-      // Проверка квестов на достижение уровня после прорыва
+      // 7. Проверка квестов на достижение уровня после прорыва
       const QuestService = require('./quest-service');
       const completedReachLevelQuests = await QuestService.checkQuestEvent(userId, 'REACH_LEVEL', { level: newLevel });
       for (const questId of completedReachLevelQuests) {
         await QuestService.completeQuest(userId, questId);
       }
+
+      // 8. Подтверждаем транзакцию
+      await transaction.commit();
 
       const isNewStage = previousStage !== newStage;
       let message = isNewStage
@@ -908,9 +1185,11 @@ class CultivationService {
         newState: { stage: newStage, level: newLevel },
         bonuses: { maxEnergy: energyBonus },
         statPoints: 5,
-        isNewStage: isNewStage
+        isNewStage: isNewStage,
+        consumedResources: checkResult.requiredResources
       };
     } catch (error) {
+      await transaction.rollback();
       console.error('Ошибка при выполнении прорыва:', error);
       throw error;
     }
@@ -928,3 +1207,7 @@ module.exports.increaseBottleneckProgress = CultivationService.increaseBottlenec
 module.exports.gainInsight = CultivationService.gainInsight;
 module.exports.generateBreakthroughRequirements = CultivationService.generateBreakthroughRequirements;
 module.exports.performBreakthrough = CultivationService.performBreakthrough;
+module.exports.checkBreakthroughRequirements = CultivationService.checkBreakthroughRequirements;
+module.exports.checkResourceRequirements = CultivationService.checkResourceRequirements;
+module.exports.consumeBreakthroughResources = CultivationService.consumeBreakthroughResources;
+module.exports.getBreakthroughResources = getBreakthroughResources;

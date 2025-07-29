@@ -250,31 +250,113 @@ function CultivationTab() {
         
         const resourcesNeeded = {};
         
-        // Define the standard resources outside of any async operations
-        const stageResources = {
-          'Закалка тела': {
-            'low_grade_herb': level * 5,
-            'basic_pill': level * 2
-          },
-          'Очищение Ци': {
-            'medium_grade_herb': level * 4,
-            'qi_pill': level * 3,
-            'spirit_stone': level * 3
-          },
-          'Золотое ядро': {
-            'rare_herb': level * 3,
-            'high_quality_pill': level * 2,
-            'spirit_mineral': level * 4,
-            'spirit_stone': level * 10
-          },
-          'Формирование души': {
-            'exotic_herb': level * 2,
-            'spirit_essence': level * 3,
-            'beast_soul': level * 1,
-            'spirit_mineral': level * 8,
-            'spirit_stone': level * 20
-          }
+        // Статические данные ресурсов для прорыва (циклически повторяются каждые 3 уровня)
+        const getBreakthroughResources = (stage, level) => {
+          // Определяем базовые ресурсы для каждой стадии
+          const stageResourceSets = {
+            'Закалка тела': [
+              // Набор 1 (уровни 1, 4, 7, 10...)
+              {
+                'herb_qigathering': { name: 'Трава сбора ци', baseAmount: 5, image_url: '/assets/images/items/herb_qigathering.png' },
+                'mineral_dust': { name: 'Минеральная пыль', baseAmount: 2, image_url: '/assets/images/items/mineral_dust.png' }
+              },
+              // Набор 2 (уровни 2, 5, 8, 11...)
+              {
+                'herb_ironroot': { name: 'Железный корень', baseAmount: 3, image_url: '/assets/images/items/herb_ironroot.png' },
+                'water_pure': { name: 'Очищенная вода', baseAmount: 2, image_url: '/assets/images/items/water_pure.png' }
+              },
+              // Набор 3 (уровни 3, 6, 9, 12...)
+              {
+                'herb_clearflow': { name: 'Кристальный цветок', baseAmount: 4, image_url: '/assets/images/items/herb_clearflow.png' },
+                'crystal_clear': { name: 'Чистый кристалл', baseAmount: 1, image_url: '/assets/images/items/crystal_clear.png' }
+              }
+            ],
+            'Очищение Ци': [
+              // Набор 1
+              {
+                'herb_spiritbloom': { name: 'Духовный цвет', baseAmount: 4, image_url: '/assets/images/items/herb_spiritbloom.png' },
+                'essence_concentration': { name: 'Эссенция концентрации', baseAmount: 2, image_url: '/assets/images/items/essence_concentration.png' },
+                'crystal_mind': { name: 'Кристалл разума', baseAmount: 1, image_url: '/assets/images/items/crystal_mind.png' }
+              },
+              // Набор 2
+              {
+                'herb_goldensage': { name: 'Золотой шалфей', baseAmount: 3, image_url: '/assets/images/items/herb_goldensage.png' },
+                'essence_purity': { name: 'Эссенция чистоты', baseAmount: 2, image_url: '/assets/images/items/essence_purity.png' },
+                'metal_celestial': { name: 'Небесный металл', baseAmount: 1, image_url: '/assets/images/items/metal_celestial.png' }
+              },
+              // Набор 3
+              {
+                'water_spirit': { name: 'Духовная вода', baseAmount: 5, image_url: '/assets/images/items/water_spirit.png' },
+                'crystal_formation': { name: 'Кристалл формирования', baseAmount: 2, image_url: '/assets/images/items/crystal_formation.png' }
+              }
+            ],
+            'Золотое ядро': [
+              // Набор 1
+              {
+                'herb_soulwhisper': { name: 'Шепот души', baseAmount: 3, image_url: '/assets/images/items/herb_soulwhisper.png' },
+                'essence_enlightenment': { name: 'Эссенция просветления', baseAmount: 2, image_url: '/assets/images/items/essence_enlightenment.png' },
+                'crystal_soul': { name: 'Кристалл души', baseAmount: 1, image_url: '/assets/images/items/crystal_soul.png' }
+              },
+              // Набор 2
+              {
+                'metal_heavenly': { name: 'Небожительный металл', baseAmount: 2, image_url: '/assets/images/items/metal_heavenly.png' },
+                'essence_heaven': { name: 'Эссенция небес', baseAmount: 1, image_url: '/assets/images/items/essence_heaven.png' },
+                'crystal_star': { name: 'Звездный кристалл', baseAmount: 1, image_url: '/assets/images/items/crystal_star.png' }
+              },
+              // Набор 3
+              {
+                'feather_phoenix': { name: 'Перо феникса', baseAmount: 1, image_url: '/assets/images/items/feather_phoenix.png' },
+                'dust_stardust': { name: 'Звездная пыль', baseAmount: 3, image_url: '/assets/images/items/dust_stardust.png' }
+              }
+            ],
+            'Формирование души': [
+              // Набор 1
+              {
+                'spirit_ancient': { name: 'Древний дух', baseAmount: 1, image_url: '/assets/images/items/spirit_ancient.png' },
+                'essence_heaven': { name: 'Эссенция небес', baseAmount: 2, image_url: '/assets/images/items/essence_heaven.png' },
+                'crystal_star': { name: 'Звездный кристалл', baseAmount: 2, image_url: '/assets/images/items/crystal_star.png' }
+              },
+              // Набор 2
+              {
+                'herb_soulwhisper': { name: 'Шепот души', baseAmount: 4, image_url: '/assets/images/items/herb_soulwhisper.png' },
+                'essence_enlightenment': { name: 'Эссенция просветления', baseAmount: 3, image_url: '/assets/images/items/essence_enlightenment.png' },
+                'dust_stardust': { name: 'Звездная пыль', baseAmount: 2, image_url: '/assets/images/items/dust_stardust.png' }
+              },
+              // Набор 3
+              {
+                'metal_heavenly': { name: 'Небожительный металл', baseAmount: 3, image_url: '/assets/images/items/metal_heavenly.png' },
+                'crystal_soul': { name: 'Кристалл души', baseAmount: 2, image_url: '/assets/images/items/crystal_soul.png' },
+                'feather_phoenix': { name: 'Перо феникса', baseAmount: 1, image_url: '/assets/images/items/feather_phoenix.png' }
+              }
+            ]
+          };
+
+          // Получаем наборы ресурсов для текущей стадии
+          const stageSets = stageResourceSets[stage] || stageResourceSets['Закалка тела'];
+          
+          // Определяем какой набор использовать (циклически каждые 3 уровня)
+          const setIndex = (level - 1) % 3;
+          const resourceSet = stageSets[setIndex];
+          
+          // Вычисляем множитель на основе уровня
+          const multiplier = Math.ceil(level / 3);
+          
+          // Формируем финальный объект ресурсов
+          const finalResources = {};
+          Object.keys(resourceSet).forEach(resourceId => {
+            const resource = resourceSet[resourceId];
+            finalResources[resourceId] = {
+              name: resource.name,
+              amount: resource.baseAmount * multiplier,
+              available: 0, // Будет заполнено позже из инвентаря
+              image_url: resource.image_url
+            };
+          });
+          
+          return finalResources;
         };
+
+        const currentStageResources = getBreakthroughResources(stage, level);
         
         // Use either the specified resources or default ones
         if (resourceIds.length > 0) {
@@ -286,7 +368,9 @@ function CultivationTab() {
                 resourcesNeeded[id] = {
                   name: resource.name,
                   amount: requiredResources[id],
-                  available: inventoryItems.filter(item => item.id === id).length
+                  available: inventoryItems
+                    .filter(item => item.id === id)
+                    .reduce((total, item) => total + (item.quantity || 1), 0)
                 };
               }
             } catch (err) {
@@ -294,23 +378,21 @@ function CultivationTab() {
             }
           }
         } else {
-          // Use standard resources based on cultivation stage
-          const currentStageResources = stageResources[stage] || stageResources['Закалка тела'];
-          
-          for (const id of Object.keys(currentStageResources)) {
-            try {
-              const resource = await ResourceService.getResourceById(id);
-              if (resource && isActive) {
-                resourcesNeeded[id] = {
-                  name: resource.name,
-                  amount: currentStageResources[id],
-                  available: inventoryItems.filter(item => item.id === id).length
-                };
-              }
-            } catch (err) {
-              console.error(`Error fetching resource ${id}:`, err);
-            }
-          }
+          // Используем статические данные ресурсов
+          Object.keys(currentStageResources).forEach(resourceId => {
+            const resource = currentStageResources[resourceId];
+            // Подсчитываем количество доступных ресурсов в инвентаре
+            const availableCount = inventoryItems
+              .filter(item => item.id === resourceId)
+              .reduce((total, item) => total + (item.quantity || 1), 0);
+            
+            resourcesNeeded[resourceId] = {
+              name: resource.name,
+              amount: resource.amount,
+              available: availableCount,
+              image_url: resource.image_url
+            };
+          });
         }
         
         // Only update state if component is still mounted
@@ -965,17 +1047,20 @@ function CultivationTab() {
           </S.BreakthroughRequirements>
           
           {Object.keys(requiredResources).length > 0 && (
-            <S.ResourceList>
+            <S.ResourceGrid>
               <h4>Требуемые ресурсы:</h4>
-              {Object.values(requiredResources).map((resource, index) => (
-                <S.ResourceItem key={index}>
-                  <span>{resource.name}</span>
-                  <span style={{ color: resource.available >= resource.amount ? '#4caf50' : '#f44336' }}>
-                    {resource.available}/{resource.amount}
-                  </span>
-                </S.ResourceItem>
-              ))}
-            </S.ResourceList>
+              <S.ResourceContainer>
+                {Object.values(requiredResources).map((resource, index) => (
+                  <S.ResourceSlot key={index} hasEnough={resource.available >= resource.amount}>
+                    <S.ResourceIcon src={resource.image_url} alt={resource.name} />
+                    <S.ResourceQuantity hasEnough={resource.available >= resource.amount}>
+                      {resource.available}/{resource.amount}
+                    </S.ResourceQuantity>
+                    <S.ResourceName>{resource.name}</S.ResourceName>
+                  </S.ResourceSlot>
+                ))}
+              </S.ResourceContainer>
+            </S.ResourceGrid>
           )}
           
           <S.Button 

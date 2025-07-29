@@ -220,40 +220,102 @@ exports.initializeDefaultResources = async () => {
  */
 exports.getBreakthroughResources = async (stage, level) => {
   try {
-    const resources = {};
+    // Статические данные ресурсов для прорыва (циклически повторяются каждые 3 уровня)
+    const stageResourceSets = {
+      'закалка тела': [
+        // Набор 1 (уровни 1, 4, 7, 10...)
+        {
+          'herb_qigathering': 5,
+          'mineral_dust': 2
+        },
+        // Набор 2 (уровни 2, 5, 8, 11...)
+        {
+          'herb_ironroot': 3,
+          'water_pure': 2
+        },
+        // Набор 3 (уровни 3, 6, 9, 12...)
+        {
+          'herb_clearflow': 4,
+          'crystal_clear': 1
+        }
+      ],
+      'очищение ци': [
+        // Набор 1
+        {
+          'herb_spiritbloom': 4,
+          'essence_concentration': 2,
+          'crystal_mind': 1
+        },
+        // Набор 2
+        {
+          'herb_goldensage': 3,
+          'essence_purity': 2,
+          'metal_celestial': 1
+        },
+        // Набор 3
+        {
+          'water_spirit': 5,
+          'crystal_formation': 2
+        }
+      ],
+      'золотое ядро': [
+        // Набор 1
+        {
+          'herb_soulwhisper': 3,
+          'essence_enlightenment': 2,
+          'crystal_soul': 1
+        },
+        // Набор 2
+        {
+          'metal_heavenly': 2,
+          'essence_heaven': 1,
+          'crystal_star': 1
+        },
+        // Набор 3
+        {
+          'feather_phoenix': 1,
+          'dust_stardust': 3
+        }
+      ],
+      'формирование души': [
+        // Набор 1
+        {
+          'spirit_ancient': 1,
+          'essence_heaven': 2,
+          'crystal_star': 2
+        },
+        // Набор 2
+        {
+          'herb_soulwhisper': 4,
+          'essence_enlightenment': 3,
+          'dust_stardust': 2
+        },
+        // Набор 3
+        {
+          'metal_heavenly': 3,
+          'crystal_soul': 2,
+          'feather_phoenix': 1
+        }
+      ]
+    };
+
+    // Получаем наборы ресурсов для текущей стадии
+    const stageSets = stageResourceSets[stage.toLowerCase()] || stageResourceSets['закалка тела'];
     
-    // Множитель сложности в зависимости от уровня
-    const multiplier = Math.ceil(level / 2);
+    // Определяем какой набор использовать (циклически каждые 3 уровня)
+    const setIndex = (level - 1) % 3;
+    const resourceSet = stageSets[setIndex];
     
-    switch(stage.toLowerCase()) {
-      case 'закалка тела':
-        // Требуются травы и минералы
-        resources['basic_herb'] = 5 * multiplier;
-        resources['common_mineral'] = 3 * multiplier;
-        break;
-        
-      case 'очищение ци':
-        // Добавляются эссенции
-        resources['spirit_herb'] = 4 * multiplier;
-        resources['quality_mineral'] = 3 * multiplier;
-        resources['qi_essence'] = 2 * multiplier;
-        break;
-        
-      case 'золотое ядро':
-        // Все типы ресурсов в большом количестве
-        resources['rare_herb'] = 6 * multiplier;
-        resources['valuable_mineral'] = 5 * multiplier;
-        resources['concentrated_essence'] = 4 * multiplier;
-        resources['spirit_stone'] = 3 * multiplier;
-        break;
-        
-      default:
-        // Базовые требования для неизвестных ступеней
-        resources['basic_herb'] = 3 * multiplier;
-        break;
-    }
+    // Вычисляем множитель на основе уровня
+    const multiplier = Math.ceil(level / 3);
     
-    return resources;
+    // Формируем финальный объект ресурсов
+    const finalResources = {};
+    Object.keys(resourceSet).forEach(resourceId => {
+      finalResources[resourceId] = resourceSet[resourceId] * multiplier;
+    });
+    
+    return finalResources;
   } catch (error) {
     console.error(`Ошибка при получении ресурсов для прорыва (ступень: ${stage}, уровень: ${level}):`, error);
     return {};
