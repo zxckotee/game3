@@ -329,9 +329,6 @@ class CharacterStatsService {
    */
   static applyEffectsToStats(baseStats, activeEffects) {
     const modifiedState = { ...baseStats };
-    let appliedEffectsCount = 0;
-
-    console.log(`[Stats] Применение ${activeEffects.length} эффектов к характеристикам`);
 
     for (const effect of activeEffects) {
       // Эффекты из pvp-service могут иметь другую структуру, адаптируем их
@@ -348,11 +345,9 @@ class CharacterStatsService {
               const isPercentage = mod.isPercentage;
 
               if (isNaN(value) || !modifiedState.hasOwnProperty(targetAttribute)) {
-                  console.warn(`[Stats] Пропуск неверного модификатора в PvP эффекте:`, mod);
                   continue;
               }
 
-              const oldValue = modifiedState[targetAttribute];
               if (isPercentage) {
                   const baseValue = parseFloat(baseStats[targetAttribute]);
                   if (!isNaN(baseValue)) {
@@ -361,9 +356,6 @@ class CharacterStatsService {
               } else {
                   modifiedState[targetAttribute] += value;
               }
-              
-              console.log(`[Stats] PvP эффект: ${targetAttribute} ${oldValue} → ${modifiedState[targetAttribute]} (${isPercentage ? value + '%' : '+' + value})`);
-              appliedEffectsCount++;
           }
       } else { // Структура из ActivePlayerEffect или эффектов экипировки
           const targetAttribute = details.target_attribute;
@@ -371,27 +363,20 @@ class CharacterStatsService {
           const valueType = details.value_type;
 
           if (isNaN(value) || !targetAttribute) {
-              console.warn(`[Stats] Пропуск неверного эффекта:`, details);
               continue;
           }
 
           // Если характеристика не существует в базовом состоянии, инициализируем её нулём
           if (!modifiedState.hasOwnProperty(targetAttribute)) {
-              console.log(`[Stats] Инициализация новой характеристики: ${targetAttribute} = 0`);
               modifiedState[targetAttribute] = 0;
           }
           
-          const oldValue = modifiedState[targetAttribute];
           if (valueType === 'percentage') {
               const baseValue = parseFloat(baseStats[targetAttribute]) || 0;
               modifiedState[targetAttribute] += baseValue * (value / 100);
           } else { // 'absolute'
               modifiedState[targetAttribute] += value;
           }
-          
-          const effectSource = effect.source || effect.effect_type || 'unknown';
-          console.log(`[Stats] ${effectSource} эффект: ${targetAttribute} ${oldValue} → ${modifiedState[targetAttribute]} (${valueType === 'percentage' ? value + '%' : '+' + value})`);
-          appliedEffectsCount++;
       }
     }
     
@@ -402,7 +387,6 @@ class CharacterStatsService {
       }
     }
 
-    console.log(`[Stats] Применено ${appliedEffectsCount} эффектов из ${activeEffects.length}`);
     return modifiedState;
   }
 
@@ -413,7 +397,6 @@ class CharacterStatsService {
    */
   static extractEquipmentEffects(inventoryItems) {
     if (!inventoryItems || !Array.isArray(inventoryItems)) {
-      console.warn('[CharacterStats] Инвентарь недоступен или не является массивом');
       return [];
     }
 
@@ -422,12 +405,8 @@ class CharacterStatsService {
     // Фильтруем только экипированные предметы
     const equippedItems = inventoryItems.filter(item => item.equipped === true);
     
-    console.log(`[CharacterStats] Найдено ${equippedItems.length} экипированных предметов`);
-    
     equippedItems.forEach(item => {
       if (item.effects && Array.isArray(item.effects)) {
-        console.log(`[CharacterStats] Предмет ${item.name || item.id} имеет ${item.effects.length} эффектов`);
-        
         item.effects.forEach(effect => {
           if (effect && effect.target && effect.value !== undefined) {
             equipmentEffects.push({
@@ -441,7 +420,6 @@ class CharacterStatsService {
       }
     });
     
-    console.log(`[CharacterStats] Извлечено ${equipmentEffects.length} эффектов экипировки`);
     return equipmentEffects;
   }
 
@@ -506,6 +484,34 @@ class CharacterStatsService {
   }
 
   /**
+   * Разделяет эффекты экипировки на эффекты для первичных и вторичных характеристик
+   * @param {Array} formattedEquipmentEffects - Массив отформатированных эффектов экипировки
+   * @returns {Object} - Объект с разделенными эффектами
+   */
+  static separateEquipmentEffects(formattedEquipmentEffects) {
+    // Определяем первичные характеристики
+    const primaryStats = ['strength', 'intellect', 'spirit', 'agility', 'health', 'luck'];
+    
+    const primaryEffects = [];
+    const secondaryEffects = [];
+    
+    formattedEquipmentEffects.forEach(effect => {
+      const targetAttribute = effect.effect_details_json.target_attribute;
+      
+      if (primaryStats.includes(targetAttribute)) {
+        primaryEffects.push(effect);
+      } else {
+        secondaryEffects.push(effect);
+      }
+    });
+    
+    return {
+      primary: primaryEffects,
+      secondary: secondaryEffects
+    };
+  }
+
+  /**
    * Получение полного состояния персонажа, включая базовые, модифицированные и вторичные характеристики
    * @param {number} userId - ID пользователя
    * @param {object} [transaction] - Опциональная транзакция Sequelize
@@ -523,30 +529,30 @@ class CharacterStatsService {
         require('./inventory-service').getInventoryItems(userId)
       ]);
 
-      console.log(`[CharacterStats] Загружены данные для пользователя ${userId}: базовые характеристики, культивация, ${activeEffects.length} активных эффектов, ${inventoryItems.length} предметов инвентаря`);
-
       // 2. Создание базового состояния
       const baseState = { ...baseStats, ...cultivationProgress };
 
       // 3. Применение активных эффектов к базовым характеристикам
       const modifiedState = this.applyEffectsToStats(baseState, activeEffects);
       
-      // 4. Расчет вторичных характеристик на основе модифицированных базовых характеристик
-      const baseSecondaryStats = this.calculateSecondaryStats(modifiedState, modifiedState);
-      
-      // 5. НОВАЯ ЛОГИКА: Получение и применение эффектов экипировки к вторичным характеристикам
+      // 4. НОВАЯ ЛОГИКА: Получение и разделение эффектов экипировки
       const equipmentEffects = this.extractEquipmentEffects(inventoryItems);
       const formattedEquipmentEffects = this.convertEquipmentEffectsToStatsFormat(equipmentEffects);
+      const separatedEffects = this.separateEquipmentEffects(formattedEquipmentEffects);
       
-      // 6. Применение эффектов экипировки к вторичным характеристикам
-      const finalSecondaryStats = this.applyEffectsToStats(baseSecondaryStats, formattedEquipmentEffects);
+      // 5. Применение эффектов экипировки к первичным характеристикам
+      const fullyModifiedState = this.applyEffectsToStats(modifiedState, separatedEffects.primary);
       
-      console.log(`[CharacterStats] Применено ${formattedEquipmentEffects.length} эффектов экипировки к вторичным характеристикам`);
+      // 6. Расчет вторичных характеристик на основе полностью модифицированных первичных характеристик
+      const baseSecondaryStats = this.calculateSecondaryStats(fullyModifiedState, fullyModifiedState);
       
-      // 7. Возврат результата с информацией об эффектах экипировки
+      // 7. Применение эффектов экипировки к вторичным характеристикам
+      const finalSecondaryStats = this.applyEffectsToStats(baseSecondaryStats, separatedEffects.secondary);
+      
+      // 8. Возврат результата с информацией об эффектах экипировки
       return {
         base: baseState,
-        modified: modifiedState,
+        modified: fullyModifiedState, // Теперь включает эффекты экипировки на первичные характеристики
         secondary: finalSecondaryStats,
         equipmentEffects: equipmentEffects // Добавляем информацию об эффектах экипировки для отладки
       };

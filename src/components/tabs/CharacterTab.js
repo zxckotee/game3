@@ -454,6 +454,7 @@ function CharacterTab() {
       luck: 'Удача',
       
       // Вторичные характеристики
+      physicalAttack: 'Физическая атака',
       physicalDefense: 'Физическая защита',
       spiritualDefense: 'Магическая защита',
       spiritualAttack: 'Духовная атака',
@@ -731,7 +732,7 @@ function CharacterTab() {
           <StatGroupTitle>Вторичные характеристики</StatGroupTitle>
           <StatGrid>
             {characterStats.secondary ? (
-              ['physicalDefense', 'spiritualDefense', 'spiritualAttack', 'attackSpeed', 'criticalChance', 'movementSpeed'].map(statKey => {
+              ['physicalAttack', 'physicalDefense', 'spiritualAttack', 'spiritualDefense', 'attackSpeed', 'criticalChance', 'movementSpeed'].map(statKey => {
                 const value = characterStats.secondary[statKey];
                 if (value !== undefined) {
                   return (
