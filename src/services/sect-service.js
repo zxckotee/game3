@@ -643,9 +643,13 @@ class SectService {
         throw new Error('Недостаточно энергии');
       }
       
-      // Вычитаем энергию у пользователя
-      cultivation.energy -= energyAmount;
-      await CultivationService.updateCultivationProgress(userId, { energy: cultivation.energy });
+      // Безопасно вычитаем энергию у пользователя с проверкой минимума
+      const currentEnergy = cultivation.energy || 0;
+      const maxEnergy = cultivation.maxEnergy || 100;
+      const newEnergy = safeUpdateEnergy(currentEnergy, -energyAmount, maxEnergy);
+      
+      cultivation.energy = newEnergy;
+      await CultivationService.updateCultivationProgress(userId, { energy: newEnergy });
       
       // Добавляем опыт и влияние секте
       const contributionXP = energyAmount * 5; // 1 единица энергии = 5 единиц опыта секты
@@ -872,9 +876,13 @@ class SectService {
         throw new Error('Недостаточно энергии для тренировки');
       }
       
-      // Вычитаем энергию
-      cultivation.energy -= energyCost;
-      await CultivationService.updateCultivationProgress(userId, { energy: cultivation.energy });
+      // Безопасно вычитаем энергию с проверкой минимума
+      const currentEnergy = cultivation.energy || 0;
+      const maxEnergy = cultivation.maxEnergy || 100;
+      const newEnergy = safeUpdateEnergy(currentEnergy, -energyCost, maxEnergy);
+      
+      cultivation.energy = newEnergy;
+      await CultivationService.updateCultivationProgress(userId, { energy: newEnergy });
       
       // Вычисляем опыт для члена секты (зависит от уровня культивации тренирующего)
       const memberXPGain = Math.floor(duration * 10 * (1 + cultivation.level / 10));

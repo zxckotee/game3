@@ -212,14 +212,15 @@ export const spiritPetsReducer = (state, action) => {
       // Обновляем дату тренировки
       updatedPet.lastTrained = new Date();
       
-      // Даем опыт
-      updatedPet.experience = (pet.experience || 0) + 10;
+      // Безопасно даем опыт с проверкой границ
+      const currentExp = pet.experience || 0;
+      const expForNextLevel = state.player?.spiritPets?.expForNextLevel || 100;
+      updatedPet.experience = safeUpdateExperience(currentExp, 10, expForNextLevel);
       
       // Проверяем, достаточно ли опыта для повышения уровня
-      const expForNextLevel = state.player?.spiritPets?.expForNextLevel || 100;
       if (updatedPet.experience >= expForNextLevel) {
         updatedPet.level = (pet.level || 1) + 1;
-        updatedPet.experience = updatedPet.experience - expForNextLevel;
+        updatedPet.experience = Math.max(0, updatedPet.experience - expForNextLevel);
       }
       
       // Обновляем конкретную характеристику

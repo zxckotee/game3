@@ -166,16 +166,23 @@ class CultivationService {
         }
         
         if (data.experience !== undefined) {
-          // Добавляем к существующему значению вместо замены
-          browserCultivationData[userId].experience = (browserCultivationData[userId].experience || 0) + data.experience;
+          // Безопасно добавляем опыт с проверкой границ
+          const currentExp = browserCultivationData[userId].experience || 0;
+          const maxExp = browserCultivationData[userId].experienceToNextLevel || 100;
+          browserCultivationData[userId].experience = safeUpdateExperience(currentExp, data.experience, maxExp);
         }
         
         if (data.experienceToNextLevel !== undefined) {
           browserCultivationData[userId].experienceToNextLevel = data.experienceToNextLevel;
+          // Проверяем текущий опыт после изменения максимума
+          const currentExp = browserCultivationData[userId].experience || 0;
+          browserCultivationData[userId].experience = Math.min(currentExp, data.experienceToNextLevel);
         }
         
         if (data.energy !== undefined) {
-          browserCultivationData[userId].energy = data.energy;
+          // Безопасно устанавливаем энергию с проверкой границ
+          const maxEnergy = browserCultivationData[userId].maxEnergy || 100;
+          browserCultivationData[userId].energy = safeUpdateEnergy(0, data.energy, maxEnergy);
         }
         
         if (data.maxEnergy !== undefined) {

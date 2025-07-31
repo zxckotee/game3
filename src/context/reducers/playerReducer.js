@@ -1520,7 +1520,7 @@ export const playerReducer = (state, action) => {
       const masteryThreshold = 100 * ((technique.masteryLevel || 0) + 1);
       if ((updatedTechniques[techniqueIndex].experience || 0) >= masteryThreshold) {
         updatedTechniques[techniqueIndex].masteryLevel = (updatedTechniques[techniqueIndex].masteryLevel || 0) + 1;
-        updatedTechniques[techniqueIndex].experience -= masteryThreshold;
+        updatedTechniques[techniqueIndex].experience = Math.max(0, updatedTechniques[techniqueIndex].experience - masteryThreshold);
         
         console.log(`🌟 Повышен уровень мастерства техники ${technique.name} до ${updatedTechniques[techniqueIndex].masteryLevel}`);
       }

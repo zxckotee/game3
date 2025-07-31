@@ -762,10 +762,10 @@ router.post('/api/sects/:sectId/contribute', async (req, res) => {
         return res.status(400).json({ error: 'Недостаточно энергии' });
       }
       
-      // Вычитаем энергию у пользователя
+      // Вычитаем энергию у пользователя с проверкой минимума
       await sequelizeDb.query(
         `UPDATE cultivation_progresses
-         SET energy = energy - :energyAmount, updated_at = NOW()
+         SET energy = GREATEST(energy - :energyAmount, 0), updated_at = NOW()
          WHERE user_id = :userId`,
         {
           replacements: { userId, energyAmount },
@@ -1012,10 +1012,10 @@ router.post('/api/sects/members/:memberId/train', async (req, res) => {
         return res.status(400).json({ error: 'Недостаточно энергии для тренировки' });
       }
       
-      // Вычитаем энергию у пользователя
+      // Вычитаем энергию у пользователя с проверкой минимума
       await sequelizeDb.query(
         `UPDATE cultivation_progresses
-         SET energy = energy - :energyCost, updated_at = NOW()
+         SET energy = GREATEST(energy - :energyCost, 0), updated_at = NOW()
          WHERE user_id = :userId`,
         {
           replacements: { userId, energyCost },

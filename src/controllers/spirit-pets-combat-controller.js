@@ -204,7 +204,11 @@ exports.processBattleResults = async (req, res, next) => {
       } else {
         // Небольшой опыт даже при поражении
         const expGain = 5;
-        activePet.experience += expGain;
+        const currentExp = activePet.experience || 0;
+        const expRequired = activePet.level * 100;
+        
+        // Безопасно добавляем опыт с проверкой границ
+        activePet.experience = safeUpdateExperience(currentExp, expGain, expRequired);
       }
     }
     

@@ -613,9 +613,13 @@ class CharacterProfileService {
 
       console.log(`[DEBUG] СОБЫТИЯ ДО ИЗМЕНЕНИЙ:`, JSON.stringify(relationships[relationshipIndex].events, null, 2));
 
-      // 5. Списываем энергию
+      // 5. Безопасно списываем энергию с проверкой минимума
+      const currentEnergy = cultivationProgress.energy || 0;
+      const maxEnergy = cultivationProgress.maxEnergy || 100;
+      const newEnergy = safeUpdateEnergy(currentEnergy, -energyCost, maxEnergy);
+      
       await CultivationService.updateCultivationProgress(userId, {
-        energy: cultivationProgress.energy - energyCost
+        energy: newEnergy
       });
 
       // 6. Рассчитываем изменение отношений

@@ -305,13 +305,16 @@ exports.trainPet = async (req, res, next) => {
     
     // Начисляем опыт
     const expGain = 10;
-    userPet.experience += expGain;
+    const currentExp = userPet.experience || 0;
+    const expRequired = userPet.level * 100;
+    
+    // Безопасно добавляем опыт с проверкой границ
+    userPet.experience = safeUpdateExperience(currentExp, expGain, expRequired);
     
     // Проверяем на повышение уровня
-    const expRequired = userPet.level * 100;
     if (userPet.experience >= expRequired) {
       userPet.level += 1;
-      userPet.experience -= expRequired;
+      userPet.experience = Math.max(0, userPet.experience - expRequired);
       
       // Увеличиваем характеристики при повышении уровня
       userPet.strength += 1;

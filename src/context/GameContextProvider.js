@@ -701,10 +701,14 @@ const actions = {
         // Вносим вклад в секту
         const result = await sectService.contributeToSect(userId, sectId, energyAmount);
         
-        // Обновляем энергию пользователя
-        dispatch({ 
-          type: ACTION_TYPES.UPDATE_CULTIVATION, 
-          payload: { energy: state.player.cultivation.energy - energyAmount } 
+        // Безопасно обновляем энергию пользователя с проверкой минимума
+        const currentEnergy = state.player.cultivation.energy || 0;
+        const maxEnergy = state.player.cultivation.maxEnergy || 100;
+        const newEnergy = safeUpdateEnergy(currentEnergy, -energyAmount, maxEnergy);
+        
+        dispatch({
+          type: ACTION_TYPES.UPDATE_CULTIVATION,
+          payload: { energy: newEnergy }
         });
         
         // Обновляем информацию о секте
@@ -729,13 +733,21 @@ const actions = {
         // Тренируем члена секты
         const result = await sectService.trainWithMember(userId, memberId, duration);
         
-        // Обновляем энергию пользователя
-        dispatch({ 
-          type: ACTION_TYPES.UPDATE_CULTIVATION, 
-          payload: { 
-            energy: state.player.cultivation.energy - result.energySpent,
-            experience: state.player.cultivation.experience + result.userGainedXP
-          } 
+        // Безопасно обновляем энергию и опыт пользователя с проверкой границ
+        const currentEnergy = state.player.cultivation.energy || 0;
+        const maxEnergy = state.player.cultivation.maxEnergy || 100;
+        const currentExp = state.player.cultivation.experience || 0;
+        const maxExp = state.player.cultivation.experienceToNextLevel || 100;
+        
+        const newEnergy = safeUpdateEnergy(currentEnergy, -result.energySpent, maxEnergy);
+        const newExperience = safeUpdateExperience(currentExp, result.userGainedXP, maxExp);
+        
+        dispatch({
+          type: ACTION_TYPES.UPDATE_CULTIVATION,
+          payload: {
+            energy: newEnergy,
+            experience: newExperience
+          }
         });
         
         // Находим текущее значение лояльности

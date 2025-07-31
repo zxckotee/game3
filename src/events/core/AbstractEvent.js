@@ -220,13 +220,19 @@ export class AbstractEvent {
       case 'resource':
         // Изменение ресурса (энергия, опыт, духовные камни и т.д.)
         if (result.resource === 'energy' && context.player.cultivation) {
-          context.player.cultivation.energy += result.amount;
-          return { 
-            applied: true, 
+          const oldEnergy = context.player.cultivation.energy || 0;
+          const maxEnergy = context.player.cultivation.maxEnergy || 100;
+          const newEnergy = safeUpdateEnergy(oldEnergy, result.amount, maxEnergy);
+          
+          context.player.cultivation.energy = newEnergy;
+          return {
+            applied: true,
             description: result.description,
             resource: 'energy',
             amount: result.amount,
-            newValue: context.player.cultivation.energy
+            actualChange: newEnergy - oldEnergy,
+            newValue: newEnergy,
+            bounded: newEnergy !== (oldEnergy + result.amount)
           };
         }
         return { applied: false, description: 'Ресурс не найден' };
@@ -234,12 +240,18 @@ export class AbstractEvent {
       case 'experience':
         // Добавление опыта культивации
         if (context.player.cultivation) {
-          context.player.cultivation.experience += result.amount;
-          return { 
-            applied: true, 
+          const oldExperience = context.player.cultivation.experience || 0;
+          const maxExperience = context.player.cultivation.experienceToNextLevel || 100;
+          const newExperience = safeUpdateExperience(oldExperience, result.amount, maxExperience);
+          
+          context.player.cultivation.experience = newExperience;
+          return {
+            applied: true,
             description: result.description,
             amount: result.amount,
-            newValue: context.player.cultivation.experience
+            actualChange: newExperience - oldExperience,
+            newValue: newExperience,
+            bounded: newExperience !== (oldExperience + result.amount)
           };
         }
         return { applied: false, description: 'Система культивации не найдена' };

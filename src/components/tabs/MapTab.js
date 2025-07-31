@@ -1234,10 +1234,14 @@ function MapTab() {
       return;
     }
     
-    // Тратим энергию и перемещаем игрока
+    // Безопасно тратим энергию на путешествие с проверкой минимума
     if (actions.updateCultivation) {
+      const currentEnergy = cultivation.energy || 0;
+      const maxEnergy = cultivation.maxEnergy || 100;
+      const newEnergy = safeUpdateEnergy(currentEnergy, -energyCost, maxEnergy);
+      
       actions.updateCultivation({
-        energy: (cultivation.energy || 0) - energyCost
+        energy: newEnergy
       });
     }
     
