@@ -581,12 +581,9 @@ function SocialTab() {
       const result = await CharacterProfileServiceAPI.handleInteraction(selectedCharacter.id, type);
 
       if (result.success) {
-        // Обновляем отношения через action
-        actions.updateRelationship(result.updatedRelationship);
-        
-        // ВАЖНО: Обновляем ВСЕ relationships для корректной работы middleware
+        // ВАЖНО: Обновляем ВСЕ relationships сразу, чтобы избежать race condition с middleware
         if (result.allRelationships && actions.updateSocialRelationships) {
-          console.log('[SocialTab] Обновляем все relationships для синхронизации с middleware:', result.allRelationships);
+          console.log('[SocialTab] Обновляем все relationships с новыми событиями:', result.allRelationships);
           actions.updateSocialRelationships(result.allRelationships);
         }
 
