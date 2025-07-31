@@ -477,6 +477,21 @@ async function removeSpecialEffectFromEquipmentItem(specialEffectId) {
 }
 
 /**
+ * Проверяет требования предмета (заглушка - всегда возвращает успех)
+ * @param {Object} item Предмет для проверки
+ * @param {Object} character Данные персонажа
+ * @returns {Object} Результат проверки (всегда успешный)
+ */
+function checkItemRequirements(item, character) {
+  // Заглушка - проверка требований отключена
+  // Любой предмет можно экипировать независимо от требований
+  return {
+    canEquip: true,
+    failedRequirements: []
+  };
+}
+
+/**
  * Проверка, соответствует ли персонаж требованиям предмета
  * @param {string} itemId ID предмета (строковый идентификатор)
  * @param {Object} character Объект с характеристиками персонажа
@@ -567,6 +582,7 @@ module.exports = {
   removeRequirementFromEquipmentItem,
   addSpecialEffectToEquipmentItem,
   removeSpecialEffectFromEquipmentItem,
+  checkItemRequirements,
   checkCharacterMeetsItemRequirements,
   applyItemEffectsToCharacter,
   searchEquipmentItems,

@@ -825,13 +825,7 @@ class InventoryService {
    */
   static async toggleEquipItem(userId, itemId, equipped) {
     try {
-      // Подключаем сервис экипировки для проверки требований
-      let EquipmentService;
-      try {
-        EquipmentService = require('./equipment-service-adapter');
-      } catch (error) {
-        console.warn('Ошибка при импорте equipment-service-adapter:', error);
-      }
+      // Импорт сервиса экипировки удален - проверка требований больше не нужна
       
       if (isBrowser) {
         // В браузере используем объект в памяти
@@ -850,28 +844,7 @@ class InventoryService {
         
         const item = browserInventoryData[userId][itemIndex];
         
-        // Проверяем требования при экипировке
-        if (equipped && EquipmentService) {
-          try {
-            // Получаем данные пользователя из глобального объекта
-            const userObj = {
-              level: window.gameState?.player?.level || 1,
-              stats: window.gameState?.player?.stats || {}
-            };
-            
-            // Проверяем требования
-            const checkResult = EquipmentService.checkItemRequirements(item, userObj);
-            if (!checkResult.canEquip) {
-              return {
-                success: false,
-                message: 'Не соответствует требованиям',
-                failedRequirements: checkResult.failedRequirements
-              };
-            }
-          } catch (error) {
-            console.warn('Ошибка при проверке требований предмета:', error);
-          }
-        }
+        // Проверка требований удалена - теперь любой предмет можно экипировать
         
         // Обновляем статус экипировки
         browserInventoryData[userId][itemIndex].equipped = equipped;
@@ -904,34 +877,7 @@ class InventoryService {
           throw new Error('Предмет не найден в инвентаре');
         }
 
-        // Проверяем требования при экипировке
-        if (equipped && EquipmentService) {
-          try {
-            // Получаем данные пользователя из базы
-            const User = require('../models/user');
-            const user = await User.findByPk(userId);
-            if (!user) {
-              throw new Error('Пользователь не найден');
-            }
-            
-            const userObj = {
-              level: user.level || 1,
-              stats: user.stats || {}
-            };
-            
-            // Проверяем требования
-            const checkResult = EquipmentService.checkItemRequirements(item, userObj);
-            if (!checkResult.canEquip) {
-              return {
-                success: false,
-                message: 'Не соответствует требованиям',
-                failedRequirements: checkResult.failedRequirements
-              };
-            }
-          } catch (error) {
-            console.warn('Ошибка при проверке требований предмета:', error);
-          }
-        }
+        // Проверка требований удалена - теперь любой предмет можно экипировать
         
         // Обновляем статус экипировки
         item.equipped = equipped;

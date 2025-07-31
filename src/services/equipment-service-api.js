@@ -371,6 +371,21 @@ class EquipmentServiceAPI {
     
     return Promise.resolve(inventory[itemIndex]);
   }
+
+  /**
+   * Проверяет требования предмета (заглушка - всегда возвращает успех)
+   * @param {Object} item Предмет для проверки
+   * @param {Object} user Данные пользователя
+   * @returns {Object} Результат проверки (всегда успешный)
+   */
+  static checkItemRequirements(item, user) {
+    // Заглушка - проверка требований отключена
+    // Любой предмет можно экипировать независимо от требований
+    return {
+      canEquip: true,
+      failedRequirements: []
+    };
+  }
 }
 
 // Экспортируем класс через CommonJS
@@ -386,3 +401,4 @@ module.exports.createEquipmentItem = EquipmentServiceAPI.createEquipmentItem;
 module.exports.removeEquipmentItem = EquipmentServiceAPI.removeEquipmentItem;
 module.exports.addEquipmentToUser = EquipmentServiceAPI.addEquipmentToUser;
 module.exports.updateEquipmentItem = EquipmentServiceAPI.updateEquipmentItem;
+module.exports.checkItemRequirements = EquipmentServiceAPI.checkItemRequirements;
