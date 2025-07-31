@@ -14,6 +14,12 @@ import {
   sellItemToMerchant
 } from '../../services/merchant-api';
 import InventoryServiceAPI from '../../services/inventory-api.js';
+import {
+  translateRarity,
+  translateItemType,
+  getRarityColor,
+  getCurrencyTypeByRarity
+} from '../../utils/itemTranslations';
 
 // Анимации
 const fadeIn = keyframes`
@@ -256,16 +262,7 @@ const ItemInfo = styled.div`
 
 const ItemName = styled.div`
   font-weight: bold;
-  color: ${props => {
-    switch(props.rarity) {
-      case 'common': return '#aaa';
-      case 'uncommon': return '#1eff00';
-      case 'rare': return '#0070dd';
-      case 'epic': return '#a335ee';
-      case 'legendary': return '#ff8000';
-      default: return '#aaa';
-    }
-  }};
+  color: ${props => getRarityColor(props.rarity)};
 `;
 
 const ItemPrice = styled.div`
@@ -825,15 +822,8 @@ const MarketTab = () => {
     }
   };
   
-  // Функция для определения типа валюты по редкости
-  const getCurrencyTypeByRarity = (rarity) => {
-    switch(rarity) {
-      case 'legendary': return 'spiritStones';
-      case 'epic': return 'gold';
-      case 'rare': return 'silver';
-      default: return 'copper';
-    }
-  };
+  // Функция для определения типа валюты по редкости (используем импортированную)
+  // const getCurrencyTypeByRarity уже импортирована из utils/itemTranslations
   
   // Функция для форматирования цены
   const formatPrice = (price, rarity) => {
@@ -1152,7 +1142,7 @@ const MarketTab = () => {
                   
                   <DetailRow>
                     <DetailLabel>Редкость:</DetailLabel>
-                    <DetailValue>{selectedMarketItem.rarity}</DetailValue>
+                    <DetailValue>{translateRarity(selectedMarketItem.rarity)}</DetailValue>
                   </DetailRow>
                   <DetailRow>
                     <DetailLabel>Цена:</DetailLabel>
@@ -1252,24 +1242,11 @@ const MarketTab = () => {
                   <ItemDetails>
                     <DetailRow>
                       <DetailLabel>Тип:</DetailLabel>
-                      <DetailValue>
-                        {selectedSellItem.type === 'weapon' ? 'Оружие' :
-                         selectedSellItem.type === 'armor' ? 'Броня' :
-                         selectedSellItem.type === 'accessory' ? 'Аксессуар' :
-                         selectedSellItem.type === 'consumable' ? 'Расходник' :
-                         'Предмет'}
-                      </DetailValue>
+                      <DetailValue>{translateItemType(selectedSellItem.type)}</DetailValue>
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Редкость:</DetailLabel>
-                      <DetailValue>
-                        {selectedSellItem.rarity === 'common' ? 'Обычный' :
-                         selectedSellItem.rarity === 'uncommon' ? 'Необычный' :
-                         selectedSellItem.rarity === 'rare' ? 'Редкий' :
-                         selectedSellItem.rarity === 'epic' ? 'Эпический' :
-                         selectedSellItem.rarity === 'legendary' ? 'Легендарный' :
-                         'Неизвестно'} 
-                      </DetailValue>
+                      <DetailValue>{translateRarity(selectedSellItem.rarity)}</DetailValue>
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Цена продажи:</DetailLabel>

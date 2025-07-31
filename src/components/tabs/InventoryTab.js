@@ -8,6 +8,14 @@ import InventoryAuthManager from '../../utils/InventoryAuthManager';
 import InventoryServiceAPI from '../../services/inventory-api.js'; // Прямой импорт API сервиса
 import CharacterProfileServiceAPI from '../../services/character-profile-service-api';
 import AlchemyServiceAPI from '../../services/alchemy-service-api'; // Импорт для использования предметов
+import {
+  translateRarity,
+  translateItemType,
+  getRarityBorderColor,
+  getRarityBorderColorHover,
+  getRarityShadowColor,
+  getRarityGradientColor
+} from '../../utils/itemTranslations';
 
 // Анимации
 const spin = keyframes`
@@ -110,10 +118,7 @@ const ItemSlot = styled.div`
   width: 100%;
   aspect-ratio: 1;
   background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
-  border: 1px solid ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.4)' :
-    props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.4)' :
-    props.quality === 'rare' ? 'rgba(156, 39, 176, 0.4)' :
-    props.quality === 'epic' ? 'rgba(255, 152, 0, 0.4)' : 'rgba(212, 175, 55, 0.4)'};
+  border: 1px solid ${props => getRarityBorderColor(props.quality)};
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -130,23 +135,14 @@ const ItemSlot = styled.div`
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.1)' :
-      props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.1)' :
-      props.quality === 'rare' ? 'rgba(156, 39, 176, 0.1)' :
-      props.quality === 'epic' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(212, 175, 55, 0.1)'}, transparent);
+    background: linear-gradient(90deg, transparent, ${props => getRarityGradientColor(props.quality)}, transparent);
     transition: left 0.5s ease;
   }
   
   &:hover {
     transform: translateY(-2px) scale(1.05);
-    border-color: ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.6)' :
-      props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.6)' :
-      props.quality === 'rare' ? 'rgba(156, 39, 176, 0.6)' :
-      props.quality === 'epic' ? 'rgba(255, 152, 0, 0.6)' : 'rgba(212, 175, 55, 0.6)'};
-    box-shadow: 0 8px 25px ${props => props.quality === 'common' ? 'rgba(102, 102, 102, 0.15)' :
-      props.quality === 'uncommon' ? 'rgba(33, 150, 243, 0.15)' :
-      props.quality === 'rare' ? 'rgba(156, 39, 176, 0.15)' :
-      props.quality === 'epic' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(212, 175, 55, 0.15)'};
+    border-color: ${props => getRarityBorderColorHover(props.quality)};
+    box-shadow: 0 8px 25px ${props => getRarityShadowColor(props.quality)};
     animation: ${pulse} 2s infinite;
     
     &::before {
@@ -604,7 +600,7 @@ function InventoryTab() {
             {selectedItem ? (
               <>
                 <ItemName quality={selectedItem.quality || 'common'}>{selectedItem.name || 'Неизвестный предмет'}</ItemName>
-                <ItemType>Тип: {selectedItem.type || 'N/A'} | Качество: {selectedItem.quality || 'common'}</ItemType>
+                <ItemType>Тип: {translateItemType(selectedItem.type)} | Качество: {translateRarity(selectedItem.quality || 'common')}</ItemType>
                 {selectedItem.enrichedFailed && <p style={{color: 'red', fontSize: '0.9rem', marginBottom: '10px'}}>Не удалось загрузить полные детали этого предмета.</p>}
                 <ItemDescription>{selectedItem.description || 'Описание отсутствует.'}</ItemDescription>
                 
