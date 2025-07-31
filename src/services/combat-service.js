@@ -64,23 +64,17 @@ class CombatService {
       throw new Error('Враг не найден');
     }
 
-    // Получаем полное состояние игрока, включая все модификаторы
-    const fullPlayerStats = await CharacterStatsService.getCombinedCharacterState(userId);
+    // Получаем полное боевое состояние игрока, включая все модификаторы
+    const combatState = await CharacterStatsService.getCombatCharacterState(userId);
 
     const Combat = modelRegistry.getModel('Combat');
 
     // Получаем изученные техники игрока
     const learnedTechniques = await techniqueService.getLearnedTechniques(userId);
 
-    // Рассчитываем здоровье по формуле: 100 + (level * 2) + (health * 2)
-    const playerLevel = fullPlayerStats.base.level || 1;
-    const healthStat = fullPlayerStats.modified.health || 10;
-    const calculatedMaxHp = 100 + (playerLevel * 2) + (healthStat * 2);
-    
-    // Рассчитываем энергию аналогично
-    const energyStat = fullPlayerStats.modified.energy || 50;
-
-    const calculatedMaxEnergy = 50 + (playerLevel * 1) + (energyStat * 1);
+    // Используем унифицированные расчеты HP/Energy из CharacterStatsService
+    const calculatedMaxHp = combatState.combat.maxHp;
+    const calculatedMaxEnergy = combatState.combat.maxEnergy;
 
     const playerState = {
       // Используем рассчитанные значения здоровья и энергии
@@ -89,9 +83,11 @@ class CombatService {
       currentEnergy: calculatedMaxEnergy,
       maxEnergy: calculatedMaxEnergy,
       // Сохраняем базовые статы для будущего пересчета эффектов в бою
-      baseStats: fullPlayerStats.base,
+      baseStats: combatState.primary,
+      // Сохраняем модифицированные статы (включая эффекты экипировки)
+      modifiedStats: combatState.primary,
       // Сохраняем вторичные статы для использования в расчетах
-      secondaryStats: fullPlayerStats.secondary,
+      secondaryStats: combatState.secondary,
       effects: [],
       techniques: learnedTechniques || [] // Добавляем техники в состояние
     };
@@ -485,14 +481,14 @@ class CombatService {
     entityState.modifiedStats = modifiedStats;
     entityState.secondaryStats = secondaryStats;
 
-    // 4. Пересчитываем максимальное здоровье и энергию по правильной формуле
+    // 4. Пересчитываем максимальное здоровье и энергию используя унифицированные формулы
     const playerLevel = entityState.baseStats.level || 1;
     const healthStat = modifiedStats.health || 10;
     const energyStat = modifiedStats.energy || 50;
     
-    // Используем ту же формулу, что и при создании боя: 100 + (level * 2) + (health * 2)
-    const newMaxHp = 100 + (playerLevel * 2) + (healthStat * 2);
-    const newMaxEnergy = 50 + (playerLevel * 1) + (energyStat * 1);
+    // Используем унифицированные формулы из CharacterStatsService
+    const newMaxHp = CharacterStatsService.calculateMaxHp(playerLevel, healthStat);
+    const newMaxEnergy = CharacterStatsService.calculateMaxEnergy(playerLevel, energyStat);
     
     // Обновляем максимальные значения
     entityState.maxHp = newMaxHp;
@@ -519,39 +515,46 @@ class CombatService {
   static _calculateDamage(attackerState, defenderState, techniqueDamage = null, damageType = 'physical', actionType = 'attack') {
     console.log(`[CombatService] Начало расчета урона: тип=${damageType}, действие=${actionType}, техника=${techniqueDamage || 'нет'}`);
     
-    // 1. Определяем уровень атакующего
-    let attackerLevel = 1;
-    if (attackerState.baseStats && attackerState.baseStats.level) {
-      // Для игрока: уровень из baseStats
-      attackerLevel = attackerState.baseStats.level;
-    } else if (attackerState.baseStats && attackerState.baseStats.health) {
-      // Для врага: используем уровень врага (будет передан в baseStats)
-      attackerLevel = attackerState.enemyLevel || 1;
-    }
-
-    // 2. Получаем максимальное здоровье цели
-    const defenderMaxHp = defenderState.maxHp || 100;
-
-    console.log(`[CombatService] Уровень атакующего: ${attackerLevel}, MaxHP цели: ${defenderMaxHp}`);
-
-    // 3. Рассчитываем базовый урон
-    let damage;
-    let damagePercent = 0; // Для логирования
+    // 1. Определяем базовый урон атакующего
+    let baseDamage = 0;
     
-    // 4. Для техник используем прямые значения как в PvP
     if (actionType === 'technique' && techniqueDamage) {
-      // Техника наносит прямой урон (как в PvP)
-      damage = techniqueDamage;
-      damagePercent = Math.round((damage / defenderMaxHp) * 100); // Для логирования
-      console.log(`[CombatService] Прямой урон от техники: ${damage}`);
+      // Техники используют прямой урон
+      baseDamage = techniqueDamage;
+      console.log(`[CombatService] Прямой урон от техники: ${baseDamage}`);
     } else {
-      // Для обычных атак используем процентный расчет
-      damagePercent = 10 + attackerLevel;
-      damage = Math.floor((defenderMaxHp * damagePercent) / 100);
-      console.log(`[CombatService] Базовый урон: ${damagePercent}% от ${defenderMaxHp} = ${damage}`);
+      // Для обычных атак используем physicalAttack или spiritualAttack из вторичных характеристик
+      if (damageType === 'physical' && attackerState.secondaryStats?.physicalAttack) {
+        baseDamage = attackerState.secondaryStats.physicalAttack;
+        console.log(`[CombatService] Используем physicalAttack: ${baseDamage}`);
+      } else if (damageType === 'spiritual' && attackerState.secondaryStats?.spiritualAttack) {
+        baseDamage = attackerState.secondaryStats.spiritualAttack;
+        console.log(`[CombatService] Используем spiritualAttack: ${baseDamage}`);
+      } else {
+        // Fallback к старой формуле для врагов или если нет вторичных характеристик
+        const attackerLevel = attackerState.baseStats?.level || attackerState.enemyLevel || 1;
+        const defenderMaxHp = defenderState.maxHp || 100;
+        const damagePercent = 10 + attackerLevel;
+        baseDamage = Math.floor((defenderMaxHp * damagePercent) / 100);
+        console.log(`[CombatService] Fallback урон: ${damagePercent}% от ${defenderMaxHp} = ${baseDamage}`);
+      }
     }
 
-    // 6. Проверяем уклонение
+    // 2. Применяем защиту
+    let defense = 0;
+    if (damageType === 'physical' && defenderState.secondaryStats?.physicalDefense) {
+      defense = defenderState.secondaryStats.physicalDefense;
+      console.log(`[CombatService] Применяем physicalDefense: ${defense}`);
+    } else if (damageType === 'spiritual' && defenderState.secondaryStats?.spiritualDefense) {
+      defense = defenderState.secondaryStats.spiritualDefense;
+      console.log(`[CombatService] Применяем spiritualDefense: ${defense}`);
+    }
+    
+    // 3. Рассчитываем урон после защиты
+    let damage = Math.max(1, baseDamage - defense); // Минимальный урон = 1
+    console.log(`[CombatService] Урон после защиты: ${baseDamage} - ${defense} = ${damage}`);
+
+    // 4. Проверяем уклонение
     let dodgeChance = 5; // Базовый шанс уклонения 5%
     
     // Для игрока: используем характеристику удачи
@@ -568,6 +571,8 @@ class CombatService {
       console.log(`[CombatService] Атака уклонена! Шанс уклонения: ${dodgeChance}%`);
       return {
         damage: 0,
+        baseDamage: baseDamage,
+        defense: defense,
         isCrit: false,
         isDodge: true,
         dodgeChance: dodgeChance,
@@ -575,7 +580,7 @@ class CombatService {
       };
     }
 
-    // 7. Проверяем критический удар
+    // 5. Проверяем критический удар
     let critChance = 5; // Базовый шанс крита 5%
     
     // Для игрока: используем характеристику критического шанса
@@ -584,6 +589,7 @@ class CombatService {
     }
     // Для врага: базовый шанс + бонус от уровня
     else if (attackerState.baseStats) {
+      const attackerLevel = attackerState.baseStats.level || attackerState.enemyLevel || 1;
       critChance = 5 + Math.floor(attackerLevel / 2);
     }
     
@@ -593,7 +599,7 @@ class CombatService {
       console.log(`[CombatService] Критический удар! Урон увеличен до ${damage}`);
     }
 
-    // 8. Применяем эффекты (если есть)
+    // 6. Применяем эффекты (если есть)
     if (attackerState.effects && Array.isArray(attackerState.effects)) {
       for (const effect of attackerState.effects) {
         if (effect.damageBonus && typeof effect.damageBonus === 'number') {
@@ -612,13 +618,15 @@ class CombatService {
       }
     }
 
-    // 9. Минимальный урон = 1
+    // 7. Финальная проверка минимального урона
     damage = Math.max(1, damage);
 
-    console.log(`[CombatService] Итоговый урон: ${damage} (${damagePercent}% от ${defenderMaxHp}), критический: ${isCrit}, уклонение: ${isDodged}`);
+    console.log(`[CombatService] Итоговый урон: ${damage} (базовый: ${baseDamage}, защита: ${defense}), критический: ${isCrit}`);
 
     return {
       damage,
+      baseDamage: baseDamage,
+      defense: defense,
       isCrit,
       isDodge: false,
       critChance: critChance,

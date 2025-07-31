@@ -570,8 +570,52 @@ class CharacterStatsService {
       };
     }
   }
+
+  /**
+   * Рассчитывает максимальное здоровье персонажа
+   * @param {number} level - Уровень персонажа
+   * @param {number} healthStat - Характеристика здоровья
+   * @returns {number} Максимальное здоровье
+   */
+  static calculateMaxHp(level, healthStat) {
+    return 100 + (level * 2) + (healthStat * 2);
+  }
+
+  /**
+   * Рассчитывает максимальную энергию персонажа
+   * @param {number} level - Уровень персонажа
+   * @param {number} energyStat - Характеристика энергии
+   * @returns {number} Максимальная энергия
+   */
+  static calculateMaxEnergy(level, energyStat) {
+    return 50 + (level * 1) + (energyStat * 1);
+  }
+
+  /**
+   * Получает полное боевое состояние персонажа для использования в боях
+   * @param {number} userId - ID пользователя
+   * @param {Object} transaction - Транзакция Sequelize
+   * @returns {Promise<Object>} Боевое состояние персонажа
+   */
+  static async getCombatCharacterState(userId, transaction) {
+    const combinedState = await this.getCombinedCharacterState(userId, transaction);
+    
+    const level = combinedState.modified.level || 1;
+    const healthStat = combinedState.modified.health || 10;
+    const energyStat = combinedState.modified.energy || 50;
+    
+    return {
+      ...combinedState,
+      combat: {
+        maxHp: this.calculateMaxHp(level, healthStat),
+        maxEnergy: this.calculateMaxEnergy(level, energyStat),
+        currentHp: this.calculateMaxHp(level, healthStat),
+        currentEnergy: this.calculateMaxEnergy(level, energyStat)
+      }
+    };
+  }
  
-  /** 
+  /**
    * Получение профиля персонажа
    * @param {number} userId - ID пользователя
    * @returns {Promise<Object>} - Профиль персонажа
