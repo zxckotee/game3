@@ -614,6 +614,112 @@ class CharacterStatsService {
       }
     };
   }
+
+  /**
+   * Форматирует эффекты техник из PvP в формат, совместимый с системой характеристик
+   * @param {Array} participantEffects - Массив эффектов от техник из participant.effects
+   * @returns {Array} Отформатированные эффекты
+   */
+  static formatTechniqueEffectsForStats(participantEffects) {
+    if (!Array.isArray(participantEffects)) {
+      return [];
+    }
+
+    return participantEffects
+      .filter(effect => {
+        // Фильтруем только эффекты, которые влияют на характеристики
+        return effect.effect_details_json &&
+               effect.effect_details_json.target_attribute &&
+               effect.effect_type !== 'instant'; // Исключаем мгновенные эффекты
+      })
+      .map(effect => ({
+        effect_details_json: effect.effect_details_json,
+        effect_type: effect.effect_type || 'technique',
+        name: effect.name || 'Эффект техники',
+        source: effect.source || 'technique'
+      }));
+  }
+
+  /**
+   * Получает полное боевое состояние персонажа для PvP с учетом эффектов техник
+   * @param {number} userId - ID пользователя
+   * @param {Array} participantEffects - Эффекты техник из participant.effects
+   * @param {Object} transaction - Транзакция Sequelize
+   * @returns {Promise<Object>} Боевое состояние персонажа с эффектами техник
+   */
+  static async getCombatCharacterStateForPvP(userId, participantEffects = [], transaction) {
+    // Получаем базовое состояние через унифицированную функцию
+    const baseState = await this.getCombinedCharacterState(userId, transaction);
+    
+    // Если нет эффектов техник, возвращаем базовое состояние с боевыми параметрами
+    if (!participantEffects || participantEffects.length === 0) {
+      const level = baseState.modified.level || 1;
+      const healthStat = baseState.modified.health || 10;
+      const energyStat = baseState.modified.energy || 50;
+      
+      return {
+        ...baseState,
+        techniqueEffects: [],
+        combat: {
+          maxHp: this.calculateMaxHp(level, healthStat),
+          maxEnergy: this.calculateMaxEnergy(level, energyStat),
+          currentHp: this.calculateMaxHp(level, healthStat),
+          currentEnergy: this.calculateMaxEnergy(level, energyStat)
+        }
+      };
+    }
+
+    // Форматируем эффекты техник
+    const techniqueEffects = this.formatTechniqueEffectsForStats(participantEffects);
+    
+    if (techniqueEffects.length === 0) {
+      // Если после фильтрации не осталось эффектов, возвращаем базовое состояние
+      const level = baseState.modified.level || 1;
+      const healthStat = baseState.modified.health || 10;
+      const energyStat = baseState.modified.energy || 50;
+      
+      return {
+        ...baseState,
+        techniqueEffects: [],
+        combat: {
+          maxHp: this.calculateMaxHp(level, healthStat),
+          maxEnergy: this.calculateMaxEnergy(level, energyStat),
+          currentHp: this.calculateMaxHp(level, healthStat),
+          currentEnergy: this.calculateMaxEnergy(level, energyStat)
+        }
+      };
+    }
+
+    // Разделяем эффекты техник на первичные и вторичные
+    const separatedTechniqueEffects = this.separateEquipmentEffects(techniqueEffects);
+    
+    // Применяем эффекты техник к первичным характеристикам
+    const modifiedWithTechniques = this.applyEffectsToStats(baseState.modified, separatedTechniqueEffects.primary);
+    
+    // Пересчитываем вторичные характеристики с учетом модифицированных первичных
+    const baseSecondaryWithTechniques = this.calculateSecondaryStats(modifiedWithTechniques, modifiedWithTechniques);
+    
+    // Применяем эффекты техник к вторичным характеристикам
+    const finalSecondaryWithTechniques = this.applyEffectsToStats(baseSecondaryWithTechniques, separatedTechniqueEffects.secondary);
+    
+    // Рассчитываем боевые параметры
+    const level = modifiedWithTechniques.level || 1;
+    const healthStat = modifiedWithTechniques.health || 10;
+    const energyStat = modifiedWithTechniques.energy || 50;
+
+    return {
+      ...baseState,
+      modified: modifiedWithTechniques,
+      secondary: finalSecondaryWithTechniques,
+      techniqueEffects: techniqueEffects,
+      combat: {
+        maxHp: this.calculateMaxHp(level, healthStat),
+        maxEnergy: this.calculateMaxEnergy(level, energyStat),
+        currentHp: this.calculateMaxHp(level, healthStat),
+        currentEnergy: this.calculateMaxEnergy(level, energyStat)
+      }
+    };
+  }
  
   /**
    * Получение профиля персонажа

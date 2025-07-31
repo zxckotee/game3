@@ -1354,128 +1354,33 @@ class PvPService {
    */
   static async getPlayerFullStats(userId, participant = null) {
     try {
-      console.log(`[PvP] Получение полных характеристик для пользователя ${userId}`);
+      console.log(`[PvP] Получение полных характеристик для пользователя ${userId} через унифицированную функцию`);
       
-      // 1. Получаем базовые характеристики персонажа
-      const baseStats = await CharacterStatsService.getCharacterStats(userId);
-      console.log(`[PvP] Базовые характеристики:`, baseStats);
+      // Используем унифицированную функцию из CharacterStatsService
+      const participantEffects = participant?.effects || [];
+      const result = await CharacterStatsService.getCombatCharacterStateForPvP(userId, participantEffects);
       
-      // 2. Получаем эффекты экипировки
-      const equipmentEffects = await this.getEquipmentEffects(userId);
-      console.log(`[PvP] Эффекты экипировки (${equipmentEffects.length}):`, equipmentEffects);
+      console.log(`[PvP] Получены характеристики через унифицированную функцию:`, {
+        base: Object.keys(result.base || {}),
+        modified: Object.keys(result.modified || {}),
+        secondary: Object.keys(result.secondary || {}),
+        techniqueEffects: result.techniqueEffects?.length || 0,
+        equipmentEffects: result.equipmentEffects?.length || 0
+      });
       
-      // 3. Преобразуем эффекты экипировки в формат, совместимый с CharacterStatsService
-      const formattedEquipmentEffects = equipmentEffects.map(effect => ({
-        effect_details_json: {
-          target_attribute: this.mapTargetToAttribute(effect.target),
-          value: parseFloat(effect.value),
-          value_type: effect.operation === 'add' ? 'absolute' : 'percentage',
-          original_description: `${effect.type}: ${effect.target} ${effect.operation || 'boost'} ${effect.value}`
-        },
-        effect_type: 'equipment',
-        name: `${effect.sourceItemName} - ${effect.type}`,
-        source: effect.sourceItem
-      }));
-      
-      // 4. Получаем активные эффекты от техник (если передан participant)
-      let formattedTechniqueEffects = [];
-      if (participant && participant.effects && Array.isArray(participant.effects)) {
-        console.log(`[PvP] Найдено ${participant.effects.length} активных эффектов от техник`);
-        
-        formattedTechniqueEffects = participant.effects
-          .filter(effect => {
-            // Фильтруем только эффекты, которые влияют на характеристики
-            return effect.effect_details_json &&
-                   effect.effect_details_json.target_attribute &&
-                   effect.effect_type !== 'instant'; // Исключаем мгновенные эффекты
-          })
-          .map(effect => ({
-            effect_details_json: effect.effect_details_json,
-            effect_type: effect.effect_type || 'technique',
-            name: effect.name || 'Эффект техники',
-            source: effect.source || 'technique'
-          }));
-          
-        console.log(`[PvP] Эффекты от техник для применения (${formattedTechniqueEffects.length}):`, formattedTechniqueEffects);
-      }
-      
-      // 5. Объединяем все эффекты
-      const allEffects = [...formattedEquipmentEffects, ...formattedTechniqueEffects];
-      console.log(`[PvP] Всего эффектов для применения: ${allEffects.length}`);
-      
-      // 6. Применяем все эффекты к базовым характеристикам
-      const modifiedStats = CharacterStatsService.applyEffectsToStats(baseStats, allEffects);
-      console.log(`[PvP] Модифицированные характеристики:`, modifiedStats);
-      
-      // 7. Рассчитываем вторичные характеристики (атака, защита и т.д.)
-      const secondaryStats = CharacterStatsService.calculateSecondaryStats(modifiedStats, modifiedStats);
-      console.log(`[PvP] Вторичные характеристики:`, secondaryStats);
-      
-      // 8. Возвращаем полный набор характеристик
+      // Возвращаем результат в совместимом формате
       return {
-        base: baseStats,
-        modified: modifiedStats,
-        secondary: secondaryStats,
-        equipmentEffects: equipmentEffects,
-        techniqueEffects: formattedTechniqueEffects,
-        allEffects: allEffects
+        base: result.base,
+        modified: result.modified,
+        secondary: result.secondary,
+        equipmentEffects: result.equipmentEffects || [],
+        techniqueEffects: result.techniqueEffects || [],
+        allEffects: [...(result.equipmentEffects || []), ...(result.techniqueEffects || [])]
       };
     } catch (error) {
       console.error(`[PvP] Ошибка при получении полных характеристик для пользователя ${userId}:`, error);
       throw error;
     }
-  }
-
-  /**
-   * Маппинг целей эффектов экипировки и техник на атрибуты характеристик
-   * @param {string} target - Цель эффекта из БД
-   * @returns {string} - Атрибут характеристики
-   */
-  static mapTargetToAttribute(target) {
-    const mapping = {
-      // Основные характеристики
-      'strength': 'strength',
-      'intellect': 'intellect',
-      'intelligence': 'intellect',
-      'spirit': 'spirit',
-      'agility': 'agility',
-      'dexterity': 'agility',
-      'health': 'health',
-      'perception': 'intellect',
-      'stamina': 'health',
-      'qi_control': 'spirit',
-      
-      // Боевые характеристики
-      'physicalAttack': 'physicalAttack',
-      'physicalDamage': 'physicalAttack',
-      'spiritualAttack': 'spiritualAttack',
-      'spiritualDamage': 'spiritualAttack',
-      'physicalDefense': 'physicalDefense',
-      'spiritualDefense': 'spiritualDefense',
-      'critChance': 'criticalChance',
-      'criticalChance': 'criticalChance',
-      'dodgeChance': 'luck',
-      'attackSpeed': 'attackSpeed',
-      'movementSpeed': 'movementSpeed',
-      'luck': 'luck',
-      
-      // Элементальные эффекты (пока как бонусы к атаке)
-      'fire': 'spiritualAttack',
-      'water': 'spiritualAttack',
-      'earth': 'physicalAttack',
-      'air': 'agility',
-      
-      // Дополнительные маппинги для эффектов техник
-      'all_stats': 'strength', // Будет обрабатываться отдельно
-      'damage': 'physicalAttack',
-      'defense': 'physicalDefense',
-      'speed': 'agility',
-      'energy': 'spirit',
-      'hp': 'health',
-      'mana': 'spirit'
-    };
-    
-    return mapping[target] || target;
   }
 
   /**
