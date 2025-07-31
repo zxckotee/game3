@@ -501,7 +501,7 @@ class InventoryService {
           quantity: item.quantity,
           equipped: item.equipped,
           ...item.stats // Используем stats вместо properties
-        }));
+        })); 
       } else {
         // На сервере используем базу данных
         // Получаем модель через registry для избежания конфликтов инициализации

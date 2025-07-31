@@ -329,6 +329,9 @@ class CharacterStatsService {
    */
   static applyEffectsToStats(baseStats, activeEffects) {
     const modifiedState = { ...baseStats };
+    let appliedEffectsCount = 0;
+
+    console.log(`[Stats] Применение ${activeEffects.length} эффектов к характеристикам`);
 
     for (const effect of activeEffects) {
       // Эффекты из pvp-service могут иметь другую структуру, адаптируем их
@@ -349,6 +352,7 @@ class CharacterStatsService {
                   continue;
               }
 
+              const oldValue = modifiedState[targetAttribute];
               if (isPercentage) {
                   const baseValue = parseFloat(baseStats[targetAttribute]);
                   if (!isNaN(baseValue)) {
@@ -357,25 +361,37 @@ class CharacterStatsService {
               } else {
                   modifiedState[targetAttribute] += value;
               }
+              
+              console.log(`[Stats] PvP эффект: ${targetAttribute} ${oldValue} → ${modifiedState[targetAttribute]} (${isPercentage ? value + '%' : '+' + value})`);
+              appliedEffectsCount++;
           }
-      } else { // Старая структура из ActivePlayerEffect
+      } else { // Структура из ActivePlayerEffect или эффектов экипировки
           const targetAttribute = details.target_attribute;
           const value = parseFloat(details.value);
           const valueType = details.value_type;
 
-          if (isNaN(value) || !targetAttribute || !modifiedState.hasOwnProperty(targetAttribute)) {
-              console.warn(`[Stats] Пропуск неверного эффекта из БД:`, details);
+          if (isNaN(value) || !targetAttribute) {
+              console.warn(`[Stats] Пропуск неверного эффекта:`, details);
               continue;
           }
+
+          // Если характеристика не существует в базовом состоянии, инициализируем её нулём
+          if (!modifiedState.hasOwnProperty(targetAttribute)) {
+              console.log(`[Stats] Инициализация новой характеристики: ${targetAttribute} = 0`);
+              modifiedState[targetAttribute] = 0;
+          }
           
+          const oldValue = modifiedState[targetAttribute];
           if (valueType === 'percentage') {
-              const baseValue = parseFloat(baseStats[targetAttribute]);
-              if(!isNaN(baseValue)) {
-                  modifiedState[targetAttribute] += baseValue * (value / 100);
-              }
+              const baseValue = parseFloat(baseStats[targetAttribute]) || 0;
+              modifiedState[targetAttribute] += baseValue * (value / 100);
           } else { // 'absolute'
               modifiedState[targetAttribute] += value;
           }
+          
+          const effectSource = effect.source || effect.effect_type || 'unknown';
+          console.log(`[Stats] ${effectSource} эффект: ${targetAttribute} ${oldValue} → ${modifiedState[targetAttribute]} (${valueType === 'percentage' ? value + '%' : '+' + value})`);
+          appliedEffectsCount++;
       }
     }
     
@@ -386,7 +402,107 @@ class CharacterStatsService {
       }
     }
 
+    console.log(`[Stats] Применено ${appliedEffectsCount} эффектов из ${activeEffects.length}`);
     return modifiedState;
+  }
+
+  /**
+   * Извлекает эффекты из экипированных предметов
+   * @param {Array} inventoryItems - Массив предметов инвентаря
+   * @returns {Array} - Массив эффектов экипировки
+   */
+  static extractEquipmentEffects(inventoryItems) {
+    if (!inventoryItems || !Array.isArray(inventoryItems)) {
+      console.warn('[CharacterStats] Инвентарь недоступен или не является массивом');
+      return [];
+    }
+
+    const equipmentEffects = [];
+    
+    // Фильтруем только экипированные предметы
+    const equippedItems = inventoryItems.filter(item => item.equipped === true);
+    
+    console.log(`[CharacterStats] Найдено ${equippedItems.length} экипированных предметов`);
+    
+    equippedItems.forEach(item => {
+      if (item.effects && Array.isArray(item.effects)) {
+        console.log(`[CharacterStats] Предмет ${item.name || item.id} имеет ${item.effects.length} эффектов`);
+        
+        item.effects.forEach(effect => {
+          if (effect && effect.target && effect.value !== undefined) {
+            equipmentEffects.push({
+              ...effect,
+              source: 'equipment',
+              itemId: item.id || item.item_id,
+              itemName: item.name
+            });
+          }
+        });
+      }
+    });
+    
+    console.log(`[CharacterStats] Извлечено ${equipmentEffects.length} эффектов экипировки`);
+    return equipmentEffects;
+  }
+
+  /**
+   * Преобразует эффекты экипировки в формат, совместимый с applyEffectsToStats
+   * @param {Array} equipmentEffects - Массив эффектов экипировки
+   * @returns {Array} - Массив эффектов в формате applyEffectsToStats
+   */
+  static convertEquipmentEffectsToStatsFormat(equipmentEffects) {
+    if (!equipmentEffects || !Array.isArray(equipmentEffects)) {
+      return [];
+    }
+
+    // Маппинг названий характеристик из эффектов экипировки в названия характеристик системы
+    const targetMapping = {
+      // Базовые характеристики
+      'strength': 'strength',
+      'intellect': 'intellect',
+      'intelligence': 'intellect', // альтернативное название
+      'spirit': 'spirit',
+      'agility': 'agility',
+      'dexterity': 'agility', // альтернативное название
+      'health': 'health',
+      'vitality': 'health', // альтернативное название
+      'luck': 'luck',
+      
+      // Вторичные характеристики
+      'physicalDamage': 'physicalAttack',
+      'physicalAttack': 'physicalAttack',
+      'physicalDefense': 'physicalDefense',
+      'physicalDefence': 'physicalDefense', // альтернативное написание
+      'spiritualAttack': 'spiritualAttack',
+      'spiritualDefense': 'spiritualDefense',
+      'spiritualDefence': 'spiritualDefense', // альтернативное написание
+      'magicDamage': 'spiritualAttack', // альтернативное название
+      'magicDefense': 'spiritualDefense', // альтернативное название
+      'attackSpeed': 'attackSpeed',
+      'criticalChance': 'criticalChance',
+      'critChance': 'criticalChance', // альтернативное название
+      'movementSpeed': 'movementSpeed'
+    };
+
+    return equipmentEffects.map(effect => {
+      const mappedTarget = targetMapping[effect.target] || effect.target;
+      
+      return {
+        effect_details_json: {
+          target_attribute: mappedTarget,
+          value: parseFloat(effect.value) || 0,
+          value_type: effect.operation === 'percentage' ? 'percentage' : 'absolute'
+        },
+        effect_type: 'equipment', // Помечаем как эффект экипировки
+        source: effect.source || 'equipment',
+        itemId: effect.itemId,
+        itemName: effect.itemName
+      };
+    }).filter(effect => {
+      // Фильтруем эффекты с корректными данными
+      const details = effect.effect_details_json;
+      return details.target_attribute && !isNaN(details.value);
+    });
   }
 
   /**
@@ -399,26 +515,40 @@ class CharacterStatsService {
     try {
       const ActivePlayerEffect = getModel('ActivePlayerEffect');
 
-      // 1. Параллельная загрузка данных
-      const [baseStats, cultivationProgress, activeEffects] = await Promise.all([
+      // 1. Параллельная загрузка данных (включая инвентарь для эффектов экипировки)
+      const [baseStats, cultivationProgress, activeEffects, inventoryItems] = await Promise.all([
         this.getCharacterStats(userId, transaction),
         require('./cultivation-service').getCultivationProgress(userId, transaction),
-        ActivePlayerEffect.findAll({ where: { user_id: userId }, transaction })
+        ActivePlayerEffect.findAll({ where: { user_id: userId }, transaction }),
+        require('./inventory-service').getInventoryItems(userId)
       ]);
+
+      console.log(`[CharacterStats] Загружены данные для пользователя ${userId}: базовые характеристики, культивация, ${activeEffects.length} активных эффектов, ${inventoryItems.length} предметов инвентаря`);
 
       // 2. Создание базового состояния
       const baseState = { ...baseStats, ...cultivationProgress };
 
-      // 3. Применение эффектов с помощью новой централизованной функции
+      // 3. Применение активных эффектов к базовым характеристикам
       const modifiedState = this.applyEffectsToStats(baseState, activeEffects);
       
-      // 4. Расчет вторичных характеристик
-      const secondaryStats = this.calculateSecondaryStats(modifiedState, modifiedState);
-      // 5. Возврат результата
+      // 4. Расчет вторичных характеристик на основе модифицированных базовых характеристик
+      const baseSecondaryStats = this.calculateSecondaryStats(modifiedState, modifiedState);
+      
+      // 5. НОВАЯ ЛОГИКА: Получение и применение эффектов экипировки к вторичным характеристикам
+      const equipmentEffects = this.extractEquipmentEffects(inventoryItems);
+      const formattedEquipmentEffects = this.convertEquipmentEffectsToStatsFormat(equipmentEffects);
+      
+      // 6. Применение эффектов экипировки к вторичным характеристикам
+      const finalSecondaryStats = this.applyEffectsToStats(baseSecondaryStats, formattedEquipmentEffects);
+      
+      console.log(`[CharacterStats] Применено ${formattedEquipmentEffects.length} эффектов экипировки к вторичным характеристикам`);
+      
+      // 7. Возврат результата с информацией об эффектах экипировки
       return {
         base: baseState,
         modified: modifiedState,
-        secondary: secondaryStats
+        secondary: finalSecondaryStats,
+        equipmentEffects: equipmentEffects // Добавляем информацию об эффектах экипировки для отладки
       };
 
     } catch (error) {
@@ -429,12 +559,13 @@ class CharacterStatsService {
       return {
         base: { ...baseStats, ...cultivationProgress },
         modified: { ...baseStats, ...cultivationProgress },
-        secondary: this.calculateSecondaryStats(baseStats, cultivationProgress)
+        secondary: this.calculateSecondaryStats(baseStats, cultivationProgress),
+        equipmentEffects: []
       };
     }
   }
  
-  /**
+  /** 
    * Получение профиля персонажа
    * @param {number} userId - ID пользователя
    * @returns {Promise<Object>} - Профиль персонажа
