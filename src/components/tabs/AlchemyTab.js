@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import alchemyService from '../../services/alchemy-service-adapter';
 
 // Анимации
@@ -780,11 +780,11 @@ const ProgressBar = styled.div`
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
   }
   
-  ${props => props.progress > 0 && `
+  ${props => props.progress > 0 && css`
     box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
   `}
   
-  ${props => props.progress >= 100 && `
+  ${props => props.progress >= 100 && css`
     animation: ${pulse} 1s infinite;
     box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
   `}
