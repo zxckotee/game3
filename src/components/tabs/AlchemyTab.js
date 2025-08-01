@@ -793,38 +793,8 @@ const ProgressBar = styled.div`
 /**
  * Компонент вкладки "Алхимия"
  */
-// Словарь с русскими переводами ингредиентов
-const ingredientTranslations = {
-  'herb_qigathering': 'Трава сбора ци',
-  'water_spirit': 'Духовная вода',
-  'mineral_dust': 'Минеральная пыль',
-  'herb_ironroot': 'Железный корень',
-  'beast_bone': 'Кость зверя',
-  'mineral_iron': 'Железная руда',
-  'herb_clearflow': 'Трава чистого потока',
-  'water_pure': 'Чистая вода',
-  'crystal_clear': 'Прозрачный кристалл',
-  'herb_spiritbloom': 'Цветок духа',
-  'essence_concentration': 'Эссенция концентрации',
-  'crystal_mind': 'Кристалл разума',
-  'herb_goldensage': 'Золотой шалфей',
-  'essence_purity': 'Эссенция чистоты',
-  'crystal_formation': 'Кристалл формирования',
-  'metal_celestial': 'Небесный металл',
-  'herb_soulwhisper': 'Трава шепота души',
-  'essence_enlightenment': 'Эссенция просветления',
-  'crystal_soul': 'Кристалл души',
-  'dust_stardust': 'Звездная пыль',
-  'paper_talisman': 'Бумага для талисмана',
-  'ink_basic': 'Базовые чернила',
-  'essence_reflection': 'Эссенция отражения',
-  'ink_fire': 'Огненные чернила',
-  'feather_phoenix': 'Перо феникса',
-  'metal_heavenly': 'Небесный металл высшего качества',
-  'essence_heaven': 'Эссенция небес',
-  'crystal_star': 'Звездный кристалл',
-  'spirit_ancient': 'Древний дух'
-};
+// Переводы ингредиентов теперь получаются динамически с сервера
+// Убрана зависимость от статических данных
 
 // Таблица соответствия идентификаторов в инвентаре и рецептах
 const idMappings = {
@@ -850,17 +820,14 @@ const normalizeItemId = (id) => {
 
 // Функция для получения русского названия ингредиента
 const getIngredientRussianName = (itemId, fallbackName) => {
-  // Проверяем наличие перевода в словаре
-  if (itemId && ingredientTranslations[itemId]) {
-    return ingredientTranslations[itemId];
-  }
+  // Убрана зависимость от статических переводов - используем только данные с сервера
   
-  // Если перевода нет, используем переданное имя или генерируем из itemId
+  // Используем переданное имя с сервера как приоритетное
   if (fallbackName) {
     return fallbackName;
   }
   
-  // Если нет ни перевода, ни fallbackName, генерируем читаемое имя из itemId
+  // Если нет имени с сервера, генерируем читаемое имя из itemId
   if (itemId) {
     return itemId
       .split('_')
@@ -951,7 +918,7 @@ const AlchemyTab = () => {
             
             // Логируем предметы инвентаря с похожими ID для отладки
             const similarItems = player.inventory.items.filter(item => {
-              const normalizedItemId = normalizeItemId(item.itemId);
+              const normalizedItemId = normalizeItemId(item.item_id || item.itemId || item.id);
               const normalizedSearchId = normalizeItemId(itemId);
               return normalizedItemId.includes(normalizedSearchId) ||
                      normalizedSearchId.includes(normalizedItemId);
@@ -959,7 +926,7 @@ const AlchemyTab = () => {
             
             if (similarItems.length > 0) {
               console.log("Похожие предметы в инвентаре:",
-                similarItems.map(item => `${item.name} (ID: ${item.itemId}, тип: ${item.type}, кол-во: ${item.quantity})`)
+                similarItems.map(item => `${item.name} (ID: ${item.item_id || item.itemId || item.id}, тип: ${item.type}, кол-во: ${item.quantity})`)
               );
             }
             
@@ -997,7 +964,7 @@ const AlchemyTab = () => {
       const ingredientTypeItems = player.inventory.items.filter(item => item.type === 'ingredient');
       if (ingredientTypeItems.length > 0) {
         console.log("Предметы с типом 'ingredient' в инвентаре:",
-          ingredientTypeItems.map(item => `${item.name} (ID: ${item.itemId}, кол-во: ${item.quantity})`)
+          ingredientTypeItems.map(item => `${item.name} (ID: ${item.item_id || item.itemId || item.id}, кол-во: ${item.quantity})`)
         );
       }
       
@@ -1130,7 +1097,7 @@ useEffect(() => {
     // Логируем все предметы инвентаря для отладки
     console.log('ПОЛНЫЙ ИНВЕНТАРЬ:');
     player.inventory.items.forEach(item => {
-      console.log(`- ${item.name}, ID: ${item.itemId}, тип: ${item.type}, количество: ${item.quantity}`);
+      console.log(`- ${item.name}, ID: ${item.item_id || item.itemId || item.id}, тип: ${item.type}, количество: ${item.quantity}`);
     });
     
     // НОВЫЙ ПОДХОД: Используем доступность ингредиентов, определенную при выборе рецепта
@@ -1155,13 +1122,13 @@ useEffect(() => {
       
       // Сначала ищем по точному совпадению ID
       const exactMatches = player.inventory.items.filter(item => {
-        const normalizedItemId = normalizeItemId(item.itemId);
-        return normalizedItemId === normalizedIngredientId || item.itemId === ingredient.id;
+        const normalizedItemId = normalizeItemId(item.item_id || item.itemId || item.id);
+        return normalizedItemId === normalizedIngredientId || (item.item_id || item.itemId || item.id) === ingredient.id;
       });
       
       if (exactMatches.length > 0) {
         console.log(`Найдены точные совпадения (${exactMatches.length}):`,
-          exactMatches.map(item => `${item.name} (ID: ${item.itemId}, тип: ${item.type}, кол-во: ${item.quantity})`)
+          exactMatches.map(item => `${item.name} (ID: ${item.item_id || item.itemId || item.id}, тип: ${item.type}, кол-во: ${item.quantity})`)
         );
         // Используем первый найденный предмет
         inventoryItem = exactMatches[0];
@@ -1170,7 +1137,7 @@ useEffect(() => {
       // 2. Простой поиск по ID (точное совпадение)
       if (!inventoryItem) {
         inventoryItem = player.inventory.items.find(item => {
-          const normalizedItemId = normalizeItemId(item.itemId);
+          const normalizedItemId = normalizeItemId(item.item_id || item.itemId || item.id);
           // ИЗМЕНЕНО: убрана проверка типа, только сравнение ID
           return normalizedItemId === normalizedIngredientId;
         });
@@ -1183,7 +1150,7 @@ useEffect(() => {
       // 3. Частичное совпадение по ID
       if (!inventoryItem) {
         inventoryItem = player.inventory.items.find(item => {
-          const normalizedItemId = normalizeItemId(item.itemId);
+          const normalizedItemId = normalizeItemId(item.item_id || item.itemId || item.id);
           return normalizedItemId && normalizedIngredientId &&
                  (normalizedItemId.includes(normalizedIngredientId) ||
                   normalizedIngredientId.includes(normalizedItemId));
@@ -1217,10 +1184,10 @@ useEffect(() => {
         const possibleMatches = player.inventory.items.filter(item =>
           // Проверяем только ID и количество, полностью игнорируя тип
           item.quantity >= ingredient.quantity && (
-            normalizeItemId(item.itemId) === normalizedIngredientId ||
-            item.itemId === ingredient.id ||
-            (normalizeItemId(item.itemId).includes(normalizedIngredientId.slice(0, 3)) ||
-             normalizedIngredientId.includes(normalizeItemId(item.itemId).slice(0, 3)) ||
+            normalizeItemId(item.item_id || item.itemId || item.id) === normalizedIngredientId ||
+            (item.item_id || item.itemId || item.id) === ingredient.id ||
+            (normalizeItemId(item.item_id || item.itemId || item.id).includes(normalizedIngredientId.slice(0, 3)) ||
+             normalizedIngredientId.includes(normalizeItemId(item.item_id || item.itemId || item.id).slice(0, 3)) ||
              item.name.toLowerCase().includes(ingredient.name.toLowerCase()) ||
              ingredient.name.toLowerCase().includes(item.name.toLowerCase()))
           )
@@ -1228,7 +1195,7 @@ useEffect(() => {
         
         if (possibleMatches.length > 0) {
           console.log(`Найдены аварийные совпадения (${possibleMatches.length}):`,
-            possibleMatches.map(item => `${item.name} (ID: ${item.itemId}, кол-во: ${item.quantity})`)
+            possibleMatches.map(item => `${item.name} (ID: ${item.item_id || item.itemId || item.id}, кол-во: ${item.quantity})`)
           );
           inventoryItem = possibleMatches[0];
           console.log(`Используем: ${inventoryItem.name} (кол-во: ${inventoryItem.quantity})`);
@@ -1265,15 +1232,15 @@ useEffect(() => {
     // Логируем предметы в инвентаре с их типами для отладки
     console.log("Предметы в инвентаре (с типами):");
     const inventoryIds = player.inventory.items.map(item => {
-      const normalizedItemId = normalizeItemId(item.itemId);
-      console.log(`- ${item.name}: itemId="${item.itemId}", тип="${item.type}", нормализованный="${normalizedItemId}"`);
-      return { original: item.itemId, normalized: normalizedItemId, type: item.type };
+      const normalizedItemId = normalizeItemId(item.item_id || item.itemId || item.id);
+      console.log(`- ${item.name}: itemId="${item.item_id || item.itemId || item.id}", тип="${item.type}", нормализованный="${normalizedItemId}"`);
+      return { original: item.item_id || item.itemId || item.id, normalized: normalizedItemId, type: item.type };
     });
     
     // Пробуем несколько вариантов поиска
     // Добавляем явную проверку типа, чтобы как "ingredient", так и "consumable" считались подходящими
     let inventoryItem = player.inventory.items.find(item => {
-      const normalizedItemId = normalizeItemId(item.itemId);
+      const normalizedItemId = normalizeItemId(item.item_id || item.itemId || item.id);
       // Теперь явно сравниваем ID и проверяем совместимость типов
       return normalizedItemId === normalizedIngredientId;
     });
@@ -1281,14 +1248,14 @@ useEffect(() => {
     console.log(`Результат начального поиска для ${ingredientId}: ${inventoryItem ? 'найден' : 'не найден'}`);
     console.log(`Предметы инвентаря с типом ingredient или consumable:`,
       player.inventory.items
-        .filter(item => item.type === 'ingredient' || item.type === 'consumable')
-        .map(item => `${item.name} (ID: ${item.itemId}, тип: ${item.type}, кол-во: ${item.quantity})`)
+        //.filter(item => item.type === 'ingredient' || item.type === 'consumable' || item.type === 'resource')
+        .map(item => `${item.name} (ID: ${item.item_id || item.itemId || item.id}, тип: ${item.type}, кол-во: ${item.quantity})`)
     );
     
     // Если не нашли точное совпадение, пробуем частичное
     if (!inventoryItem) {
       inventoryItem = player.inventory.items.find(item => {
-        const normalizedItemId = normalizeItemId(item.itemId);
+        const normalizedItemId = normalizeItemId(item.item_id || item.itemId || item.id);
         return (normalizedItemId && normalizedIngredientId &&
                 (normalizedItemId.includes(normalizedIngredientId) ||
                  normalizedIngredientId.includes(normalizedItemId)));
@@ -1308,12 +1275,12 @@ useEffect(() => {
       // Ищем все предметы, которые могут соответствовать этому ингредиенту
       const possibleMatches = player.inventory.items.filter(item => {
         // Проверяем все возможные форматы ID
-        const itemNormalizedId = normalizeItemId(item.itemId);
+        const itemNormalizedId = normalizeItemId(item.item_id || item.itemId || item.id);
         const ingredientNormalizedId = normalizedIngredientId;
         
         // Проверяем строковое соответствие, частичное соответствие, и содержание
         return itemNormalizedId === ingredientNormalizedId ||
-               item.itemId === ingredientId ||
+               (item.item_id || item.itemId || item.id) === ingredientId ||
                (itemNormalizedId && ingredientNormalizedId &&
                 (itemNormalizedId.includes(ingredientNormalizedId) ||
                  ingredientNormalizedId.includes(itemNormalizedId)));
@@ -1322,7 +1289,7 @@ useEffect(() => {
       // Если нашли возможные совпадения, логируем их и берем первое
       if (possibleMatches.length > 0) {
         console.log(`Найдены возможные совпадения (${possibleMatches.length}):`,
-                   possibleMatches.map(item => `${item.name} (${item.itemId}, тип: ${item.type})`));
+                   possibleMatches.map(item => `${item.name} (${item.item_id || item.itemId || item.id}, тип: ${item.type})`));
         inventoryItem = possibleMatches[0];
       }
     }
@@ -1335,13 +1302,13 @@ useEffect(() => {
       // НОВАЯ ЛОГИКА: Проверяем предметы с типом "ingredient" и похожим ID
       const ingredientTypeItems = player.inventory.items.filter(item =>
         item.type === 'ingredient' &&
-        (normalizeItemId(item.itemId).includes(normalizedIngredientId) ||
-         normalizedIngredientId.includes(normalizeItemId(item.itemId)))
+        (normalizeItemId(item.item_id || item.itemId || item.id).includes(normalizedIngredientId) ||
+         normalizedIngredientId.includes(normalizeItemId(item.item_id || item.itemId || item.id)))
       );
       
       if (ingredientTypeItems.length > 0) {
         console.log(`Найдены предметы с типом "ingredient" и похожим ID:`,
-          ingredientTypeItems.map(item => `${item.name} (${item.itemId}), количество: ${item.quantity}`)
+          ingredientTypeItems.map(item => `${item.name} (${item.item_id || item.itemId || item.id}), количество: ${item.quantity}`)
         );
         // Используем первый найденный предмет с типом "ingredient"
         inventoryItem = ingredientTypeItems[0];
@@ -1421,7 +1388,7 @@ useEffect(() => {
       
       console.log(`Вызов API создания предмета: userId=${userId}, recipeId=${selectedRecipe.id}`);
       console.log("КЛИЕНТ: Состояние инвентаря до крафта:",
-        player.inventory.items.map(item => `${item.name} (ID: ${item.itemId}): ${item.quantity}`));
+        player.inventory.items.map(item => `${item.name} (ID: ${item.item_id || item.itemId || item.id}): ${item.quantity}`));
       console.log("КЛИЕНТ: Используемые ингредиенты:", selectedRecipe.ingredients);
       
       // Вызов API для создания предмета
@@ -1455,7 +1422,7 @@ useEffect(() => {
         }
         
         console.log("КЛИЕНТ: Состояние инвентаря после крафта:",
-          player.inventory.items.map(item => `${item.name} (ID: ${item.itemId}): ${item.quantity}`));
+          player.inventory.items.map(item => `${item.name} (ID: ${item.item_id || item.itemId || item.id}): ${item.quantity}`));
         
         // Сразу сбрасываем выбранный рецепт
         setSelectedRecipe(null);
@@ -1734,6 +1701,7 @@ useEffect(() => {
                         <QuantityBadge enough={hasEnough}>
                           {inventoryQuantity}/{ingredient.quantity}
                         </QuantityBadge>
+                         
                       </IngredientQuantity>
                     </IngredientItem>
                     );
