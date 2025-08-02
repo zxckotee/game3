@@ -1109,7 +1109,7 @@ function GamePage() {
             active={activeTab === 'alchemy'}
             onClick={() => setActiveTab('alchemy')}
           >
-            Алхимия
+            Ремесло
           </MenuItem>
           <MenuItem 
             active={activeTab === 'social'}

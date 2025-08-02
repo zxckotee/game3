@@ -1531,7 +1531,7 @@ useEffect(() => {
   return (
     <TabContainer>
       <TabHeader>
-        <TabTitle>Алхимия и создание предметов</TabTitle>
+        <TabTitle>Ремесло и создание предметов</TabTitle>
       </TabHeader>
       
       <TabMenu>
