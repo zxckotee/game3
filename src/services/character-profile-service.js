@@ -111,7 +111,7 @@ class CharacterProfileService {
         // На сервере используем базу данных
         // Проверяем, есть ли запись о профиле для пользователя
         let profile = await CharacterProfile.findOne({
-          where: { user_id: userId } 
+          where: { userId: userId }
         });
 
         // Если записи нет, возвращаем null (персонаж не создан)
@@ -230,7 +230,7 @@ class CharacterProfileService {
         // На сервере используем базу данных
         // Получаем текущий профиль персонажа
         let profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { userId: userId }
         });
         
         // Если записи нет, создаем новую
@@ -241,7 +241,7 @@ class CharacterProfileService {
           }
           
           profile = await CharacterProfile.create({
-            user_id: userId,
+            userId: userId,
             name: data.name,
             gender: data.gender || 'male',
             region: data.region || 'central',
@@ -287,7 +287,7 @@ class CharacterProfileService {
         
         // Получаем обновленный профиль
         profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { userId: userId }
         });
         
         // Преобразуем данные для клиента
@@ -330,7 +330,7 @@ class CharacterProfileService {
         // На сервере используем базу данных
         // Проверяем, есть ли запись о профиле для пользователя
         const profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { userId: userId }
         });
         
         return !!profile;
@@ -362,7 +362,7 @@ class CharacterProfileService {
         if (currency.gold !== undefined) profile.gold = (profile.gold || 0) + currency.gold;
         if (currency.silver !== undefined) profile.silver = (profile.silver || 0) + currency.silver;
         if (currency.copper !== undefined) profile.copper = (profile.copper || 0) + currency.copper;
-        if (currency.spirit_stones !== undefined) profile.spiritStones = (profile.spirit_stones || 0) + currency.spirit_stones;
+        if (currency.spiritStones !== undefined) profile.spiritStones = (profile.spiritStones || 0) + currency.spiritStones;
 
         
         // Возвращаем обновленную валюту
@@ -376,7 +376,7 @@ class CharacterProfileService {
         // На сервере используем базу данных
         // Получаем текущий профиль персонажа
         let profile = await CharacterProfile.findOne({
-          where: { user_id: userId },
+          where: { userId: userId },
           transaction
         });
         
@@ -399,7 +399,7 @@ class CharacterProfileService {
           updateData.copper = Sequelize.literal(`copper + ${parseInt(currency.copper)}`);
         }
         if (currency.spiritStones !== undefined && currency.spiritStones !== 0) {
-          updateData.spiritStones = Sequelize.literal(`spirit_stones + ${parseInt(currency.spiritStones)}`);
+          updateData.spiritStones = Sequelize.literal(`spiritStones + ${parseInt(currency.spiritStones)}`);
         }
         console.log(currency);
         if (Object.keys(updateData).length > 0) {
@@ -408,7 +408,7 @@ class CharacterProfileService {
         
         // Получаем обновленный профиль
         profile = await CharacterProfile.findOne({
-          where: { user_id: userId },
+          where: { userId: userId },
           transaction
         });
         
@@ -417,7 +417,7 @@ class CharacterProfileService {
           gold: profile.gold,
           silver: profile.silver,
           copper: profile.copper,
-          spiritStones: profile.spirit_stones
+          spiritStones: profile.spiritStones
         };
       }
     } catch (error) {
@@ -452,7 +452,7 @@ class CharacterProfileService {
         // На сервере используем базу данных
         // Получаем текущий профиль персонажа
         let profile = await CharacterProfile.findOne({
-          where: { user_id: userId },
+          where: { userId: userId },
           transaction
         });
         
@@ -523,7 +523,7 @@ class CharacterProfileService {
    */
   static async addRelationshipEvent(userId, relationshipId, eventText) {
     try {
-      const profile = await CharacterProfile.findOne({ where: { user_id: userId } });
+      const profile = await CharacterProfile.findOne({ where: { userId: userId } });
 
       if (!profile) {
         throw new Error('Профиль персонажа не найден');
@@ -596,7 +596,7 @@ class CharacterProfileService {
       // 3. Получаем профиль персонажа
       console.log(`[DEBUG] Получение профиля для userId: ${userId}`);
       let profile = await CharacterProfile.findOne({
-        where: { user_id: userId }
+        where: { userId: userId }
       });
 
       if (!profile) {
@@ -663,7 +663,7 @@ class CharacterProfileService {
         relationships: relationships
       });
       profile = await CharacterProfile.findOne({
-        where: { user_id: userId }
+        where: { userId: userId }
       });
       
       console.log(`[DEBUG] Профиль обновлен через updateCharacterProfile с новыми relationships`, profile.dataValues.relationships);
@@ -738,7 +738,7 @@ class CharacterProfileService {
       }
 
       const profile = await CharacterProfile.create({
-        user_id: userId,
+        userId: userId,
         name: username, // Используем username как имя персонажа по умолчанию
         gender: 'male',
         region: 'central',
@@ -803,7 +803,7 @@ class CharacterProfileService {
       } else {
         // На сервере используем базу данных
         let profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { userId: userId }
         });
         
         if (!profile) {
@@ -817,7 +817,7 @@ class CharacterProfileService {
         
         // Получаем обновленный профиль
         profile = await CharacterProfile.findOne({
-          where: { user_id: userId }
+          where: { userId: userId }
         });
         
         // Возвращаем обновленный профиль
@@ -860,7 +860,7 @@ class CharacterProfileService {
       } else {
         // На сервере используем базу данных
         const profile = await CharacterProfile.findOne({
-          where: { user_id: userId },
+          where: { userId: userId },
           attributes: ['avatar']
         });
         

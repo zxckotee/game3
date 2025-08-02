@@ -194,15 +194,19 @@ exports.feedPet = async (req, res, next) => {
     
     if (foodItemId) {
       // Проверяем наличие еды в инвентаре
-      const inventoryItem = await Item.findOne({
-        where: {
-          id: foodItemId,
-          user_id: userId,
-          type: 'pet_food'
+      const inventoryItem = await sequelize.query(
+        `SELECT * FROM inventory_items
+         WHERE item_id = :foodItemId AND user_id = :userId AND item_type = 'pet_food'
+         LIMIT 1`,
+        {
+          replacements: { foodItemId, userId },
+          type: sequelize.QueryTypes.SELECT
         }
-      });
+      );
       
-      if (!inventoryItem || inventoryItem.quantity < 1) {
+      const inventoryRecord = inventoryItem && inventoryItem.length > 0 ? inventoryItem[0] : null;
+      
+      if (!inventoryRecord || inventoryRecord.quantity < 1) {
         return next(new ApiError('Указанная еда не найдена в инвентаре', 404));
       }
       
@@ -220,11 +224,23 @@ exports.feedPet = async (req, res, next) => {
       }
       
       // Уменьшаем количество еды в инвентаре
-      inventoryItem.quantity -= 1;
-      if (inventoryItem.quantity <= 0) {
-        await inventoryItem.destroy();
+      const newQuantity = inventoryRecord.quantity - 1;
+      if (newQuantity <= 0) {
+        await sequelize.query(
+          `DELETE FROM inventory_items WHERE id = :itemId`,
+          {
+            replacements: { itemId: inventoryRecord.id },
+            type: sequelize.QueryTypes.DELETE
+          }
+        );
       } else {
-        await inventoryItem.save();
+        await sequelize.query(
+          `UPDATE inventory_items SET quantity = :quantity WHERE id = :itemId`,
+          {
+            replacements: { quantity: newQuantity, itemId: inventoryRecord.id },
+            type: sequelize.QueryTypes.UPDATE
+          }
+        );
       }
     }
     
@@ -430,9 +446,9 @@ exports.getPetFood = async (req, res, next) => {
     
     // Получаем всю доступную еду для питомцев
     const petFood = await sequelize.query(
-      `SELECT spfi.*, i.quantity 
-       FROM spirit_pet_food_items spfi 
-       LEFT JOIN items i ON i.id = spfi.id AND i.user_id = :userId AND i.type = 'pet_food'
+      `SELECT spfi.*, ii.quantity
+       FROM spirit_pet_food_items spfi
+       LEFT JOIN inventory_items ii ON ii.item_id = spfi.id AND ii.user_id = :userId AND ii.item_type = 'pet_food'
        ORDER BY spfi.rarity, spfi.name`,
       {
         replacements: { userId },

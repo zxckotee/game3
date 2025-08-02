@@ -477,21 +477,20 @@ class SpiritPetService {
         return formattedFoodItems;
       }
       
-      // Получаем информацию о предметах в инвентаре пользователя
-      await InventoryItem.init();
-      const userInventory = await InventoryItem.findAll({
-        where: {
-          userId: parseInt(userId, 10), // Преобразуем userId в число
-          type: 'pet_food'  // Используем поле type из модели (маппится на item_type в БД)
+      // Получаем информацию о предметах в инвентаре пользователя через прямой SQL-запрос
+      const { sequelize } = require('../db');
+      const userInventory = await sequelize.query(
+        `SELECT * FROM inventory_items
+         WHERE user_id = :userId AND item_type = 'pet_food'`,
+        {
+          replacements: { userId: parseInt(userId, 10) },
+          type: sequelize.QueryTypes.SELECT
         }
-      });
-      
-      // Преобразуем результаты в простые объекты
-      const plainUserInventory = userInventory.map(item => item.get({ plain: true }));
+      );
       
       // Объединяем данные из каталога с инвентарем пользователя
       return formattedFoodItems.map(food => {
-        const inventoryItem = plainUserInventory.find(item => item.itemId === food.id);
+        const inventoryItem = userInventory.find(item => item.item_id === food.id);
         return {
           ...food,
           quantity: inventoryItem ? inventoryItem.quantity : 0
@@ -772,42 +771,17 @@ class SpiritPetService {
   }
 
   /**
-   * Обновить состояние всех питомцев пользователя (голод, лояльность и т.д.)
+   * Получить текущее состояние всех питомцев пользователя
    * @param {number} userId - ID пользователя
-   * @returns {Promise<Array>} - Массив обновленных питомцев
+   * @returns {Promise<Array>} - Массив питомцев пользователя
    */
   async updatePetsState(userId) {
     try {
+      // Просто возвращаем текущее состояние питомцев без автоматического уменьшения сытости
       const pets = await this.getPetsByUserId(userId);
-      const now = new Date();
-      
-      const updatedPets = [];
-      for (const pet of pets) {
-        // Рассчитываем время с последнего кормления в часах
-        const lastFed = new Date(pet.lastFed);
-        const hoursSinceLastFed = (now - lastFed) / (1000 * 60 * 60);
-        
-        // Уменьшаем голод на 5 за каждый час и округляем до целого числа, но не меньше 1
-        let hunger = Math.max(Math.round(Math.max(pet.hunger - hoursSinceLastFed * 5, 0)), 1);
-        
-        // Если питомец голоден, уменьшаем лояльность и округляем до целого числа, но не меньше 1
-        let loyalty = pet.loyalty;
-        if (hunger < 30) {
-          loyalty = Math.max(Math.round(Math.max(loyalty - hoursSinceLastFed * 2, 0)), 1);
-        }
-        
-        // Обновляем питомца, если изменились параметры
-        if (hunger !== pet.hunger || loyalty !== pet.loyalty) {
-          const updatedPet = await this.updatePet(pet.id, { hunger, loyalty });
-          updatedPets.push(updatedPet);
-        } else {
-          updatedPets.push(pet);
-        }
-      }
-      
-      return updatedPets;
+      return pets;
     } catch (error) {
-      console.error('Ошибка при обновлении состояния питомцев:', error);
+      console.error('Ошибка при получении состояния питомцев:', error);
       throw error;
     }
   }

@@ -8,10 +8,14 @@ class User extends Model {
       foreignKey: 'userId',
       as: 'cultivationProgress'
     });
-   User.hasOne(models.CharacterStats, {
-     foreignKey: 'user_id',
-     as: 'characterStats'
-   });
+    User.hasOne(models.CharacterStats, {
+      foreignKey: 'userId',
+      as: 'characterStats'
+    });
+    User.hasOne(models.CharacterProfile, {
+      foreignKey: 'userId',
+      as: 'characterProfile'
+    });
   }
 }
 

@@ -112,9 +112,9 @@ INSERT INTO merchant_inventory_templates (merchant_id, item_id, item_type, name,
 
 
 -- Товары для питомцев
-('merchant_chen', 'basic_pet_food', 'pet_food', 'Обычный корм для питомцев', 'Простая еда для духовных питомцев, восстанавливает сытость', 10, 10, 10, 3, NOW(), NULL, 'common'),
-('merchant_chen', 'improved_pet_food', 'pet_food', 'Улучшенный корм для питомцев', 'Питательная еда с духовными травами для питомцев среднего уровня', 15, 5, 5, 1, NOW(), NULL, 'uncommon'),
-('merchant_chen', 'deluxe_pet_food', 'pet_food', 'Деликатесы для питомцев', 'Редкие деликатесы, которые очень нравятся всем духовным питомцам', 10, 3, 3, 0.5, NOW(), NULL, 'rare');
+('merchant_chen', 'basic_pet_food', 'pet_food', 'Обычный корм для питомцев', 'Простая еда для духовных питомцев, восстанавливает сытость', 50, 10, 10, 3, NOW(), NULL, 'common'),
+('merchant_chen', 'improved_pet_food', 'pet_food', 'Улучшенный корм для питомцев', 'Питательная еда с духовными травами для питомцев среднего уровня', 150, 5, 5, 1, NOW(), NULL, 'uncommon'),
+('merchant_chen', 'deluxe_pet_food', 'pet_food', 'Деликатесы для питомцев', 'Редкие деликатесы, которые очень нравятся всем духовным питомцам', 500, 3, 3, 0.5, NOW(), NULL, 'rare');
 
 -- Вставка шаблонов товаров Мастера Ли (id=master_li) - оружие и броня
 INSERT INTO merchant_inventory_templates (merchant_id, item_id, item_type, name, description, price, quantity, max_quantity, restock_rate, last_restock_time, restock_time, rarity) VALUES

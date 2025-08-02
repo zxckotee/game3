@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import ReactDOM from 'react-dom';
 import styled, { keyframes, css } from 'styled-components';
 
 // Импортируем функции из обновленного API-клиента
@@ -17,8 +18,9 @@ import {
   renamePet
 } from '../../services/spirit-pet-service-api';
 
-// Импортируем GameContext для получения userId
-import { GameContext } from '../../context/GameContext';
+// Импортируем GameContext для получения userId и actions
+import { useGame } from '../../context/GameContext';
+import InventoryServiceAPI from '../../services/inventory-api';
 
 // Анимации
 const fadeIn = keyframes`
@@ -50,12 +52,25 @@ const pulse = keyframes`
   }
 `;
 
+// Компонент Modal с порталом
+const Modal = ({ children, isOpen }) => {
+  if (!isOpen) return null;
+  
+  const modalRoot = document.getElementById('modal-root');
+  if (!modalRoot) return null;
+  
+  return ReactDOM.createPortal(children, modalRoot);
+};
+
 // Styled Components
 const SpiritPetsContainer = styled.div`
+  position: relative;
   padding: 24px;
   color: #f0f0f0;
   animation: ${fadeIn} 0.6s ease-out;
   min-height: 100vh;
+  overflow: ${props => props.modalOpen ? 'hidden' : 'auto'};
+  height: ${props => props.modalOpen ? '100vh' : 'auto'};
 `;
 
 const TabHeader = styled.div`
@@ -408,40 +423,26 @@ const ModalOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
   animation: ${fadeIn} 0.3s ease-out;
 `;
 
 const ModalContent = styled.div`
-  background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(20, 20, 20, 0.6) 100%);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  border-radius: 16px;
+  background: #2a2a2a;
+  border: 2px solid #d4af37;
+  border-radius: 8px;
   padding: 24px;
   max-width: 500px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, #d4af37, #f4d03f, #d4af37);
-    border-radius: 16px;
-    padding: 2px;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    z-index: -1;
-  }
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 `;
 
 const ModalHeader = styled.div`
@@ -450,42 +451,268 @@ const ModalHeader = styled.div`
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+  border-bottom: 1px solid #d4af37;
 `;
 
 const ModalTitle = styled.h3`
   margin: 0;
-  background: linear-gradient(45deg, #d4af37, #f4d03f);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #d4af37;
   font-size: 1.4rem;
   font-weight: bold;
 `;
 
 const ModalCloseButton = styled.button`
   background: none;
-  border: none;
-  color: #aaa;
-  font-size: 24px;
+  border: 1px solid #d4af37;
+  color: #d4af37;
+  font-size: 18px;
   cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.3s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
   
   &:hover {
-    background: rgba(212, 175, 55, 0.2);
-    color: #d4af37;
+    background: #d4af37;
+    color: #000;
   }
 `;
 
 const ModalBody = styled.div`
   color: #f0f0f0;
+`;
+
+// Styled Components для списка еды
+const FoodItemsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const FoodItem = styled.div`
+  background: #3a3a3a;
+  border: 1px solid #d4af37;
+  border-radius: 6px;
+  padding: 12px;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.2s ease;
+  opacity: ${props => props.disabled ? 0.6 : 1};
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
+  &:hover:not([disabled]) {
+    background: #4a4a4a;
+    border-color: #f4d03f;
+  }
+`;
+
+const FoodItemIcon = styled.img`
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 4px;
+  flex-shrink: 0;
+`;
+
+const FoodItemContent = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const FoodItemHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+`;
+
+const FoodItemName = styled.span`
+  font-weight: bold;
+  color: ${props => {
+    switch(props.rarity) {
+      case 'common': return '#aaa';
+      case 'uncommon': return '#1eff00';
+      case 'rare': return '#0070dd';
+      case 'epic': return '#a335ee';
+      case 'legendary': return '#ff8000';
+      default: return '#aaa';
+    }
+  }};
+`;
+
+const FoodItemQuantity = styled.span`
+  background: #d4af37;
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+`;
+
+const FoodItemDescription = styled.div`
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-bottom: 8px;
+  line-height: 1.3;
+`;
+
+const FoodItemStats = styled.div`
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+`;
+
+const NutritionStat = styled.div`
+  color: #2ecc71;
+`;
+
+const LoyaltyStat = styled.div`
+  color: #e67e22;
+`;
+
+const NoFoodMessage = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: #ff6b6b;
+  background: linear-gradient(145deg,
+    rgba(255, 107, 107, 0.08) 0%,
+    rgba(255, 107, 107, 0.12) 100%
+  );
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 8px;
+  margin-top: 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  
+  &::before {
+    content: '🍽️';
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    opacity: 0.8;
+  }
+`;
+
+const ModalLoadingMessage = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: #aaa;
+  font-size: 1.1rem;
+  
+  &::before {
+    content: '⏳';
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 12px;
+    animation: ${pulse} 2s infinite;
+  }
+`;
+
+// Styled Components для тренировки питомцев
+const TrainingInfo = styled.p`
+  color: #aaa;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin: 16px 0;
+  padding: 12px;
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.2) 0%, rgba(40, 40, 40, 0.3) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 8px;
+  
+  &::before {
+    content: '💡';
+    margin-right: 8px;
+  }
+`;
+
+const TrainingButtonsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+`;
+
+const TrainingButton = styled.button`
+  background: linear-gradient(145deg, rgba(0, 0, 0, 0.3) 0%, rgba(40, 40, 40, 0.5) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 12px;
+  padding: 16px 12px;
+  color: #f0f0f0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  opacity: ${props => props.disabled ? 0.5 : 1};
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(212, 175, 55, 0.2), rgba(244, 208, 63, 0.2));
+    border-radius: 12px;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+    
+    &::before {
+      opacity: 1;
+    }
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+`;
+
+const StatIcon = styled.span`
+  display: block;
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+`;
+
+const TrainingStatName = styled.div`
+  font-weight: bold;
+  margin-bottom: 4px;
+`;
+
+const TrainingStatValue = styled.div`
+  color: #d4af37;
+  font-size: 0.9rem;
+`;
+
+const TrainingWarning = styled.div`
+  background: linear-gradient(145deg, rgba(231, 76, 60, 0.1) 0%, rgba(192, 57, 43, 0.1) 100%);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 16px;
+  color: #e74c3c;
+  text-align: center;
+  font-weight: 500;
+  
+  &::before {
+    content: '⚠️';
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+  }
 `;
 
 const AcquirePetSection = styled.div`
@@ -684,91 +911,86 @@ const AcquirePetButton = styled.button`
 // Компонент модального окна для кормления питомца
 const PetFeedingModal = ({ pet, onClose, onSelect, petFood = [], loading = false }) => {
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>Кормление питомца {pet.customName || pet.petType?.name || pet.pet?.name || pet.name}</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
+    <ModalOverlay>
+      <ModalContent>
+        <ModalHeader>
+          <ModalTitle>Кормление питомца {pet.customName || pet.petType?.name || pet.pet?.name || 'Безымянный питомец'}</ModalTitle>
+          <ModalCloseButton onClick={onClose}>×</ModalCloseButton>
+        </ModalHeader>
+        <ModalBody>
           <p>Выберите еду для питомца:</p>
           
           {loading ? (
-            <p>Загрузка доступной еды...</p>
+            <ModalLoadingMessage>
+              Загрузка доступной еды...
+            </ModalLoadingMessage>
           ) : petFood.filter(food => food.quantity > 0).length > 0 ? (
-            <div className="food-items-list">
+            <FoodItemsList>
               {petFood.filter(food => food.quantity > 0).map(food => (
-                <div 
-                  key={food.id} 
-                  className="food-item"
+                <FoodItem
+                  key={food.id}
+                  disabled={loading}
                   onClick={() => !loading && onSelect(pet.id, food.id)}
-                  style={{
-                    padding: '10px',
-                    margin: '5px 0',
-                    border: '1px solid #444',
-                    borderRadius: '5px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'background 0.2s',
-                    background: 'rgba(30, 30, 30, 0.7)',
-                    opacity: loading ? 0.7 : 1
-                  }}
-                  onMouseOver={(e) => {
-                    if (!loading) e.currentTarget.style.background = 'rgba(80, 80, 80, 0.7)';
-                  }}
-                  onMouseOut={(e) => {
-                    if (!loading) e.currentTarget.style.background = 'rgba(30, 30, 30, 0.7)';
-                  }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 'bold', color: (() => {
-                      switch(food.rarity) {
-                        case 'common': return '#aaa';
-                        case 'uncommon': return '#1eff00';
-                        case 'rare': return '#0070dd';
-                        case 'epic': return '#a335ee';
-                        case 'legendary': return '#ff8000';
-                        default: return '#aaa';
-                      }
-                    })() }}>{food.name}</span>
-                    <span>x{food.quantity || 1}</span>
-                  </div>
-                  <div style={{ fontSize: '0.9em', color: '#aaa', marginTop: '3px' }}>{food.description}</div>
-                  <div style={{ display: 'flex', marginTop: '5px' }}>
-                    <div style={{ 
-                      flex: 1, 
-                      color: '#2ecc71', 
-                      fontSize: '0.9em' 
+                  {food.image_url ? (
+                    <FoodItemIcon src={food.image_url} alt={food.name} />
+                  ) : (
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      backgroundColor: '#444',
+                      borderRadius: '4px',
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px'
                     }}>
-                      Сытость: +{food.nutritionValue || 25}%
+                      🍖
                     </div>
-                    <div style={{ 
-                      flex: 1, 
-                      color: '#e67e22', 
-                      fontSize: '0.9em' 
-                    }}>
-                      Лояльность: +{food.loyaltyBonus || 0}%
-                    </div>
-                  </div>
-                </div>
+                  )}
+                  
+                  <FoodItemContent>
+                    <FoodItemHeader>
+                      <FoodItemName rarity={food.rarity}>
+                        {food.name}
+                      </FoodItemName>
+                      <FoodItemQuantity>
+                        x{food.quantity || 1}
+                      </FoodItemQuantity>
+                    </FoodItemHeader>
+                    
+                    <FoodItemDescription>
+                      {food.description}
+                    </FoodItemDescription>
+                    
+                    <FoodItemStats>
+                      <NutritionStat>
+                        🍖 +{food.nutritionValue || 25}%
+                      </NutritionStat>
+                      <LoyaltyStat>
+                        ❤️ +{food.loyaltyBonus || 0}%
+                      </LoyaltyStat>
+                    </FoodItemStats>
+                  </FoodItemContent>
+                </FoodItem>
               ))}
-            </div>
+            </FoodItemsList>
           ) : (
-            <p className="no-food-message" style={{ color: '#e74c3c' }}>
+            <NoFoodMessage>
               У вас нет еды для питомцев. Вы можете купить её у Старого Чена на рынке.
-            </p>
+            </NoFoodMessage>
           )}
-        </div>
-      </div>
-    </div>
+        </ModalBody>
+      </ModalContent>
+    </ModalOverlay>
   );
 };
 
 // Компонент модального окна для тренировки питомца
 const PetTrainingModal = ({ pet, onClose, onTrain, loading = false }) => {
   // Используем безопасный доступ к свойствам
-  const petName = pet.customName || pet.petType?.name || pet.pet?.name || pet.name;
+  const petName = pet.customName || pet.petType?.name || pet.pet?.name || 'Безымянный питомец';
   const petHunger = pet.hunger || 0;
   const petStrength = pet.strength || 0;
   const petIntelligence = pet.intelligence || 0;
@@ -776,76 +998,64 @@ const PetTrainingModal = ({ pet, onClose, onTrain, loading = false }) => {
   const petVitality = pet.vitality || 0;
   const petSpirit = pet.spirit || 0;
 
+  const trainingStats = [
+    { key: 'strength', name: 'Сила', value: petStrength, icon: '💪' },
+    { key: 'intelligence', name: 'Интеллект', value: petIntelligence, icon: '🧠' },
+    { key: 'agility', name: 'Ловкость', value: petAgility, icon: '⚡' },
+    { key: 'vitality', name: 'Живучесть', value: petVitality, icon: '❤️' },
+    { key: 'spirit', name: 'Дух', value: petSpirit, icon: '✨' }
+  ];
+
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>Тренировка питомца {petName}</h3>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
+    <ModalOverlay>
+      <ModalContent>
+        <ModalHeader>
+          <ModalTitle>Тренировка питомца {petName}</ModalTitle>
+          <ModalCloseButton onClick={onClose}>×</ModalCloseButton>
+        </ModalHeader>
+        <ModalBody>
           {loading ? (
-            <p>Тренировка питомца...</p>
+            <ModalLoadingMessage>
+              Тренировка питомца...
+            </ModalLoadingMessage>
           ) : (
             <>
               <p>Выберите характеристику для тренировки:</p>
-              <p className="training-info">Тренировка повысит выбранную характеристику на 1, но уменьшит сытость на 15%.</p>
+              <TrainingInfo>
+                Тренировка повысит выбранную характеристику на 1, но уменьшит сытость на 15%.
+              </TrainingInfo>
               
-              <div className="training-buttons">
-                <button 
-                  className="training-button" 
-                  onClick={() => onTrain(pet.id, 'strength')}
-                  disabled={petHunger < 30 || loading}
-                >
-                  Сила ({petStrength})
-                </button>
-                <button 
-                  className="training-button" 
-                  onClick={() => onTrain(pet.id, 'intelligence')}
-                  disabled={petHunger < 30 || loading}
-                >
-                  Интеллект ({petIntelligence})
-                </button>
-                <button 
-                  className="training-button" 
-                  onClick={() => onTrain(pet.id, 'agility')}
-                  disabled={petHunger < 30 || loading}
-                >
-                  Ловкость ({petAgility})
-                </button>
-                <button 
-                  className="training-button" 
-                  onClick={() => onTrain(pet.id, 'vitality')}
-                  disabled={petHunger < 30 || loading}
-                >
-                  Живучесть ({petVitality})
-                </button>
-                <button 
-                  className="training-button" 
-                  onClick={() => onTrain(pet.id, 'spirit')}
-                  disabled={petHunger < 30 || loading}
-                >
-                  Дух ({petSpirit})
-                </button>
-              </div>
+              <TrainingButtonsGrid>
+                {trainingStats.map(stat => (
+                  <TrainingButton
+                    key={stat.key}
+                    onClick={() => onTrain(pet.id, stat.key)}
+                    disabled={petHunger < 30 || loading}
+                  >
+                    <StatIcon>{stat.icon}</StatIcon>
+                    <TrainingStatName>{stat.name}</TrainingStatName>
+                    <TrainingStatValue>({stat.value})</TrainingStatValue>
+                  </TrainingButton>
+                ))}
+              </TrainingButtonsGrid>
               
               {petHunger < 30 && (
-                <p className="training-warning">
+                <TrainingWarning>
                   Питомец слишком голоден для тренировки. Покормите его сначала!
-                </p>
+                </TrainingWarning>
               )}
             </>
           )}
-        </div>
-      </div>
-    </div>
+        </ModalBody>
+      </ModalContent>
+    </ModalOverlay>
   );
 };
 
 // Компонент модального окна для деталей питомца
 const PetDetailsModal = ({ pet, onClose }) => {
   // Безопасный доступ к свойствам
-  const petName = pet.customName || pet.petType?.name || pet.pet?.name || pet.name;
+  const petName = pet.customName || pet.petType?.name || pet.pet?.name || 'Безымянный питомец';
   const petType = pet.petType?.type || pet.pet?.type || pet.type;
   const petElement = pet.petType?.element || pet.pet?.element || pet.element;
   const petRarity = pet.petType?.rarity || pet.pet?.rarity || pet.rarity;
@@ -1147,10 +1357,11 @@ const PetDetailsModal = ({ pet, onClose }) => {
 
 // Главный компонент вкладки питомцев
 const SpiritPetsTab = () => {
-  // Используем GameContext для получения userId
-  const { state } = useContext(GameContext);
+  // Используем GameContext для получения userId, инвентаря и actions
+  const { state, actions } = useGame();
   const userId = state?.player?.id;
   const effectiveUserId = userId || parseInt(localStorage.getItem('userId') || '1'); // Используем 1 как значение по умолчанию
+  const playerInventory = state?.player?.inventory?.items || [];
   
   // Состояния для хранения данных и UI
   const [pets, setPets] = useState([]);
@@ -1173,6 +1384,82 @@ const SpiritPetsTab = () => {
   const [feedingModalOpen, setFeedingModalOpen] = useState(false);
   const [trainingModalOpen, setTrainingModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  
+  // Создаем портал для модальных окон
+  useEffect(() => {
+    const modalRoot = document.getElementById('modal-root') || document.createElement('div');
+    if (!document.getElementById('modal-root')) {
+      modalRoot.id = 'modal-root';
+      document.body.appendChild(modalRoot);
+    }
+    
+    return () => {
+      if (document.getElementById('modal-root') && !document.querySelector('#modal-root > *')) {
+        document.body.removeChild(modalRoot);
+      }
+    };
+  }, []);
+  
+  // ПОЛНАЯ блокировка скролла при открытом модальном окне
+  useEffect(() => {
+    const isAnyModalOpen = feedingModalOpen || trainingModalOpen || detailsModalOpen;
+    
+    if (isAnyModalOpen) {
+      // Сохраняем текущие значения
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+      
+      // Получаем текущую позицию скролла
+      const scrollY = window.scrollY;
+      
+      // Блокируем скролл через CSS
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      
+      // Функции для блокировки событий
+      const preventScroll = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      };
+      
+      const preventKeyScroll = (e) => {
+        // Блокируем клавиши прокрутки: стрелки, Page Up/Down, Home, End, Space
+        const scrollKeys = [32, 33, 34, 35, 36, 37, 38, 39, 40];
+        if (scrollKeys.includes(e.keyCode)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      };
+      
+      // Добавляем слушатели событий
+      document.addEventListener('wheel', preventScroll, { passive: false });
+      document.addEventListener('touchmove', preventScroll, { passive: false });
+      document.addEventListener('keydown', preventKeyScroll, { passive: false });
+      
+      // Возвращаем функцию очистки
+      return () => {
+        // Восстанавливаем стили
+        document.body.style.overflow = originalOverflow;
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        
+        // Восстанавливаем позицию скролла
+        window.scrollTo(0, scrollY);
+        
+        // Удаляем слушатели событий
+        document.removeEventListener('wheel', preventScroll);
+        document.removeEventListener('touchmove', preventScroll);
+        document.removeEventListener('keydown', preventKeyScroll);
+      };
+    }
+  }, [feedingModalOpen, trainingModalOpen, detailsModalOpen]);
   
   // Загружаем данные при монтировании компонента
   useEffect(() => {
@@ -1202,13 +1489,26 @@ const SpiritPetsTab = () => {
           }
         }
         
-        // Загружаем доступные корма для питомцев с учетом инвентаря пользователя
-        const foodData = await fetchPetFood(effectiveUserId);
-        if (!foodData.error) {
-          setPetFood(foodData);
-        } else {
-          console.warn('Не удалось загрузить корм для питомцев:', foodData?.error);
-        }
+        // Получаем корм для питомцев из инвентаря игрока
+        const petFoodFromInventory = playerInventory.filter(item =>
+          item.type === 'pet_food' && item.quantity > 0
+        );
+        
+        // Преобразуем предметы из инвентаря в формат, ожидаемый компонентом
+        const formattedPetFood = petFoodFromInventory.map(item => ({
+          id: item.id || item.item_id,
+          name: item.name,
+          description: item.description || '',
+          rarity: item.quality || item.rarity || 'common',
+          quantity: item.quantity,
+          nutritionValue: item.nutritionValue || 25, // Значение по умолчанию
+          loyaltyBonus: item.loyaltyBonus || 5, // Значение по умолчанию
+          image_url: item.image_url, // Добавляем поле для изображения
+          type: 'pet_food'
+        }));
+        
+        setPetFood(formattedPetFood);
+        console.log('Корм для питомцев из инвентаря:', formattedPetFood);
         
         // Загружаем константы для питомцев
         const constants = await fetchPetConstants();
@@ -1251,6 +1551,27 @@ const SpiritPetsTab = () => {
     
     return () => clearInterval(intervalId);
   }, [effectiveUserId]);
+
+  // Обновляем корм для питомцев при изменении инвентаря
+  useEffect(() => {
+    const petFoodFromInventory = playerInventory.filter(item =>
+      item.type === 'pet_food' && item.quantity > 0
+    );
+    
+    const formattedPetFood = petFoodFromInventory.map(item => ({
+      id: item.id || item.item_id,
+      name: item.name,
+      description: item.description || '',
+      rarity: item.quality || item.rarity || 'common',
+      quantity: item.quantity,
+      nutritionValue: item.nutritionValue || 25,
+      loyaltyBonus: item.loyaltyBonus || 5,
+      image_url: item.image_url,
+      type: 'pet_food'
+    }));
+    
+    setPetFood(formattedPetFood);
+  }, [playerInventory]);
   
   // Обработчик активации питомца
   const handleActivatePet = async (petId) => {
@@ -1289,6 +1610,10 @@ const SpiritPetsTab = () => {
     if (pet) {
       setSelectedPet(pet);
       setFeedingModalOpen(true);
+      
+      // Логируем доступный корм для отладки
+      console.log('Открытие модального окна кормления для питомца:', pet.customName || pet.petType?.name || pet.pet?.name || 'Безымянный питомец');
+      console.log('Доступный корм:', petFood);
     }
   };
   
@@ -1303,9 +1628,11 @@ const SpiritPetsTab = () => {
         throw new Error('Выберите корм для питомца');
       }
       
+      console.log('Кормление питомца:', petId, 'кормом:', foodItemId);
+      
       const result = await feedPet(petId, foodItemId, effectiveUserId);
       
-      if (result.error) {
+      if (result && result.error) {
         throw new Error(result.error);
       }
       
@@ -1319,22 +1646,62 @@ const SpiritPetsTab = () => {
         });
       });
       
-      // Обновляем доступный корм (уменьшаем количество)
-      setPetFood(prevFood => {
-        return prevFood.map(food => {
-          if (food.id === foodItemId && food.quantity > 0) {
-            return { ...food, quantity: food.quantity - 1 };
+      // Обновляем состояние инвентаря в GameContext
+      try {
+        const updatedInventory = await InventoryServiceAPI.getInventoryItems(effectiveUserId);
+        if (updatedInventory && Array.isArray(updatedInventory)) {
+          const finalItems = updatedInventory.map(item => ({
+            ...item,
+            enriched: true,
+            enrichedFailed: false
+          }));
+          
+          if (actions.updateInventoryItems) {
+            actions.updateInventoryItems(finalItems);
+            console.log('Инвентарь обновлен в глобальном состоянии после кормления питомца');
           }
-          return food;
-        }).filter(food => food.quantity > 0); // Удаляем корм с нулевым количеством
-      });
+        }
+      } catch (inventoryError) {
+        console.error('Ошибка при обновлении инвентаря:', inventoryError);
+        // Не прерываем выполнение, так как кормление прошло успешно
+      }
+      
+      // Обновляем список питомцев из API
+      try {
+        const updatedPets = await fetchUserPets(effectiveUserId);
+        if (updatedPets && !updatedPets.error) {
+          setPets(updatedPets);
+          console.log('Список питомцев обновлен после кормления');
+        }
+      } catch (petsError) {
+        console.error('Ошибка при обновлении списка питомцев:', petsError);
+        // Не прерываем выполнение
+      }
       
       // Закрываем модальное окно
       setFeedingModalOpen(false);
       setSelectedPet(null);
+      
+      // Показываем уведомление об успехе
+      if (actions.addNotification) {
+        actions.addNotification({
+          message: `Питомец успешно покормлен!`,
+          type: 'success'
+        });
+      }
+      
+      console.log('Питомец успешно покормлен');
     } catch (err) {
       console.error('Ошибка при кормлении питомца:', err);
       setError(err.message || 'Не удалось покормить питомца');
+      
+      // Показываем уведомление об ошибке
+      if (actions.addNotification) {
+        actions.addNotification({
+          message: `Ошибка при кормлении: ${err.message || 'Неизвестная ошибка'}`,
+          type: 'error'
+        });
+      }
     } finally {
       setOperationLoading(prev => ({ ...prev, feed: false }));
     }
@@ -1433,7 +1800,7 @@ const SpiritPetsTab = () => {
   
   // Рендеринг компонента
   return (
-    <SpiritPetsContainer>
+    <SpiritPetsContainer modalOpen={feedingModalOpen || trainingModalOpen || detailsModalOpen}>
       <TabHeader>
         <TabTitle>Духовные питомцы</TabTitle>
         <TabDescription>
@@ -1463,7 +1830,8 @@ const SpiritPetsTab = () => {
               const expForCurrentLevel = level * 100;
               const expPercentage = (experience / expForCurrentLevel) * 100;
               
-              const petName = pet.customName || pet.petType?.name || pet.pet?.name || pet.name || 'Безымянный питомец';
+              // Исправляем логику получения имени питомца - приоритет для petType.name (из spirit_pets таблицы)
+              const petName = pet.petType?.name || pet.pet?.name || 'Безымянный питомец';
               const petType = pet.petType?.type || pet.pet?.type || pet.type || 'unknown';
               const petElement = pet.petType?.element || pet.pet?.element || pet.element || 'unknown';
               const petEvolutionStage = pet.petType?.evolutionStage || pet.pet?.evolution_stage || pet.evolutionStage || 'baby';
@@ -1683,12 +2051,12 @@ const SpiritPetsTab = () => {
         </NoPetsMessage>
       )}
       
-      {/* Модальные окна */}
-      {feedingModalOpen && selectedPet && (
+      {/* Модальные окна через портал */}
+      <Modal isOpen={feedingModalOpen && selectedPet}>
         <ModalOverlay>
           <ModalContent>
             <ModalHeader>
-              <ModalTitle>Кормление питомца {selectedPet.customName || selectedPet.petType?.name || selectedPet.name}</ModalTitle>
+              <ModalTitle>Кормление питомца {selectedPet?.customName || selectedPet?.petType?.name || selectedPet?.pet?.name || 'Безымянный питомец'}</ModalTitle>
               <ModalCloseButton onClick={() => {
                 setFeedingModalOpen(false);
                 setSelectedPet(null);
@@ -1706,13 +2074,13 @@ const SpiritPetsTab = () => {
             />
           </ModalContent>
         </ModalOverlay>
-      )}
+      </Modal>
       
-      {trainingModalOpen && selectedPet && (
+      <Modal isOpen={trainingModalOpen && selectedPet}>
         <ModalOverlay>
           <ModalContent>
             <ModalHeader>
-              <ModalTitle>Тренировка питомца {selectedPet.customName || selectedPet.petType?.name || selectedPet.name}</ModalTitle>
+              <ModalTitle>Тренировка питомца {selectedPet?.customName || selectedPet?.petType?.name || selectedPet?.pet?.name || 'Безымянный питомец'}</ModalTitle>
               <ModalCloseButton onClick={() => {
                 setTrainingModalOpen(false);
                 setSelectedPet(null);
@@ -1729,13 +2097,13 @@ const SpiritPetsTab = () => {
             />
           </ModalContent>
         </ModalOverlay>
-      )}
+      </Modal>
       
-      {detailsModalOpen && selectedPet && (
+      <Modal isOpen={detailsModalOpen && selectedPet}>
         <ModalOverlay>
           <ModalContent>
             <ModalHeader>
-              <ModalTitle>Подробности о питомце {selectedPet.customName || selectedPet.petType?.name || selectedPet.name}</ModalTitle>
+              <ModalTitle>Подробности о питомце {selectedPet?.customName || selectedPet?.petType?.name || selectedPet?.pet?.name || 'Безымянный питомец'}</ModalTitle>
               <ModalCloseButton onClick={() => {
                 setDetailsModalOpen(false);
                 setSelectedPet(null);
@@ -1750,7 +2118,7 @@ const SpiritPetsTab = () => {
             />
           </ModalContent>
         </ModalOverlay>
-      )}
+      </Modal>
     </SpiritPetsContainer>
   );
 };

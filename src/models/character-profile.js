@@ -15,7 +15,7 @@ class CharacterProfile extends Model {
   static associate(models) {
     // Определение связей с другими моделями
     CharacterProfile.belongsTo(models.User, {
-      foreignKey: 'user_id',
+      foreignKey: 'userId',
       as: 'user'
     });
   }
@@ -29,6 +29,7 @@ CharacterProfile.init = async function() {
   return Model.init.call(this, {
   userId: {
     type: DataTypes.INTEGER,
+    allowNull: false,
     field: 'user_id', // Маппинг на snake_case поле в БД
     references: {
       model: 'Users',

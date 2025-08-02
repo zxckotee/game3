@@ -60,17 +60,12 @@ CREATE TABLE spirit_pet_food_items (
     shop_categories JSONB DEFAULT '["pet_supplies"]'
 );
 
--- Заполнение таблицы еды для питомцев
+-- Заполнение таблицы еды для питомцев (синхронизировано с merchants.sql)
 INSERT INTO spirit_pet_food_items (id, name, description, rarity, nutrition_value, loyalty_bonus, price, icon) VALUES
-('basic_pet_food', 'Базовый корм для питомцев', 'Простая еда для духовных питомцев', 'common', 20, 0, 50, '🥫'),
-('improved_pet_food', 'Улучшенный корм для питомцев', 'Питательная еда с духовными травами для питомцев среднего уровня', 'uncommon', 35, 2, 150, '🍖'),
-('premium_pet_food', 'Премиум корм для питомцев', 'Высококачественная еда для духовных питомцев', 'rare', 50, 5, 500, '🍗'),
-('elemental_treat_fire', 'Огненное лакомство', 'Особое лакомство для питомцев огненной стихии', 'rare', 40, 8, 800, '🔥'),
-('elemental_treat_water', 'Водное лакомство', 'Особое лакомство для питомцев водной стихии', 'rare', 40, 8, 800, '💧'),
-('elemental_treat_earth', 'Земляное лакомство', 'Особое лакомство для питомцев земной стихии', 'rare', 40, 8, 800, '🌱'),
-('elemental_treat_air', 'Воздушное лакомство', 'Особое лакомство для питомцев воздушной стихии', 'rare', 40, 8, 800, '💨'),
-('mystic_pet_feast', 'Мистический пир для питомцев', 'Легендарная еда, значительно повышающая все показатели питомца', 'legendary', 100, 15, 3000, '✨');
+('basic_pet_food', 'Обычный корм для питомцев', 'Простая еда для духовных питомцев, восстанавливает сытость', 'common', 25, 0, 50, '🥫'),
+('improved_pet_food', 'Улучшенный корм для питомцев', 'Питательная еда с духовными травами для питомцев среднего уровня', 'uncommon', 40, 2, 150, '🍖'),
+('deluxe_pet_food', 'Деликатесы для питомцев', 'Редкие деликатесы, которые очень нравятся всем духовным питомцам', 'rare', 60, 5, 500, '🍗');
 
--- Интеграция с таблицей предметов
-INSERT INTO item_catalog (item_id, name, description, type, rarity)
-SELECT id, name, description, 'pet_food', rarity FROM spirit_pet_food_items;
+-- Интеграция с таблицей предметов удалена из-за ошибки с item_catalog
+-- INSERT INTO item_catalog (item_id, name, description, type, rarity)
+-- SELECT id, name, description, 'pet_food', rarity FROM spirit_pet_food_items;
