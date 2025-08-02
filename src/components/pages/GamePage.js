@@ -23,6 +23,7 @@ import AchievementsTab from '../tabs/AchievementsTab';
 import AlchemyTab from '../tabs/AlchemyTab';
 import SpiritPetsTab from '../tabs/SpiritPetsTab';
 import MarketTab from '../tabs/MarketTab';
+import ExchangeTab from '../tabs/ExchangeTab';
 
 // Анимации
 const fadeIn = keyframes`
@@ -991,6 +992,8 @@ function GamePage() {
         return <SpiritPetsTab />;
       case 'market':
         return <MarketTab />;
+      case 'exchange':
+        return <ExchangeTab />;
       default:
         return null;
     }
@@ -1129,11 +1132,18 @@ function GamePage() {
           >
             Питомцы
           </MenuItem>
-          <MenuItem 
+          <MenuItem
             active={activeTab === 'market'}
             onClick={() => setActiveTab('market')}
           >
             Рынок
+          </MenuItem>
+          
+          <MenuItem
+            active={activeTab === 'exchange'}
+            onClick={() => setActiveTab('exchange')}
+          >
+            Обменник
           </MenuItem>
         </Sidebar>
         

@@ -903,10 +903,8 @@ const MarketTab = () => {
         const currencyType = getCurrencyTypeByRarity(selectedItem.rarity);
         const price = selectedItem.price * quantity;
         
-        actions.dispatch({
-          type: ACTION_TYPES.UPDATE_CURRENCY,
-          payload: { [currencyType]: -price }
-        });
+        // Используем addCurrency для добавления отрицательного значения (списание)
+        actions.addCurrency({ [currencyType]: -price });
         
         // Обновляем инвентарь с сервера, как это делает InventoryTab
         try {
@@ -979,10 +977,8 @@ const MarketTab = () => {
         
         const currencyType = getCurrencyTypeByRarity(selectedSellItem.rarity);
         
-        actions.dispatch({
-          type: ACTION_TYPES.UPDATE_CURRENCY,
-          payload: { [currencyType]: sellPrice }
-        });
+        // Используем addCurrency для добавления положительного значения (получение денег)
+        actions.addCurrency({ [currencyType]: sellPrice });
         
         actions.dispatch({
           type: ACTION_TYPES.REMOVE_ITEM_FROM_INVENTORY,

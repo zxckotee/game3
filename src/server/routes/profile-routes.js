@@ -198,4 +198,31 @@ router.post('/api/relationships/interact', validateAuth, async (req, res) => {
   }
 });
 
+// Обмен валют
+router.post('/api/users/:userId/exchange', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { fromCurrency, toCurrency, amount } = req.body;
+    
+    console.log(`Обмен валют для пользователя ${userId}: ${amount} ${fromCurrency} -> ${toCurrency}`);
+    
+    // Валидация входных данных
+    if (!fromCurrency || !toCurrency || !amount || amount <= 0) {
+      return res.status(400).json({
+        error: 'Некорректные параметры обмена'
+      });
+    }
+    
+    // Используем сервис для обмена валют
+    const result = await CharacterProfileService.exchangeCurrency(userId, fromCurrency, toCurrency, amount);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Ошибка при обмене валют:', error);
+    res.status(400).json({
+      error: error.message || 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 module.exports = router;

@@ -521,6 +521,62 @@ class CharacterProfileServiceAPI {
     console.log(`[CharacterProfileServiceAPI] Аватарка не найдена в профиле`);
     return null;
   }
+
+  /**
+   * Обмен валют
+   * @param {number} userId - ID пользователя
+   * @param {string} fromCurrency - Исходная валюта (copper, silver, gold, spiritStones)
+   * @param {string} toCurrency - Целевая валюта (copper, silver, gold)
+   * @param {number} amount - Количество для обмена
+   * @returns {Promise<Object>} - Результат обмена
+   */
+  static async exchangeCurrency(userId, fromCurrency, toCurrency, amount) {
+    console.log(`[CharacterProfileServiceAPI] Обмен валют: ${amount} ${fromCurrency} -> ${toCurrency} для пользователя ${userId}`);
+    try {
+      // Пробуем сначала отправить запрос на сервер через API
+      try {
+        const response = await fetch(`/api/users/${userId}/exchange`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify({
+            fromCurrency,
+            toCurrency,
+            amount
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`[CharacterProfileServiceAPI] Обмен валют успешно выполнен на сервере:`, result);
+          
+          // Для совместимости обновляем и localStorage
+          const profiles = getProfilesFromStorage();
+          if (profiles[userId] && result.newCurrency) {
+            profiles[userId].gold = result.newCurrency.gold;
+            profiles[userId].silver = result.newCurrency.silver;
+            profiles[userId].copper = result.newCurrency.copper;
+            profiles[userId].spiritStones = result.newCurrency.spiritStones;
+            saveProfilesToStorage(profiles);
+          }
+          
+          return result;
+        } else {
+          const errorData = await response.json();
+          console.warn(`[CharacterProfileServiceAPI] API вернул ошибку при обмене валют: ${response.status}`, errorData);
+          throw new Error(errorData.error || `HTTP error ${response.status}`);
+        }
+      } catch (apiError) {
+        console.warn(`[CharacterProfileServiceAPI] Ошибка API при обмене валют, используем localStorage:`, apiError);
+        throw apiError; // Пробрасываем ошибку дальше, так как обмен валют критичен
+      }
+    } catch (error) {
+      console.error('[CharacterProfileServiceAPI] Ошибка при обмене валют:', error);
+      throw error;
+    }
+  }
 }
 
 // Экспортируем класс через CommonJS
@@ -534,6 +590,7 @@ module.exports.updateCurrency = CharacterProfileServiceAPI.updateCurrency;
 module.exports.updateRelationships = CharacterProfileServiceAPI.updateRelationships;
 module.exports.uploadAvatar = CharacterProfileServiceAPI.uploadAvatar;
 module.exports.getAvatar = CharacterProfileServiceAPI.getAvatar;
+module.exports.exchangeCurrency = CharacterProfileServiceAPI.exchangeCurrency;
 /**
  * Обработка взаимодействия с NPC
  * @param {number} characterId - ID персонажа (NPC)

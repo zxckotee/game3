@@ -871,6 +871,152 @@ class CharacterProfileService {
       throw error;
     }
   }
+
+  /**
+   * Обмен валют
+   * @param {number} userId - ID пользователя
+   * @param {string} fromCurrency - Исходная валюта (copper, silver, gold, spiritStones)
+   * @param {string} toCurrency - Целевая валюта (copper, silver, gold)
+   * @param {number} amount - Количество для обмена
+   * @param {Object} options - Дополнительные опции (transaction)
+   * @returns {Promise<Object>} - Результат обмена
+   */
+  static async exchangeCurrency(userId, fromCurrency, toCurrency, amount, options = {}) {
+    const { transaction } = options;
+    
+    // Курсы обмена (к меди)
+    const EXCHANGE_RATES = {
+      copper: 1,
+      silver: 10,
+      gold: 100,
+      spiritStones: 1000 // 1 духовный камень = 10 золота = 100 серебра = 1000 меди
+    };
+
+    // Разрешенные направления обмена
+    const ALLOWED_EXCHANGES = {
+      copper: ['silver'],
+      silver: ['copper', 'gold'],
+      gold: ['silver', 'copper'],
+      spiritStones: ['gold', 'silver', 'copper'] // только тратить
+    };
+
+    try {
+      // Валидация входных данных
+      if (!fromCurrency || !toCurrency || !amount || amount <= 0) {
+        throw new Error('Некорректные параметры обмена');
+      }
+
+      if (!EXCHANGE_RATES[fromCurrency] || !EXCHANGE_RATES[toCurrency]) {
+        throw new Error('Неподдерживаемый тип валюты');
+      }
+
+      if (!ALLOWED_EXCHANGES[fromCurrency].includes(toCurrency)) {
+        if (toCurrency === 'spiritStones') {
+          throw new Error('Нельзя конвертировать валюту в духовные камни');
+        }
+        throw new Error('Недопустимое направление обмена');
+      }
+
+      if (isBrowser) {
+        // В браузере используем объект в памяти
+        const profile = browserProfileData[userId];
+        
+        if (!profile) {
+          throw new Error('Профиль персонажа не найден');
+        }
+
+        // Проверяем достаточность средств
+        const currentAmount = profile[fromCurrency] || 0;
+        if (currentAmount < amount) {
+          throw new Error(`Недостаточно ${fromCurrency}. Доступно: ${currentAmount}, требуется: ${amount}`);
+        }
+
+        // Вычисляем курс обмена
+        const fromRate = EXCHANGE_RATES[fromCurrency];
+        const toRate = EXCHANGE_RATES[toCurrency];
+        const exchangedAmount = Math.floor((amount * fromRate) / toRate);
+
+        if (exchangedAmount <= 0) {
+          throw new Error('Слишком малая сумма для обмена');
+        }
+
+        // Выполняем обмен
+        profile[fromCurrency] -= amount;
+        profile[toCurrency] = (profile[toCurrency] || 0) + exchangedAmount;
+
+        // Возвращаем результат
+        return {
+          success: true,
+          exchangedAmount,
+          rate: fromRate / toRate,
+          newCurrency: {
+            gold: profile.gold,
+            silver: profile.silver,
+            copper: profile.copper,
+            spiritStones: profile.spiritStones
+          }
+        };
+      } else {
+        // На сервере используем базу данных
+        let profile = await CharacterProfile.findOne({
+          where: { userId: userId },
+          transaction
+        });
+
+        if (!profile) {
+          throw new Error('Профиль персонажа не найден');
+        }
+
+        // Проверяем достаточность средств
+        const currentAmount = profile[fromCurrency] || 0;
+        if (currentAmount < amount) {
+          throw new Error(`Недостаточно ${fromCurrency}. Доступно: ${currentAmount}, требуется: ${amount}`);
+        }
+
+        // Вычисляем курс обмена
+        const fromRate = EXCHANGE_RATES[fromCurrency];
+        const toRate = EXCHANGE_RATES[toCurrency];
+        const exchangedAmount = Math.floor((amount * fromRate) / toRate);
+
+        if (exchangedAmount <= 0) {
+          throw new Error('Слишком малая сумма для обмена');
+        }
+
+        // Выполняем обмен в базе данных
+        const { Sequelize } = require('sequelize');
+        const updateData = {};
+        
+        // Списываем исходную валюту
+        updateData[fromCurrency] = Sequelize.literal(`${fromCurrency} - ${parseInt(amount)}`);
+        // Добавляем целевую валюту
+        updateData[toCurrency] = Sequelize.literal(`${toCurrency} + ${parseInt(exchangedAmount)}`);
+
+        await profile.update(updateData, { transaction });
+
+        // Получаем обновленный профиль
+        profile = await CharacterProfile.findOne({
+          where: { userId: userId },
+          transaction
+        });
+
+        // Возвращаем результат
+        return {
+          success: true,
+          exchangedAmount,
+          rate: fromRate / toRate,
+          newCurrency: {
+            gold: profile.gold,
+            silver: profile.silver,
+            copper: profile.copper,
+            spiritStones: profile.spiritStones
+          }
+        };
+      }
+    } catch (error) {
+      console.error('Ошибка при обмене валют:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = CharacterProfileService;
@@ -886,3 +1032,4 @@ module.exports.createInitialProfile = CharacterProfileService.createInitialProfi
 module.exports.addRelationshipEvent = CharacterProfileService.addRelationshipEvent;
 module.exports.updateAvatar = CharacterProfileService.updateAvatar;
 module.exports.getAvatar = CharacterProfileService.getAvatar;
+module.exports.exchangeCurrency = CharacterProfileService.exchangeCurrency;
