@@ -1886,16 +1886,14 @@ const PvPTab = () => {
             }
         };
         
-        // Запускаем периодическую проверку только если не в бою
-        if (!inBattle) {
-            console.log('[PvP PERIODIC DEBUG] 🎯 Запускаем периодическую проверку статуса PvP');
-            periodicPvPStatusCheck();
-            const interval = setInterval(periodicPvPStatusCheck, 1000); // Каждую секунду
-            return () => {
-                console.log('[PvP PERIODIC DEBUG] 🛑 Останавливаем периодическую проверку статуса PvP');
-                clearInterval(interval);
-            };
-        }
+        // Всегда запускаем периодическую проверку
+        console.log('[PvP PERIODIC DEBUG] 🎯 Запускаем периодическую проверку статуса PvP, inBattle:', inBattle);
+        periodicPvPStatusCheck();
+        const interval = setInterval(periodicPvPStatusCheck, 1000); // Каждую секунду
+        return () => {
+            console.log('[PvP PERIODIC DEBUG] 🛑 Останавливаем периодическую проверку статуса PvP');
+            clearInterval(interval);
+        };
     }, [inBattle, selectedRoom, player.id]);
 
     // Обработка кулдауна действий
