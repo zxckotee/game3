@@ -1817,6 +1817,74 @@ const PvPTab = () => {
         }
     }, [inBattle, selectedRoom, lastActionId, player.id]);
 
+    // Обновление состояния комнаты ожидания
+    useEffect(() => {
+        const updateWaitingRoomState = async () => {
+            try {
+                console.log('[PvP WAITING DEBUG] 🔄 updateWaitingRoomState вызвана');
+                console.log('[PvP WAITING DEBUG] selectedRoom:', selectedRoom, 'inBattle:', inBattle);
+                
+                if (!selectedRoom || inBattle) {
+                    console.log('[PvP WAITING DEBUG] Выход из updateWaitingRoomState - нет комнаты или уже в бою');
+                    return;
+                }
+                
+                // Проверяем, что комната действительно в статусе ожидания
+                if (roomDetails?.room?.status && roomDetails.room.status !== 'waiting') {
+                    console.log('[PvP WAITING DEBUG] Комната не в статусе ожидания:', roomDetails.room.status);
+                    return;
+                }
+                
+                console.log('[PvP WAITING DEBUG] Запрашиваем детали комнаты ожидания...');
+                const response = await getRoomDetails(selectedRoom);
+                console.log('[PvP WAITING DEBUG] Получен ответ от getRoomDetails:', response);
+                
+                if (response.success) {
+                    console.log('[PvP WAITING DEBUG] Ответ успешный, статус комнаты:', response.room?.status);
+                    
+                    // Обновляем детали комнаты
+                    setRoomDetails(response);
+                    
+                    // Проверяем, не начался ли бой
+                    if (response.room.status === 'in_progress') {
+                        console.log('[PvP WAITING DEBUG] 🚀 Комната перешла в статус боя! Переключаемся в режим боя...');
+                        
+                        // Переходим в режим боя
+                        setInBattle(true);
+                        setBattleState(response);
+                        
+                        // Установка максимального ID действия для последующих обновлений боя
+                        if (response.actions?.length > 0) {
+                            setLastActionId(Math.max(...response.actions.map(a => a.id)));
+                            console.log('[PvP WAITING DEBUG] Установлен lastActionId:', Math.max(...response.actions.map(a => a.id)));
+                        }
+                        
+                        // Показываем уведомление пользователю
+                        showToast('Бой начался! Переходим в режим боя...', 'success');
+                    } else {
+                        console.log('[PvP WAITING DEBUG] ⏳ Комната все еще в ожидании, статус:', response.room.status);
+                    }
+                } else {
+                    console.error('[PvP WAITING DEBUG] ❌ Ошибка при получении деталей комнаты:', response);
+                }
+            } catch (error) {
+                console.error('[PvP WAITING DEBUG] ❌ Исключение при обновлении состояния комнаты ожидания:', error);
+                // Не показываем уведомление об ошибке при фоновом обновлении, чтобы не раздражать пользователя
+            }
+        };
+        
+        // Условие: в комнате, но не в бою
+        if (selectedRoom && !inBattle) {
+            console.log('[PvP WAITING DEBUG] 🎯 Запускаем обновление состояния комнаты ожидания');
+            updateWaitingRoomState();
+            const interval = setInterval(updateWaitingRoomState, 1000); // Обновление каждую секунду, как в бою
+            return () => {
+                console.log('[PvP WAITING DEBUG] 🛑 Останавливаем обновление состояния комнаты ожидания');
+                clearInterval(interval);
+            };
+        }
+    }, [selectedRoom, inBattle, player.id]);
+
     // Обработка кулдауна действий
     useEffect(() => {
         let interval;
