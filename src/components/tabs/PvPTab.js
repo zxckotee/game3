@@ -1817,35 +1817,28 @@ const PvPTab = () => {
         }
     }, [inBattle, selectedRoom, lastActionId, player.id]);
 
-    // Периодическая проверка статуса пользователя в PvP (аналогично checkUserPvPStatus при открытии)
+    // Периодическая проверка статуса пользователя в PvP (точная копия checkUserPvPStatus)
     useEffect(() => {
-        const periodicPvPStatusCheck = async () => {
+        const periodicCheckUserPvPStatus = async () => {
             try {
-                console.log('[PvP PERIODIC DEBUG] 🔄 Периодическая проверка статуса PvP');
+                console.log('[PvP INTERVAL] Проверяем текущий статус пользователя в PvP');
                 
                 // Не выполняем проверку, если уже в бою - там есть свой useEffect
                 if (inBattle) {
-                    console.log('[PvP PERIODIC DEBUG] Пропускаем проверку - уже в бою');
+                    console.log('[PvP INTERVAL] Пропускаем проверку - уже в бою');
                     return;
                 }
                 
-                // Вызываем точно такую же функцию, как при открытии PvPTab
                 const response = await getUserPvPStatus();
-                console.log('[PvP PERIODIC DEBUG] Получен ответ от getUserPvPStatus:', response);
                 
                 if (response.success && response.inRoom) {
-                    console.log('[PvP PERIODIC DEBUG] Пользователь находится в комнате:', response.roomId);
+                    console.log('[PvP INTERVAL] Пользователь находится в комнате:', response);
                     
-                    // Если это новая комната или мы еще не установили selectedRoom
-                    if (!selectedRoom || selectedRoom !== response.roomId) {
-                        console.log('[PvP PERIODIC DEBUG] Устанавливаем новую выбранную комнату:', response.roomId);
-                        setSelectedRoom(response.roomId);
-                    }
+                    // Устанавливаем выбранную комнату
+                    setSelectedRoom(response.roomId);
                     
-                    // Загружаем детали комнаты (точно как при открытии PvPTab)
-                    console.log('[PvP PERIODIC DEBUG] Загружаем детали комнаты:', response.roomId);
+                    // Загружаем детали комнаты
                     const roomDetails = await getRoomDetails(response.roomId);
-                    console.log('[PvP PERIODIC DEBUG] Получены детали комнаты:', roomDetails);
                     
                     if (roomDetails.success) {
                         // Устанавливаем детали комнаты
@@ -1853,45 +1846,34 @@ const PvPTab = () => {
                         
                         // Если комната в статусе "in_progress", переходим в режим боя
                         if (roomDetails.room.status === 'in_progress') {
-                            console.log('[PvP PERIODIC DEBUG] 🚀 Комната в статусе боя! Переходим в режим боя...');
                             setInBattle(true);
                             setBattleState(roomDetails);
                             
                             // Установка максимального ID действия для последующих обновлений
                             if (roomDetails.actions?.length > 0) {
                                 setLastActionId(Math.max(...roomDetails.actions.map(a => a.id)));
-                                console.log('[PvP PERIODIC DEBUG] Установлен lastActionId:', Math.max(...roomDetails.actions.map(a => a.id)));
                             }
                             
-                            // Показываем уведомление пользователю
+                            // Показываем уведомление пользователю только при переходе в бой
                             showToast('Бой начался! Переходим в режим боя...', 'success');
-                        } else {
-                            console.log('[PvP PERIODIC DEBUG] ⏳ Комната в ожидании, статус:', roomDetails.room.status);
                         }
                     } else {
-                        console.error('[PvP PERIODIC DEBUG] ❌ Ошибка при загрузке деталей комнаты:', roomDetails);
-                    }
-                } else {
-                    console.log('[PvP PERIODIC DEBUG] Пользователь не находится в комнате');
-                    // Если пользователь больше не в комнате, сбрасываем состояние
-                    if (selectedRoom) {
-                        console.log('[PvP PERIODIC DEBUG] Сбрасываем selectedRoom - пользователь покинул комнату');
-                        setSelectedRoom(null);
-                        setRoomDetails(null);
+                        // Если не удалось загрузить детали комнаты, показываем ошибку
+                        console.error('[PvP INTERVAL] Ошибка при загрузке деталей комнаты:', roomDetails);
                     }
                 }
             } catch (error) {
-                console.error('[PvP PERIODIC DEBUG] ❌ Ошибка при периодической проверке статуса:', error);
+                console.error('[PvP INTERVAL] Ошибка при проверке статуса пользователя:', error);
                 // Не показываем уведомление об ошибке при фоновой проверке
             }
         };
         
         // Всегда запускаем периодическую проверку
-        console.log('[PvP PERIODIC DEBUG] 🎯 Запускаем периодическую проверку статуса PvP, inBattle:', inBattle);
-        periodicPvPStatusCheck();
-        const interval = setInterval(periodicPvPStatusCheck, 1000); // Каждую секунду
+        console.log('[PvP INTERVAL] 🎯 Запускаем периодическую проверку статуса PvP');
+        periodicCheckUserPvPStatus();
+        const interval = setInterval(periodicCheckUserPvPStatus, 1000); // Каждую секунду
         return () => {
-            console.log('[PvP PERIODIC DEBUG] 🛑 Останавливаем периодическую проверку статуса PvP');
+            console.log('[PvP INTERVAL] 🛑 Останавливаем периодическую проверку статуса PvP');
             clearInterval(interval);
         };
     }, [inBattle, selectedRoom, player.id]);
