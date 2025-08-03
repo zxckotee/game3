@@ -29,49 +29,64 @@
 
 ### Реализованное решение
 
-Добавлен новый `useEffect` для периодического обновления состояния комнаты ожидания:
+Добавлен новый `useEffect` для периодической проверки статуса пользователя в PvP, использующий точно такую же логику, как при открытии PvPTab:
 
 ```javascript
-// Обновление состояния комнаты ожидания
+// Периодическая проверка статуса пользователя в PvP (аналогично checkUserPvPStatus при открытии)
 useEffect(() => {
-    const updateWaitingRoomState = async () => {
+    const periodicPvPStatusCheck = async () => {
         try {
-            // Проверяем условия
-            if (!selectedRoom || inBattle) return;
-            if (roomDetails?.room?.status && roomDetails.room.status !== 'waiting') return;
+            // Не выполняем проверку, если уже в бою - там есть свой useEffect
+            if (inBattle) return;
             
-            // Запрашиваем актуальное состояние комнаты
-            const response = await getRoomDetails(selectedRoom);
+            // Вызываем точно такую же функцию, как при открытии PvPTab
+            const response = await getUserPvPStatus();
             
-            if (response.success) {
-                // Обновляем детали комнаты
-                setRoomDetails(response);
+            if (response.success && response.inRoom) {
+                // Если это новая комната или мы еще не установили selectedRoom
+                if (!selectedRoom || selectedRoom !== response.roomId) {
+                    setSelectedRoom(response.roomId);
+                }
                 
-                // Проверяем переход в бой
-                if (response.room.status === 'in_progress') {
-                    setInBattle(true);
-                    setBattleState(response);
+                // Загружаем детали комнаты (точно как при открытии PvPTab)
+                const roomDetails = await getRoomDetails(response.roomId);
+                
+                if (roomDetails.success) {
+                    // Устанавливаем детали комнаты
+                    setRoomDetails(roomDetails);
                     
-                    // Устанавливаем lastActionId для боя
-                    if (response.actions?.length > 0) {
-                        setLastActionId(Math.max(...response.actions.map(a => a.id)));
+                    // Если комната в статусе "in_progress", переходим в режим боя
+                    if (roomDetails.room.status === 'in_progress') {
+                        setInBattle(true);
+                        setBattleState(roomDetails);
+                        
+                        // Установка максимального ID действия для последующих обновлений
+                        if (roomDetails.actions?.length > 0) {
+                            setLastActionId(Math.max(...roomDetails.actions.map(a => a.id)));
+                        }
+                        
+                        showToast('Бой начался! Переходим в режим боя...', 'success');
                     }
-                    
-                    showToast('Бой начался! Переходим в режим боя...', 'success');
+                }
+            } else {
+                // Если пользователь больше не в комнате, сбрасываем состояние
+                if (selectedRoom) {
+                    setSelectedRoom(null);
+                    setRoomDetails(null);
                 }
             }
         } catch (error) {
-            console.error('Ошибка при обновлении состояния комнаты ожидания:', error);
+            console.error('Ошибка при периодической проверке статуса:', error);
         }
     };
     
-    // Условие: в комнате, но не в бою
-    if (selectedRoom && !inBattle) {
-        updateWaitingRoomState();
-        const interval = setInterval(updateWaitingRoomState, 1000);
+    // Запускаем периодическую проверку только если не в бою
+    if (!inBattle) {
+        periodicPvPStatusCheck();
+        const interval = setInterval(periodicPvPStatusCheck, 1000);
         return () => clearInterval(interval);
     }
-}, [selectedRoom, inBattle, player.id]);
+}, [inBattle, selectedRoom, player.id]);
 ```
 
 ### Ключевые особенности решения
