@@ -3,6 +3,8 @@
  * Базовый класс для всех событий в игре "Путь к Бессмертию"
  */
 
+import { safeUpdateEnergy, safeUpdateExperience, hasEnoughEnergy, hasEnoughExperience } from '../../utils/cultivationBounds.js';
+
 export class AbstractEvent {
   constructor(config) {
     this.id = config.id || this.generateId();

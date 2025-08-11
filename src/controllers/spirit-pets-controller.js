@@ -2,6 +2,7 @@ const { models } = require('../db');
 const { SpiritPet, UserSpiritPet, User, sequelize, Item } = models;
 const { Op } = require('sequelize');
 const { ApiError } = require('../utils/errors');
+const { safeUpdateEnergy, safeUpdateExperience, hasEnoughEnergy, hasEnoughExperience } = require('../utils/cultivationBounds');
 
 // Получить все типы питомцев
 exports.getAllPets = async (req, res, next) => {

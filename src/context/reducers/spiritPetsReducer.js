@@ -1,5 +1,9 @@
 import ACTION_TYPES from '../actions/actionTypes';
 
+// Импорт функций для безопасного обновления энергии и опыта
+// В браузере эти функции будут доступны глобально через cultivationBounds.js
+const safeUpdateExperience = window.safeUpdateExperience || ((current, change, max) => Math.max(0, Math.min(max || 100, (current || 0) + (change || 0))));
+
 // Редуктор для обработки действий, связанных с духовными питомцами
 export const spiritPetsReducer = (state, action) => {
   switch (action.type) {

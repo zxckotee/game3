@@ -1,6 +1,7 @@
 const CharacterProfile = require('../models/character-profile');
 const { getInitializedUserModel } = require('../models/user');
 const CultivationService = require('./cultivation-service');
+const { safeUpdateEnergy, safeUpdateExperience, hasEnoughEnergy, hasEnoughExperience } = require('../utils/cultivationBounds');
 
 const INITIAL_RELATIONSHIPS = [
   {

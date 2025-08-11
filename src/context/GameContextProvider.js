@@ -18,6 +18,11 @@ import { normalizePlayerEffects } from '../utils/effectsNormalizer';
 // console.log('[GameContext] Методы itemService:', itemService ? Object.keys(itemService) : 'недоступно'); // Удалено
 import { initRelationshipSync } from '../utils/sectRelationshipSyncer';
 
+// Импорт функций для безопасного обновления энергии и опыта
+// В браузере эти функции будут доступны глобально через cultivationBounds.js
+const safeUpdateEnergy = window.safeUpdateEnergy || ((current, change, max) => Math.max(0, Math.min(max || 100, (current || 0) + (change || 0))));
+const safeUpdateExperience = window.safeUpdateExperience || ((current, change, max) => Math.max(0, Math.min(max || 100, (current || 0) + (change || 0))));
+
 // Очередь предметов для обогащения и флаг запланированного обогащения - Удалено
 // let itemEnrichmentQueue = [];
 // let isEnrichmentScheduled = false;

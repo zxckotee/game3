@@ -6,6 +6,7 @@ const { Sequelize } = require('sequelize');
 const { initializeDatabaseConnection } = require('./database-connection-manager');
 const CharacterProfileService = require('./character-profile-service');
 const modelRegistry = require('../models/registry');
+const { safeUpdateEnergy, safeUpdateExperience, hasEnoughEnergy, hasEnoughExperience } = require('../utils/cultivationBounds');
 let sequelize;
 
 // Асинхронная функция для получения экземпляра

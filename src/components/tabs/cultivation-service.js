@@ -5,6 +5,13 @@ const ResourceService = require('./resource-service');
 // Проверяем, находимся ли мы в браузере
 const isBrowser = typeof window !== 'undefined';
 
+// Импорт функций для безопасного обновления энергии и опыта
+// В браузере эти функции будут доступны глобально через cultivationBounds.js
+const safeUpdateEnergy = (isBrowser && window.safeUpdateEnergy) || ((current, change, max) => Math.max(0, Math.min(max || 100, (current || 0) + (change || 0))));
+const safeUpdateExperience = (isBrowser && window.safeUpdateExperience) || ((current, change, max) => Math.max(0, Math.min(max || 100, (current || 0) + (change || 0))));
+const hasEnoughEnergy = (isBrowser && window.hasEnoughEnergy) || ((current, required) => (current || 0) >= (required || 0));
+const hasEnoughExperience = (isBrowser && window.hasEnoughExperience) || ((current, required) => (current || 0) >= (required || 0));
+
 // Храним данные о культивации в памяти для браузера
 let browserCultivationData = {};
 

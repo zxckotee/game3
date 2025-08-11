@@ -1,6 +1,7 @@
 const { models } = require('../db');
 const { SpiritPet, UserSpiritPet, User, sequelize } = models;
 const { ApiError } = require('../utils/errors');
+const { safeUpdateEnergy, safeUpdateExperience, hasEnoughEnergy, hasEnoughExperience } = require('../utils/cultivationBounds');
 
 // Получить боевые бонусы от активного питомца
 exports.getPetCombatBonuses = async (req, res, next) => {

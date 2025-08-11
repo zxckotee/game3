@@ -6,6 +6,11 @@ import CultivationAdapter from '../../services/cultivation-adapter';
 import { getCultivationProgress, completeTribulation as completeTribulationAPI } from '../../services/cultivation-api';
 import QuestService from '../../services/quest-adapter';
 
+// Импорт функций для безопасного обновления энергии и опыта
+// В браузере эти функции будут доступны глобально через cultivationBounds.js
+const hasEnoughEnergy = window.hasEnoughEnergy || ((current, required) => (current || 0) >= (required || 0));
+const hasEnoughExperience = window.hasEnoughExperience || ((current, required) => (current || 0) >= (required || 0));
+
 // Компонент для отображения содержимого вкладок
 const TabContent = ({ active, children }) => {
   if (!active) return null;

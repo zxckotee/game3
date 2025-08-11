@@ -3,6 +3,7 @@ const User = require('../models/user');
 const ResourceService = require('./resource-service');
 const InventoryItem = require('../models/inventory-item');
 const { getSequelizeInstance } = require('../utils/connection-provider');
+const { safeUpdateEnergy, safeUpdateExperience, hasEnoughEnergy, hasEnoughExperience } = require('../utils/cultivationBounds');
 
 // Проверяем, находимся ли мы в браузере
 const isBrowser = typeof window !== 'undefined';

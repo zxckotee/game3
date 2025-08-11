@@ -10,7 +10,7 @@
  * @param {number} minEnergy - Минимальное значение энергии (по умолчанию 0)
  * @returns {number} Новое значение энергии в пределах границ
  */
-export function safeUpdateEnergy(currentEnergy, change, maxEnergy, minEnergy = 0) {
+function safeUpdateEnergy(currentEnergy, change, maxEnergy, minEnergy = 0) {
   const current = Number(currentEnergy) || 0;
   const delta = Number(change) || 0;
   const max = Number(maxEnergy) || 100;
@@ -28,7 +28,7 @@ export function safeUpdateEnergy(currentEnergy, change, maxEnergy, minEnergy = 0
  * @param {number} minExperience - Минимальное значение опыта (по умолчанию 0)
  * @returns {number} Новое значение опыта в пределах границ
  */
-export function safeUpdateExperience(currentExperience, change, maxExperience, minExperience = 0) {
+function safeUpdateExperience(currentExperience, change, maxExperience, minExperience = 0) {
   const current = Number(currentExperience) || 0;
   const delta = Number(change) || 0;
   const max = Number(maxExperience) || 100;
@@ -44,7 +44,7 @@ export function safeUpdateExperience(currentExperience, change, maxExperience, m
  * @param {number} requiredEnergy - Требуемое количество энергии
  * @returns {boolean} true, если энергии достаточно
  */
-export function hasEnoughEnergy(currentEnergy, requiredEnergy) {
+function hasEnoughEnergy(currentEnergy, requiredEnergy) {
   const current = Number(currentEnergy) || 0;
   const required = Number(requiredEnergy) || 0;
   return current >= required;
@@ -56,7 +56,7 @@ export function hasEnoughEnergy(currentEnergy, requiredEnergy) {
  * @param {number} requiredExperience - Требуемое количество опыта
  * @returns {boolean} true, если опыта достаточно
  */
-export function hasEnoughExperience(currentExperience, requiredExperience) {
+function hasEnoughExperience(currentExperience, requiredExperience) {
   const current = Number(currentExperience) || 0;
   const required = Number(requiredExperience) || 0;
   return current >= required;
@@ -68,7 +68,7 @@ export function hasEnoughExperience(currentExperience, requiredExperience) {
  * @param {Object} changes - Изменения для применения
  * @returns {Object} Обновленный объект культивации
  */
-export function safeUpdateCultivation(cultivation, changes) {
+function safeUpdateCultivation(cultivation, changes) {
   const result = { ...cultivation };
   
   if (changes.energy !== undefined) {
@@ -108,7 +108,7 @@ export function safeUpdateCultivation(cultivation, changes) {
  * @param {number} maxEnergy - Максимальная энергия (опционально)
  * @returns {string} SQL выражение
  */
-export function createSafeEnergyUpdateSQL(change, maxEnergy = null) {
+function createSafeEnergyUpdateSQL(change, maxEnergy = null) {
   const delta = Number(change) || 0;
   
   if (delta >= 0) {
@@ -130,7 +130,7 @@ export function createSafeEnergyUpdateSQL(change, maxEnergy = null) {
  * @param {number} maxExperience - Максимальный опыт (опционально)
  * @returns {string} SQL выражение
  */
-export function createSafeExperienceUpdateSQL(change, maxExperience = null) {
+function createSafeExperienceUpdateSQL(change, maxExperience = null) {
   const delta = Number(change) || 0;
   
   if (delta >= 0) {
@@ -151,7 +151,7 @@ export function createSafeExperienceUpdateSQL(change, maxExperience = null) {
  * @param {Object} cultivation - Объект культивации для валидации
  * @returns {Object} Объект с результатами валидации
  */
-export function validateCultivation(cultivation) {
+function validateCultivation(cultivation) {
   const errors = [];
   const warnings = [];
   
@@ -189,4 +189,29 @@ export function validateCultivation(cultivation) {
     errors,
     warnings
   };
+}
+
+// CommonJS экспорты для серверных файлов
+module.exports = {
+  safeUpdateEnergy,
+  safeUpdateExperience,
+  hasEnoughEnergy,
+  hasEnoughExperience,
+  safeUpdateCultivation,
+  createSafeEnergyUpdateSQL,
+  createSafeExperienceUpdateSQL,
+  validateCultivation
+};
+
+// ES6 экспорты для клиентских файлов (для обратной совместимости)
+if (typeof window !== 'undefined') {
+  // В браузере делаем функции глобально доступными
+  window.safeUpdateEnergy = safeUpdateEnergy;
+  window.safeUpdateExperience = safeUpdateExperience;
+  window.hasEnoughEnergy = hasEnoughEnergy;
+  window.hasEnoughExperience = hasEnoughExperience;
+  window.safeUpdateCultivation = safeUpdateCultivation;
+  window.createSafeEnergyUpdateSQL = createSafeEnergyUpdateSQL;
+  window.createSafeExperienceUpdateSQL = createSafeExperienceUpdateSQL;
+  window.validateCultivation = validateCultivation;
 }

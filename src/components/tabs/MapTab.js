@@ -7,6 +7,10 @@ import { getAllLocations } from '../../services/location-api';
 import { enemies } from '../../data/enemies-adapter';
 // // import useTimeWeather from '../../hooks/useTimeWeather';
 
+// Импорт функций для безопасного обновления энергии
+// В браузере эти функции будут доступны глобально через cultivationBounds.js
+const safeUpdateEnergy = window.safeUpdateEnergy || ((current, change, max) => Math.max(0, Math.min(max || 100, (current || 0) + (change || 0))));
+
 // Функция для получения имени врага по ID
 const getEnemyNameById = async (enemyId) => {
   // Полный список всех врагов из базы данных (обе группы INSERT запросов)

@@ -34,16 +34,16 @@ services:
     volumes:
       # Монтируем исходный код для hot reload
       - .:/app
-      # Исключаем node_modules для производительности
+      # Исключаем node_modules для производительности 
       - /app/node_modules
       # Монтируем конфигурационные файлы
       - ./package.json:/app/package.json:ro
       - ./craco.config.js:/app/craco.config.js:ro
-      - ./.env:/app/.env:ro
+      - ./.env:/app/.env:ro 
     environment:
       # Переменные для разработки
       - NODE_ENV=development
-      - PORT=3001
+      - PORT=3001 
       - REACT_APP_PORT=80
       - REACT_APP_API_URL=http://localhost:3001
       # Hot reload настройки
