@@ -39,18 +39,14 @@ services:
       # Монтируем конфигурационные файлы
       - ./package.json:/app/package.json:ro
       - ./craco.config.js:/app/craco.config.js:ro
-      - ./.env:/app/.env:ro
-      # Монтируем SSL сертификаты для HTTPS
-      - ./ssl:/app/ssl:ro
+      - ./.env.docker:/app/.env:ro
     environment:
       # Переменные для разработки
       - NODE_ENV=development
       - PORT=3001
       - REACT_APP_PORT=80
       - REACT_APP_API_URL=https://culty.ru:3001
-      # HTTPS настройки только для Express API (React остается на HTTP)
-      - SSL_CRT_FILE=/app/ssl/culty.ru.crt
-      - SSL_KEY_FILE=/app/ssl/culty.ru.key
+      # НЕ используем HTTPS для приложения - только Nginx обрабатывает HTTPS
       # Hot reload настройки
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true

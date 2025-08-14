@@ -252,9 +252,21 @@ async function startServer() {
         const sslCertPath = process.env.SSL_CRT_FILE || 'ssl/culty.ru.crt';
         const sslKeyPath = process.env.SSL_KEY_FILE || 'ssl/culty.ru.key';
         
+        // Проверяем существование файлов перед чтением
+        const certFullPath = path.resolve(sslCertPath);
+        const keyFullPath = path.resolve(sslKeyPath);
+        
+        if (!fs.existsSync(certFullPath)) {
+          throw new Error(`SSL_CRT_FILE in your env, but the file '${certFullPath}' can't be found.`);
+        }
+        
+        if (!fs.existsSync(keyFullPath)) {
+          throw new Error(`SSL_KEY_FILE in your env, but the file '${keyFullPath}' can't be found.`);
+        }
+        
         const httpsOptions = {
-          cert: fs.readFileSync(path.resolve(sslCertPath)),
-          key: fs.readFileSync(path.resolve(sslKeyPath))
+          cert: fs.readFileSync(certFullPath),
+          key: fs.readFileSync(keyFullPath)
         };
         
         server = https.createServer(httpsOptions, app).listen(PORT, () => {
