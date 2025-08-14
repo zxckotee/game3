@@ -68,9 +68,8 @@ docker-compose -f docker-compose.prod.yml down
 
 ### Многоуровневая защита HTTPS:
 1. **Nginx редирект** - серверный редирект HTTP → HTTPS
-2. **JavaScript редирект** - клиентский редирект в index.html
-3. **CSP upgrade-insecure-requests** - автоматическое обновление HTTP запросов
-4. **HSTS заголовки** - принудительное использование HTTPS в браузере
+2. **JavaScript редирект** - клиентский редирект в index.html (только для HTTP → HTTPS)
+3. **HSTS заголовки** - принудительное использование HTTPS в браузере
 
 ⚠️ **ОБЯЗАТЕЛЬНО измените в .env.production:**
 - `DB_PASSWORD` - пароль PostgreSQL

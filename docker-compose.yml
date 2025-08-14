@@ -29,17 +29,20 @@ services:
       dockerfile: Dockerfile
     container_name: immortal-path-app
     ports:
-      - "80:80"      # React dev server
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
       - "3001:3001"  # Express API server
     volumes:
       # Монтируем исходный код для hot reload
       - .:/app
-      # Исключаем node_modules для производительности 
+      # Исключаем node_modules для производительности
       - /app/node_modules
       # Монтируем конфигурационные файлы
       - ./package.json:/app/package.json:ro
       - ./craco.config.js:/app/craco.config.js:ro
-      - ./.env:/app/.env:ro 
+      - ./.env:/app/.env:ro
+      # Монтируем SSL сертификаты
+      - ./ssl:/etc/nginx/ssl:ro
     environment:
       # Переменные для разработки
       - NODE_ENV=development

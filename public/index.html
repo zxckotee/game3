@@ -9,8 +9,6 @@
       name="description"
       content="Путь к Бессмертию - браузерная игра о культивации"
     />
-    <!-- Принудительное использование HTTPS -->
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <!-- Отключение кеширования -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -22,8 +20,8 @@
     
     <!-- Принудительный редирект на HTTPS -->
     <script>
-      // Проверяем, что мы не на localhost и используем HTTP
-      if (location.protocol !== 'https:' &&
+      // Проверяем, что мы используем HTTP (не HTTPS) и НЕ на localhost
+      if (location.protocol === 'http:' &&
           location.hostname !== 'localhost' &&
           location.hostname !== '127.0.0.1' &&
           location.hostname !== '0.0.0.0') {
