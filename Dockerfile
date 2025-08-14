@@ -24,7 +24,7 @@ RUN npm ci --only=production=false --silent
 COPY . .
 
 # Экспонируем порты
-EXPOSE 80 3001
+EXPOSE 80 443 3001
 
 # Устанавливаем переменные окружения для разработки
 ENV NODE_ENV=development

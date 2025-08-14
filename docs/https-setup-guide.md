@@ -105,3 +105,53 @@ ssl/
 - SSL сертификаты действительны для домена `culty.ru`
 - Сертификаты самоподписанные, подходят для разработки
 - Для продакшена рекомендуется использовать сертификаты от доверенного CA
+
+## Упрощенная Docker HTTPS архитектура
+
+### Почему без nginx?
+Webpack dev server уже умеет работать с HTTPS напрямую, поэтому nginx здесь избыточен. Прямое подключение к webpack dev server:
+- Проще в настройке и отладке
+- Меньше промежуточных слоев
+- Лучшая производительность для разработки
+- Автоматическая поддержка hot reload через HTTPS
+
+### Финальная конфигурация Docker
+
+**docker-compose.yml:**
+```yaml
+app:
+  ports:
+    - "443:443"    # HTTPS webpack dev server
+    - "3001:3001"  # Express API server
+  volumes:
+    - ./ssl:/app/ssl:ro  # SSL сертификаты
+  environment:
+    - REACT_APP_PORT=443
+    - HTTPS=true
+    - SSL_CRT_FILE=ssl/culty.ru.crt
+    - SSL_KEY_FILE=ssl/culty.ru.key
+```
+
+### Архитектура подключений
+
+```
+Браузер → https://your-server:443 → Docker Container → Webpack Dev Server (HTTPS)
+                                                    ↓
+                                                API Proxy → Express Server (HTTP:3001)
+```
+
+### Преимущества такой архитектуры:
+1. **Простота** - один сервер вместо двух
+2. **Производительность** - нет дополнительного проксирования
+3. **Hot Reload** - работает напрямую через HTTPS
+4. **Отладка** - проще диагностировать проблемы
+5. **Безопасность** - SSL терминация на уровне приложения
+
+### Запуск в Docker:
+```bash
+docker-compose up --build
+```
+
+Приложение будет доступно:
+- Локально: `https://localhost:443`
+- В сети: `https://your-server-ip:443`
