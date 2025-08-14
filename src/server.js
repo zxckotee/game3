@@ -2,6 +2,7 @@
  * API сервер для обработки запросов от сервисов к базе данных
  */
 const express = require('express');
+const https = require('https');
 const cors = require('cors');
 const path = require('path');
 const { unifiedDatabase, initializeDatabaseConnection } = require('./services/database-connection-manager');
@@ -240,12 +241,46 @@ async function startServer() {
     }, getInterval(INTERVAL_TYPES.EFFECT_CLEANUP));
 
     // Запускаем сервер только после успешного подключения к БД
-    const server = app.listen(PORT, () => {
-      console.log(`=================================================`);
-      console.log(`API сервер успешно запущен на порту ${PORT}`);
-      console.log(`PostgreSQL успешно подключена, все системы функционируют нормально`);
-      console.log(`=================================================`);
-    });
+    let server;
+    
+    // Проверяем, нужно ли запускать HTTPS
+    const useHttps = process.env.HTTPS === 'true' || process.env.SSL_CRT_FILE;
+    
+    if (useHttps) {
+      try {
+        // Читаем SSL сертификаты
+        const sslCertPath = process.env.SSL_CRT_FILE || 'ssl/culty.ru.crt';
+        const sslKeyPath = process.env.SSL_KEY_FILE || 'ssl/culty.ru.key';
+        
+        const httpsOptions = {
+          cert: fs.readFileSync(path.resolve(sslCertPath)),
+          key: fs.readFileSync(path.resolve(sslKeyPath))
+        };
+        
+        server = https.createServer(httpsOptions, app).listen(PORT, () => {
+          console.log(`=================================================`);
+          console.log(`🔒 HTTPS API сервер успешно запущен на порту ${PORT}`);
+          console.log(`🔒 SSL сертификаты загружены: ${sslCertPath}, ${sslKeyPath}`);
+          console.log(`PostgreSQL успешно подключена, все системы функционируют нормально`);
+          console.log(`=================================================`);
+        });
+      } catch (sslError) {
+        console.warn('⚠️  Не удалось загрузить SSL сертификаты, запускаем HTTP сервер:', sslError.message);
+        server = app.listen(PORT, () => {
+          console.log(`=================================================`);
+          console.log(`HTTP API сервер успешно запущен на порту ${PORT} (SSL недоступен)`);
+          console.log(`PostgreSQL успешно подключена, все системы функционируют нормально`);
+          console.log(`=================================================`);
+        });
+      }
+    } else {
+      server = app.listen(PORT, () => {
+        console.log(`=================================================`);
+        console.log(`HTTP API сервер успешно запущен на порту ${PORT}`);
+        console.log(`PostgreSQL успешно подключена, все системы функционируют нормально`);
+        console.log(`=================================================`);
+      });
+    }
     
     // Добавляем обработку ошибок для самого сервера
     server.on('error', (err) => {
