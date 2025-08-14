@@ -73,10 +73,6 @@ services:
     networks:
       - app_network
 
-volumes:
-  postgres_data:
-    driver: local
-
   # Nginx reverse proxy для HTTPS
   nginx:
     image: nginx:alpine
@@ -92,6 +88,10 @@ volumes:
     restart: unless-stopped
     networks:
       - app_network
+
+volumes:
+  postgres_data:
+    driver: local
 
 networks:
   app_network:
