@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useGame } from '../../context/GameContext';
 import CharacterProfileServiceAPI from '../../services/character-profile-service-api';
@@ -470,6 +470,29 @@ const EventList = styled.div`
   color: #f0f0f0;
   font-size: 14px;
   line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+  
+  /* Стилизация скроллбара */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #d4af37, #f4d03f);
+    border-radius: 3px;
+    transition: all 0.3s ease;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #f4d03f, #d4af37);
+  }
   
   > div {
     margin-bottom: 12px;
@@ -523,30 +546,36 @@ function SocialTab() {
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   
   // Получаем данные об отношениях с проверкой на существование
+  console.log('[SocialTab] Текущее состояние игрока:', state?.player);
+  console.log('[SocialTab] social.relationships:', state?.player?.social?.relationships);
+  console.log('[SocialTab] player.relationships:', state?.player?.relationships);
+  
   // Сначала проверяем social.relationships (новый формат)
   let relationships = state?.player?.social?.relationships;
   
   // Если social.relationships отсутствует или пуст, пробуем использовать старый формат player.relationships
   if (!relationships || (Array.isArray(relationships) && relationships.length === 0)) {
     relationships = state?.player?.relationships;
-    console.log('Используем отношения из player.relationships:', relationships);
+    console.log('[SocialTab] Используем отношения из player.relationships:', relationships);
   }
   
   // Если всё ещё нет данных, используем defaultRelationships
   if (!relationships) {
     relationships = defaultRelationships;
-    console.log('Используем defaultRelationships');
+    console.log('[SocialTab] Используем defaultRelationships');
   }
   
   // Убедимся, что relationships - это массив
   if (!Array.isArray(relationships)) {
     // Если это объект, преобразуем его в массив
-    relationships = typeof relationships === 'object' && relationships !== null 
-      ? Object.values(relationships) 
+    relationships = typeof relationships === 'object' && relationships !== null
+      ? Object.values(relationships)
       : defaultRelationships;
     
-    console.log('Relationships преобразованы из объекта в массив:', relationships);
+    console.log('[SocialTab] Relationships преобразованы из объекта в массив:', relationships);
   }
+  
+  console.log('[SocialTab] Финальный массив relationships:', relationships);
   
   const cultivation = state?.player?.cultivation || {};
   
@@ -569,7 +598,19 @@ function SocialTab() {
     }
   };
   
+  // Эффект для синхронизации selectedCharacter с обновленными данными из Redux
+  useEffect(() => {
+    if (selectedCharacter && Array.isArray(relationships)) {
+      const updatedCharacter = relationships.find(rel => rel.id === selectedCharacter.id);
+      if (updatedCharacter && updatedCharacter !== selectedCharacter) {
+        console.log('[SocialTab] Синхронизация selectedCharacter с Redux:', updatedCharacter);
+        setSelectedCharacter(updatedCharacter);
+      }
+    }
+  }, [relationships, selectedCharacter]);
+
   const handleCharacterClick = (character) => {
+    console.log('[SocialTab] Выбран персонаж:', character);
     setSelectedCharacter(character);
   };
   
@@ -577,18 +618,33 @@ function SocialTab() {
     if (!selectedCharacter) return;
 
     try {
+      console.log('[SocialTab] Начинаем взаимодействие с NPC:', selectedCharacter.id, 'тип:', type);
+      
       // Вызываем серверный метод, который сам проверит энергию и выполнит все операции
       const result = await CharacterProfileServiceAPI.handleInteraction(selectedCharacter.id, type);
+      console.log('[SocialTab] Получен результат взаимодействия:', result);
 
       if (result.success) {
         // ВАЖНО: Обновляем ВСЕ relationships сразу, чтобы избежать race condition с middleware
         if (result.allRelationships && actions.updateSocialRelationships) {
           console.log('[SocialTab] Обновляем все relationships с новыми событиями:', result.allRelationships);
           actions.updateSocialRelationships(result.allRelationships);
+          
+          // Находим обновленного персонажа в новом массиве для синхронизации локального состояния
+          const updatedCharacterFromArray = result.allRelationships.find(rel => rel.id === selectedCharacter.id);
+          if (updatedCharacterFromArray) {
+            console.log('[SocialTab] Синхронизируем локальное состояние с Redux:', updatedCharacterFromArray);
+            setSelectedCharacter(updatedCharacterFromArray);
+          } else {
+            console.warn('[SocialTab] Не удалось найти обновленного персонажа в массиве relationships');
+            // Fallback: используем данные из result.updatedRelationship
+            setSelectedCharacter(result.updatedRelationship);
+          }
+        } else {
+          console.warn('[SocialTab] Отсутствуют allRelationships или updateSocialRelationships action');
+          // Обновляем локальное состояние для перерисовки
+          setSelectedCharacter(result.updatedRelationship);
         }
-
-        // Обновляем локальное состояние для перерисовки
-        setSelectedCharacter(result.updatedRelationship);
 
         // Обновляем данные культивации через API и Redux (как в SectTab)
         try {

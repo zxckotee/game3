@@ -493,6 +493,12 @@ const actions = {
     updateRelationship: (relationshipData) => {
       dispatch({ type: ACTION_TYPES.UPDATE_RELATIONSHIP, payload: relationshipData });
     },
+    
+    // Действие для обновления всех социальных отношений (используется в SocialTab)
+    updateSocialRelationships: (relationships) => {
+      console.log('[GameContext] Обновление всех социальных отношений:', relationships);
+      dispatch({ type: ACTION_TYPES.UPDATE_SOCIAL_RELATIONSHIPS, payload: relationships });
+    },
     // Действия для боя
     startCombat: (enemy) => dispatch({ type: ACTION_TYPES.START_COMBAT, payload: enemy }),
     endCombat: () => dispatch({ type: ACTION_TYPES.END_COMBAT }),
