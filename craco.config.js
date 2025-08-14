@@ -1,5 +1,6 @@
 const webpack = require('webpack');
 const path = require('path');
+const fs = require('fs');
 
 module.exports = {
   webpack: {
@@ -140,12 +141,18 @@ module.exports = {
     },
     allowedHosts: 'all',
     host: '0.0.0.0',
-    port: 80,
+    port: 443,
+    // Настройка HTTPS с SSL сертификатами
+    https: {
+      key: path.resolve(__dirname, 'ssl/culty.ru.key'),
+      cert: path.resolve(__dirname, 'ssl/culty.ru.crt')
+    },
     // Добавляем проксирование API-запросов на сервер Express во время разработки
     proxy: {
       '/api': {
         target: 'http://localhost:3001', // Порт на котором запущен Express сервер
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false // Разрешаем проксирование с HTTPS на HTTP
       }
     }
   }
