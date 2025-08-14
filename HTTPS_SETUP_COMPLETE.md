@@ -1,11 +1,13 @@
 # ✅ HTTPS настройка завершена
 
-## Проблема решена
+## Проблемы решены
 
-Исправлена ошибка с SSL сертификатами в Docker:
-```
-SSL_CRT_FILE in your env, but the file '/app/ssl/culty.ru.crt' can't be found.
-```
+1. **Исправлена ошибка с SSL сертификатами в Docker:**
+   ```
+   SSL_CRT_FILE in your env, but the file '/app/ssl/culty.ru.crt' can't be found.
+   ```
+
+2. **Исправлена проблема с HTTPS в npm run dev** - теперь React dev server использует HTTPS
 
 ## Что было сделано
 
@@ -14,6 +16,7 @@ SSL_CRT_FILE in your env, but the file '/app/ssl/culty.ru.crt' can't be found.
 2. **Обновлен `docker-compose.yml`** - использует `.env.docker` вместо `.env`
 3. **Улучшен `src/server.js`** - добавлена проверка существования SSL файлов
 4. **Создан `docker-cleanup.sh`** - скрипт для очистки старых контейнеров
+5. **Исправлен `.env`** - добавлены переменные для React HTTPS
 
 ### 📁 Архитектура HTTPS
 ```
@@ -37,10 +40,11 @@ chmod +x docker-cleanup.sh
 docker-compose up -d
 ```
 
-### Локальная разработка
+### Локальная разработка (HTTPS)
 ```bash
 npm run dev
 ```
+Теперь откроется `https://localhost:3000` вместо HTTP
 
 ## 📋 Проверка работы
 
@@ -96,6 +100,25 @@ npm run dev
 ## 📚 Документация
 
 - [`docs/docker-ssl-fix.md`](docs/docker-ssl-fix.md) - подробное описание исправления
+- [`docs/troubleshooting-guide.md`](docs/troubleshooting-guide.md) - руководство по устранению проблем
 - [`docs/https-setup-guide.md`](docs/https-setup-guide.md) - полное руководство по HTTPS
 
-Теперь ваше приложение должно корректно работать как в Docker, так и в локальной разработке!
+## 🎯 Следующие шаги
+
+1. **Для локальной разработки:**
+   ```bash
+   npm run dev
+   ```
+   Должен открыться `https://localhost:3000`
+
+2. **Для Docker развертывания:**
+   ```bash
+   ./docker-cleanup.sh
+   docker-compose up -d
+   ```
+   Проверьте доступность на `https://culty.ru`
+
+3. **При проблемах:**
+   Смотрите [`docs/troubleshooting-guide.md`](docs/troubleshooting-guide.md)
+
+Теперь ваше приложение должно корректно работать как в Docker, так и в локальной разработке с полной поддержкой HTTPS!
