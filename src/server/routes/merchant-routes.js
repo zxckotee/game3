@@ -11,8 +11,8 @@ router.get('/api/merchants', async (req, res) => {
     
     console.log(`Запрос торговцев для пользователя ${userId}`);
     
-    // Получаем всех торговцев через сервис
-    const merchants = await merchantService.getAllMerchants();
+    // Получаем всех торговцев через сервис с передачей userId
+    const merchants = await merchantService.getAllMerchants(userId);
     
     if (!merchants || merchants.length === 0) {
       console.log('Торговцы не найдены в базе данных');
