@@ -29,8 +29,7 @@ services:
       dockerfile: Dockerfile
     container_name: immortal-path-app
     ports:
-      - "80:80"      # HTTP
-      - "443:443"    # HTTPS
+      - "3000:80"    # React dev server (внутренний HTTP)
       - "3001:3001"  # Express API server
     volumes:
       # Монтируем исходный код для hot reload
@@ -49,8 +48,7 @@ services:
       - PORT=3001
       - REACT_APP_PORT=80
       - REACT_APP_API_URL=https://culty.ru:3001
-      # HTTPS настройки для React dev server
-      - HTTPS=true
+      # HTTPS настройки только для Express API (React остается на HTTP)
       - SSL_CRT_FILE=/app/ssl/culty.ru.crt
       - SSL_KEY_FILE=/app/ssl/culty.ru.key
       # Hot reload настройки
@@ -77,6 +75,22 @@ services:
     restart: unless-stopped
     stdin_open: true
     tty: true
+    networks:
+      - app_network
+
+  # Nginx reverse proxy для HTTPS
+  nginx:
+    image: nginx:alpine
+    container_name: immortal-path-nginx
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    restart: unless-stopped
     networks:
       - app_network
 
