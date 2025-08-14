@@ -9,6 +9,8 @@
       name="description"
       content="Путь к Бессмертию - браузерная игра о культивации"
     />
+    <!-- Принудительное использование HTTPS -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <!-- Отключение кеширования -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -17,6 +19,18 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Путь к Бессмертию</title>
+    
+    <!-- Принудительный редирект на HTTPS -->
+    <script>
+      // Проверяем, что мы не на localhost и используем HTTP
+      if (location.protocol !== 'https:' &&
+          location.hostname !== 'localhost' &&
+          location.hostname !== '127.0.0.1' &&
+          location.hostname !== '0.0.0.0') {
+        // Перенаправляем на HTTPS версию
+        location.replace('https:' + window.location.href.substring(window.location.protocol.length));
+      }
+    </script>
   </head>
   <body>
     <noscript>Для работы приложения необходимо включить JavaScript.</noscript>

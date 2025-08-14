@@ -1,0 +1,69 @@
+# Многоэтапная сборка для продакшена
+FROM node:18-bullseye-slim as builder
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Устанавливаем только необходимые системные зависимости
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Копируем package.json и package-lock.json для кэширования зависимостей
+COPY package*.json ./
+
+ENV LC_ALL="C.UTF-8"
+
+# Устанавливаем зависимости
+RUN npm ci --only=production=false --silent
+
+# Копируем исходный код
+COPY . .
+
+# Собираем React приложение для продакшена
+RUN npm run build
+
+# Продакшен образ
+FROM node:18-bullseye-slim
+
+WORKDIR /app
+
+# Устанавливаем только runtime зависимости
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Копируем package.json для установки только production зависимостей
+COPY package*.json ./
+
+ENV LC_ALL="C.UTF-8"
+
+# Устанавливаем только production зависимости
+RUN npm ci --only=production --silent
+
+# Копируем собранное приложение из builder stage
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/sql ./sql
+
+# Экспонируем порты
+EXPOSE 3000 3001
+
+# Устанавливаем переменные окружения для продакшена
+ENV NODE_ENV=production
+ENV CI=false
+
+# Создаем пользователя для безопасности
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
+
+# Запускаем только Express сервер (статические файлы отдает nginx)
+CMD ["node", "src/server.js"]

@@ -1,2 +1,50 @@
+# Dependencies
 node_modules
 .vscode
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Production environment files (содержат секреты)
+.env.production
+
+# SSL сертификаты и ключи
+ssl/certbot/
+ssl/dhparam/
+*.pem
+*.key
+*.crt
+
+# Production build
+/build
+
+# Логи
+*.log
+logs/
+
+# Бэкапы базы данных
+*.sql
+backups/
+
+# Docker volumes
+postgres_data/
+postgres_data_prod/
+
+# Testing
+/coverage
+
+# Misc
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
