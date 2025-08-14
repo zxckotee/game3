@@ -29,7 +29,8 @@ services:
       dockerfile: Dockerfile
     container_name: immortal-path-app
     ports:
-      - "80:80"      # React dev server
+      - "80:80"      # React dev server (HTTP)
+      - "443:443"    # React dev server (HTTPS)
       - "3001:3001"  # Express API server
     volumes:
       # Монтируем исходный код для hot reload
@@ -39,12 +40,17 @@ services:
       # Монтируем конфигурационные файлы
       - ./package.json:/app/package.json:ro
       - ./craco.config.js:/app/craco.config.js:ro
-      - ./.env:/app/.env:ro 
+      - ./.env:/app/.env:ro
+      # Монтируем SSL сертификаты
+      - ./ssl:/app/ssl:ro
     environment:
       # Переменные для разработки
       - NODE_ENV=development
       - PORT=3001 
-      - REACT_APP_PORT=80
+      - REACT_APP_PORT=443
+      - HTTPS=true
+      - SSL_CRT_FILE=ssl/culty.ru.crt
+      - SSL_KEY_FILE=ssl/culty.ru.key
       - REACT_APP_API_URL=http://localhost:3001
       # Hot reload настройки
       - CHOKIDAR_USEPOLLING=true
