@@ -61,6 +61,30 @@ devServer: {
 }
 ```
 
+#### `webpack.config.js`
+- ✅ Полная HTTPS конфигурация для webpack dev server
+- ✅ Автоматическая проверка наличия SSL сертификатов
+- ✅ Проксирование API через HTTPS/HTTP
+- ✅ Поддержка переменных окружения для SSL
+
+**Ключевые настройки:**
+```javascript
+devServer: {
+  port: process.env.REACT_APP_PORT || 443,
+  https: process.env.HTTPS === 'true' ? {
+    key: fs.readFileSync(path.resolve(__dirname, 'ssl/culty.ru.key')),
+    cert: fs.readFileSync(path.resolve(__dirname, 'ssl/culty.ru.crt'))
+  } : false,
+  proxy: {
+    '/api': {
+      target: process.env.REACT_APP_API_URL_HTTPS || 'http://localhost:3001',
+      changeOrigin: true,
+      secure: false
+    }
+  }
+}
+```
+
 ### 3. **Docker конфигурация**
 
 #### `docker-compose.yml`

@@ -2,6 +2,7 @@ const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const fs = require('fs');
 
 module.exports = {
   entry: './src/index.js',
@@ -35,9 +36,39 @@ module.exports = {
     static: {
       directory: path.join(__dirname, 'public')
     },
-    port: 3000,
+    port: process.env.REACT_APP_PORT || 443,
     hot: true,
-    open: true
+    open: true,
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+    // HTTPS конфигурация с SSL сертификатами
+    https: process.env.HTTPS === 'true' ? {
+      key: fs.existsSync(path.resolve(__dirname, 'ssl/culty.ru.key'))
+        ? fs.readFileSync(path.resolve(__dirname, 'ssl/culty.ru.key'))
+        : undefined,
+      cert: fs.existsSync(path.resolve(__dirname, 'ssl/culty.ru.crt'))
+        ? fs.readFileSync(path.resolve(__dirname, 'ssl/culty.ru.crt'))
+        : undefined
+    } : false,
+    // Проксирование API запросов
+    proxy: {
+      '/api': {
+        target: process.env.REACT_APP_API_URL_HTTPS || process.env.REACT_APP_API_URL || 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'X-Forwarded-Proto': 'https'
+        }
+      }
+    },
+    // Настройки клиента
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+      progress: true,
+    }
   },
   plugins: [
     new HtmlWebpackPlugin({
