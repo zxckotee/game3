@@ -31,7 +31,8 @@ services:
     ports:
       - "80:80"      # React dev server (HTTP)
       - "443:443"    # React dev server (HTTPS)
-      - "3001:3001"  # Express API server
+      - "3001:3001"  # Express API server (HTTP)
+      - "3443:3443"  # Express API server (HTTPS)
     volumes:
       # Монтируем исходный код для hot reload
       - .:/app
@@ -46,12 +47,14 @@ services:
     environment:
       # Переменные для разработки
       - NODE_ENV=development
-      - PORT=3001 
+      - PORT=3001
+      - HTTPS_PORT=3443
       - REACT_APP_PORT=443
       - HTTPS=true
       - SSL_CRT_FILE=ssl/culty.ru.crt
       - SSL_KEY_FILE=ssl/culty.ru.key
       - REACT_APP_API_URL=http://localhost:3001
+      - REACT_APP_API_URL_HTTPS=https://localhost:3443
       # Hot reload настройки
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true

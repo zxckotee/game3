@@ -150,10 +150,29 @@ module.exports = {
     // Добавляем проксирование API-запросов на сервер Express во время разработки
     proxy: {
       '/api': {
-        target: 'http://localhost:3001', // Порт на котором запущен Express сервер
+        target: process.env.REACT_APP_API_URL_HTTPS || process.env.REACT_APP_API_URL || 'http://localhost:3001',
         changeOrigin: true,
-        secure: false // Разрешаем проксирование с HTTPS на HTTP
+        secure: false, // Разрешаем проксирование с HTTPS на HTTP
+        headers: {
+          'X-Forwarded-Proto': 'https'
+        }
       }
+    },
+    // Настройки клиента для лучшей работы с HTTPS
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+      progress: true,
+    },
+    // Настройки для работы с WebSocket через HTTPS
+    webSocketServer: {
+      type: 'ws',
+      options: {
+        host: '0.0.0.0',
+        port: 443,
+      },
     }
   }
 };

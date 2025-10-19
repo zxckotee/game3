@@ -47,9 +47,13 @@ function withTimeout(promise, timeoutMs, errorMessage) {
 }
 
 const fs = require('fs');
+const https = require('https');
 
 // Импортируем маршруты API
 const { registerRoutes } = require('./server/routes');
+
+// Импортируем HTTPS redirect middleware
+const httpsRedirectMiddleware = require('./server/middleware/https-redirect-middleware');
 
 // Создаем приложение Express
 const app = express();
@@ -58,6 +62,11 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+// Добавляем HTTPS redirect middleware для production
+if (process.env.NODE_ENV === 'production') {
+  app.use(httpsRedirectMiddleware);
+}
 
 // ВАЖНО! Регистрируем специальный маршрут ДО того, как будут зарегистрированы остальные маршруты
 console.log('Регистрация специального прямого маршрута для обновления инвентаря торговцев');
@@ -167,6 +176,27 @@ app.use((req, res) => {
 
 // Запуск сервера
 const PORT = process.env.PORT || 3001;
+const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
+
+// Функция для создания HTTPS сервера
+function createHttpsServer() {
+  // Проверяем наличие SSL сертификатов
+  const sslKeyPath = process.env.SSL_KEY_FILE || 'ssl/culty.ru.key';
+  const sslCertPath = process.env.SSL_CRT_FILE || 'ssl/culty.ru.crt';
+  
+  if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+    const httpsOptions = {
+      key: fs.readFileSync(sslKeyPath),
+      cert: fs.readFileSync(sslCertPath)
+    };
+    
+    console.log(`SSL сертификаты найдены: ${sslKeyPath}, ${sslCertPath}`);
+    return https.createServer(httpsOptions, app);
+  } else {
+    console.log(`SSL сертификаты не найдены в: ${sslKeyPath}, ${sslCertPath}`);
+    return null;
+  }
+}
 
 // Функция для запуска сервера
 async function startServer() {
@@ -239,13 +269,32 @@ async function startServer() {
       EffectLifecycleService.cleanupExpiredEffects();
     }, getInterval(INTERVAL_TYPES.EFFECT_CLEANUP));
 
-    // Запускаем сервер только после успешного подключения к БД
+    // Запускаем HTTP сервер только после успешного подключения к БД
     const server = app.listen(PORT, () => {
       console.log(`=================================================`);
-      console.log(`API сервер успешно запущен на порту ${PORT}`);
+      console.log(`HTTP API сервер успешно запущен на порту ${PORT}`);
       console.log(`PostgreSQL успешно подключена, все системы функционируют нормально`);
       console.log(`=================================================`);
     });
+
+    // Запускаем HTTPS сервер если есть SSL сертификаты
+    const httpsServer = createHttpsServer();
+    if (httpsServer) {
+      httpsServer.listen(HTTPS_PORT, () => {
+        console.log(`=================================================`);
+        console.log(`HTTPS API сервер успешно запущен на порту ${HTTPS_PORT}`);
+        console.log(`SSL сертификаты загружены и активны`);
+        console.log(`=================================================`);
+      });
+      
+      // Добавляем обработку ошибок для HTTPS сервера
+      httpsServer.on('error', (err) => {
+        console.error('Ошибка HTTPS сервера:', err);
+        if (err.code === 'EADDRINUSE') {
+          console.error(`HTTPS порт ${HTTPS_PORT} уже используется другим процессом!`);
+        }
+      });
+    }
     
     // Добавляем обработку ошибок для самого сервера
     server.on('error', (err) => {
